@@ -161,6 +161,7 @@ export function createNord({ N, N2, N3, seed }) {
     let biome = -1, dens = 1;
     if (wN > 0.5) {
       biome = h > SEA + 46 ? 4 : 2; dens = 1.9;
+      if (Math.abs(z - (JC.z1 - 4)) < 30) { const db = Math.hypot(x - (jcCX(JC.z1) - 4), z - (JC.z1 - 4)); if (db < 26) dens *= smooth(16, 26, db) * 0.8; } // vue dégagée au belvédère
       if (z < Z_SAG + 60) { const zf = zF(x), wf = wF(x), df = Math.abs(z - zf); const tw = z > zf ? townW(x, z, df, wf) : 0; if (tw > 0.3) { biome = 1; dens = 0.35; } }
     }
     return { h, wl, nord: wN > 0.5, rd, biome, dens };

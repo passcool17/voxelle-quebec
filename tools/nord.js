@@ -61,7 +61,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   res.pate_done = await ev(() => (__game.S.q.pate || {}).st === 'done' && __game.S.inv.some(i => i.id === 'pate'));
   // 4. route 175 dans la réserve (au sud du lac), puis point de vue
   await tp(await ev(() => __game.gen.nord.roadX(-790) + 3.8), -790); await view(0, 0.1, 7); await snap('nord-route175-reserve');
-  const [bx, bz, bh] = W.P.belvedere; await tp(bx + 1, bz - 2); await ev(([x, z]) => { const P = __game.G.P; P.y = __game.world.ground(x, z) + 0.1; }, [bx + 1, bz - 2]); await settle(bx + 1, bz - 2, 2); await view(Math.PI - 0.2, 0.32, 8); await snap('nord-point-de-vue-lac-jacques-cartier');
+  const [bx, bz, bh] = W.P.belvedere; await tp(bx + 1, bz - 2); await ev(([x, z]) => { const P = __game.G.P; P.y = __game.world.ground(x, z) + 0.1; }, [bx + 1, bz - 2]); await settle(bx + 1, bz - 2, 2); await ev(() => { const P = __game.G.P; for (const [, o] of __game.G.npcs) if (Math.hypot(o.x - P.x, o.z - P.z) < 12) { o.x += 14; o.home.x += 14; } }); await view(Math.PI + 0.7, 0.34, 12); await snap('nord-point-de-vue-lac-jacques-cartier');
   res.belv_region = await region();
   // 5. autocar vers Chicoutimi (depuis L'Étape)
   await tp(W.stops[2].ax, W.stops[2].az); await talk('chauffeur'); res.bus2 = await btn('CHICOUTIMI'); await waitPlay(); await p.waitForTimeout(2500);
