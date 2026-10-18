@@ -207,6 +207,19 @@ export function enemyModel(type) {
     box(P.poutine, 0.12, 0.04, 0.1, 0x7a4a22, 0.03, 0.16, 0.02); box(P.poutine, 0.06, 0.05, 0.06, 0xfaf6e0, -0.06, 0.17, -0.04); box(P.poutine, 0.05, 0.04, 0.05, 0xfaf6e0, 0.07, 0.17, 0.05);
   } else if (type === 'mouches') {
     P.flies = []; for (let i = 0; i < 18; i++) { const f = box(g, 0.08, 0.06, 0.1, 0x101010, 0, 0, 0); f.userData.keep = true; f.userData.ph = Math.random() * 6.28; f.userData.r = 0.3 + Math.random() * 0.7; P.flies.push(f); }
+  } else if (type === 'orignal') {
+    // orignal fâché (fictif) : grand corps brun, longues pattes, panache
+    const body = pivot(g, 0, 0, 0); P.body = body;
+    box(body, 0.95, 0.95, 2.1, 0x4a3020, 0, 1.75, 0.1); box(body, 1.0, 0.5, 0.9, 0x3a2416, 0, 2.15, -0.45); box(body, 0.8, 0.18, 1.6, 0x5a3a26, 0, 1.3, 0.15);
+    P.legs = [];
+    for (const [x, z] of [[-0.32, -0.7], [0.32, -0.7], [-0.32, 0.85], [0.32, 0.85]]) { const L = pivot(body, x, 1.35, z); box(L, 0.2, 1.1, 0.22, 0x3a2416, 0, -0.55, 0); box(L, 0.18, 0.25, 0.2, 0xb8a080, 0, -1.0, 0); box(L, 0.22, 0.08, 0.26, 0x1a1210, 0, -1.31, -0.02); P.legs.push(L); }
+    P.head = pivot(body, 0, 2.2, -1.0);
+    box(P.head, 0.42, 0.45, 0.5, 0x3a2416, 0, 0, -0.1); box(P.head, 0.36, 0.34, 0.6, 0x4a3020, 0, -0.12, -0.6); box(P.head, 0.32, 0.2, 0.2, 0x2a1a10, 0, -0.18, -0.9);
+    box(P.head, 0.14, 0.4, 0.16, 0x2a1a10, 0, -0.5, -0.25); // fanon
+    for (const sx of [-1, 1]) { box(P.head, 0.06, 0.08, 0.04, 0xffd23a, sx * 0.2, 0.05, -0.32, true); box(P.head, 0.1, 0.18, 0.06, 0x3a2416, sx * 0.25, 0.25, 0.05);
+      const A = pivot(P.head, sx * 0.25, 0.28, 0); box(A, 0.5, 0.08, 0.1, 0xd8c8a0, sx * 0.3, 0, 0); box(A, 0.12, 0.08, 0.6, 0xd8c8a0, sx * 0.62, 0.05, 0); box(A, 0.42, 0.06, 0.55, 0xc8b890, sx * 0.62, 0.12, 0);
+      for (let k = 0; k < 4; k++) box(A, 0.06, 0.24, 0.06, 0xd8c8a0, sx * (0.48 + k * 0.1), 0.26, -0.24 + k * 0.16); }
+    box(body, 0.16, 0.2, 0.1, 0x2a1a10, 0, 2.0, 1.18);
   } else if (type === 'trou') {
     const body = pivot(g, 0, 0, 0); P.body = body;
     box(body, 2.0, 0.08, 2.0, 0x4a4c50, 0, 0.04, 0); box(body, 1.5, 0.1, 1.5, 0x0a0a0a, 0, 0.06, 0);
@@ -227,6 +240,7 @@ export function animEnemy(e, t, dt) {
   if (e.type === 'cone' || e.type === 'supreme') { P.body.position.y = Math.abs(s) * 0.08 * mv; P.body.rotation.z = s * 0.06 * mv; P.armL.rotation.x = s * 0.8 * mv; P.armR.rotation.x = -s * 0.8 * mv; if (e.atkAnim > 0) { P.armL.rotation.x = P.armR.rotation.x = -2.2 * Math.sin(e.atkAnim * Math.PI); } }
   else if (e.type === 'plow') { P.light.visible = Math.sin(t * 14) > -0.2; P.light.rotation.y = t * 8; P.body.position.y = Math.sin(t * 30) * 0.02 * mv; P.blade.position.y = 0.55 + (e.state === 'wind' ? Math.sin(t * 20) * 0.08 : 0); }
   else if (e.type === 'raton') { P.body.position.y = Math.abs(s) * 0.1 * mv; P.tail.rotation.y = Math.sin(t * 6) * 0.4; P.head.rotation.x = e.atkAnim > 0 ? 0.4 : 0; P.poutine.visible = !e.stole; }
+  else if (e.type === 'orignal') { const k = Math.min(1.6, Math.hypot(e.vx, e.vz) / 3); P.legs.forEach((L, i) => { L.rotation.x = Math.sin(t * 7 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k; }); P.head.rotation.x = e.charge && !e.charge.wind ? 0.5 : e.atkAnim > 0 ? 0.6 * Math.sin(e.atkAnim * Math.PI) : 0; P.body.rotation.x = e.charge && e.charge.wind ? Math.sin(t * 30) * 0.03 : 0; }
   else if (e.type === 'mouches') { for (const f of P.flies) { const ph = f.userData.ph + t * (5 + f.userData.r * 3), r = f.userData.r; f.position.set(Math.cos(ph) * r, 1.1 + Math.sin(ph * 1.7) * 0.4, Math.sin(ph * 1.3) * r); } }
   else if (e.type === 'trou') { const open = e.state === 'chase' || e.atkAnim > 0 ? 1 : 0; e.jawT = (e.jawT || 0) + (open - (e.jawT || 0)) * Math.min(1, dt * 8); P.jaw.position.y = 0.08 + e.jawT * (0.15 + (e.atkAnim > 0 ? Math.sin(e.atkAnim * Math.PI) * 0.4 : Math.abs(Math.sin(t * 8)) * 0.1)); P.eyes.visible = e.jawT > 0.3; P.eyes.position.y = 0.2 + e.jawT * 0.3; }
 }
@@ -238,7 +252,27 @@ export function pickupModel(kind) {
   else if (kind === 'chaudiere') { box(g, 0.4, 0.45, 0.4, 0xc9ced6, 0, 0, 0); box(g, 0.34, 0.06, 0.34, 0xc07a20, 0, 0.21, 0, true); box(g, 0.44, 0.04, 0.04, 0x555555, 0, 0.3, 0); }
   else if (kind === 'permis') { box(g, 0.5, 0.04, 0.66, 0xf8f8f0, 0, 0, 0, true); box(g, 0.3, 0.05, 0.06, 0x2040a0, 0, 0.01, -0.15); box(g, 0.12, 0.06, 0.12, 0xc02020, 0.12, 0.01, 0.18); }
   else if (kind === 'sirop') { box(g, 0.3, 0.4, 0.14, 0xc07a20, 0, 0, 0, true); box(g, 0.1, 0.1, 0.1, 0xf2f2f2, 0, 0.25, 0); }
+  else if (kind === 'ble') { box(g, 0.3, 0.4, 0.3, 0xc9ced6, 0, 0, 0); box(g, 0.31, 0.24, 0.31, 0xf2d03a, 0, 0, 0, true); box(g, 0.12, 0.12, 0.315, 0x2c8a3a, 0, 0, 0); }
   else if (kind === 'poutine') { box(g, 0.36, 0.18, 0.3, 0xf2f2f2, 0, 0, 0); box(g, 0.32, 0.1, 0.26, 0xe8b84a, 0, 0.12, 0, true); }
   else { box(g, 0.4, 0.4, 0.4, 0x9a6adf, 0, 0, 0, true); box(g, 0.46, 0.08, 0.46, 0xf2c12e, 0, 0.1, 0); }
   return bake(g);
+}
+
+// le « bazou » : vieux pick-up rouge rouillé, conduisible (avant = −z)
+export function carModel() {
+  const g = new THREE.Group(), P = {};
+  const body = pivot(g, 0, 0, 0); P.body = body;
+  box(body, 1.9, 0.55, 4.2, 0xa8281e, 0, 0.75, 0); box(body, 1.92, 0.12, 4.22, 0x2a2a2a, 0, 0.5, 0);
+  box(body, 1.7, 0.75, 1.6, 0xa8281e, 0, 1.38, 0.1); box(body, 1.6, 0.5, 0.04, 0x8fd0ff, 0, 1.45, -0.71); box(body, 0.04, 0.42, 1.2, 0x8fd0ff, -0.86, 1.45, 0.15); box(body, 0.04, 0.42, 1.2, 0x8fd0ff, 0.86, 1.45, 0.15);
+  box(body, 1.72, 0.06, 1.62, 0x7a1a14, 0, 1.77, 0.1);
+  box(body, 1.8, 0.3, 1.5, 0x6a1a12, 0, 1.1, 1.3); box(body, 1.6, 0.1, 1.4, 0x3a2a1a, 0, 1.0, 1.3); // boîte
+  for (const [x, z, w, d] of [[0.5, -1.5, 0.4, 0.3], [-0.6, 1.4, 0.5, 0.4], [0.7, 0.9, 0.3, 0.5]]) box(body, w, 0.04, d, 0x8a5a2a, x, 1.04, z); // rouille
+  for (const sx of [-1, 1]) { box(body, 0.32, 0.2, 0.04, 0xfff4c0, sx * 0.62, 0.85, -2.11, true); box(body, 0.24, 0.14, 0.04, 0xff3030, sx * 0.72, 0.85, 2.11, true); }
+  box(body, 1.4, 0.16, 0.06, 0xc9ced6, 0, 0.55, -2.13); box(body, 1.94, 0.12, 0.08, 0xc9ced6, 0, 0.5, 2.12);
+  box(body, 0.36, 0.42, 0.36, 0xf0c8a0, -0.4, 1.45, 0.25); box(body, 0.4, 0.2, 0.4, 0x1f4fa8, -0.4, 1.7, 0.25); // chauffeur à tuque
+  box(body, 0.5, 0.12, 0.3, 0x111111, 0.55, 1.85, 0.1); // galerie
+  P.wheels = [];
+  for (const [x, z] of [[-0.9, -1.35], [0.9, -1.35], [-0.9, 1.35], [0.9, 1.35]]) { const w = pivot(body, x, 0.42, z); box(w, 0.28, 0.82, 0.82, 0x161616, 0, 0, 0); box(w, 0.3, 0.36, 0.36, 0x9a9a9a, 0, 0, 0); P.wheels.push(w); }
+  bake(g);
+  return { g, P };
 }

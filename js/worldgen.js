@@ -2,6 +2,7 @@
 // Partagé entre le Web Worker (blocs) et le fil principal (hauteurs, positions des structures et des PNJ).
 import { makeNoise, mulberry, hash2, smooth } from './noise.js';
 import { B, CS, WH, SEA, SEAV, CSM, VS } from './blocks.js';
+import { createNord, buildRoad, nordLayout, nordBuild } from './nord.js';
 export const BIOME = { RIVE: 0, CAMPAGNE: 1, BOREALE: 2, ERABLIERE: 3, COLLINES: 4, VILLE: 5 };
 export const BIOME_NAME = ['Rives du Fleuve', 'Campagne', 'Forêt boréale', 'Érablière', 'Laurentides enneigées', 'Vieille-Ville'];
 export const CELL = 144;
@@ -12,8 +13,10 @@ export function createGen(seed) {
   const riverZ = x => 34 * N.fbm(x * 0.0022 + 3.1, 1.7, 3) + 12 * N2.n2(x * 0.009, 7.7);
   const riverW = x => 24 + 8 * N3.n2(x * 0.004, 1.3);
   const VX = 0, VZ = Math.round(riverZ(0) - 72), VH = SEA + 17, VR = 34;
+  const nord = createNord({ N, N2, N3, seed });
   function rawH(x, z) {
     const rz = riverZ(x), north = rz - z, d = Math.abs(z - rz), W = riverW(x);
+    if (z < -660) { const T = nord.terrain(x, z, 0); return { h: T.h, north, d, W, wl: T.wl, nord: T.nord, rd: T.rd, nb: T.biome, dens: T.dens }; }
     const base = N.fbm(x * 0.006, z * 0.006, 4);
     let land;
     const r = N3.ridge(x * 0.007, z * 0.007, 4);
@@ -21,7 +24,8 @@ export function createGen(seed) {
     else land = SEA + 4 + base * 2.5 + 4 * N2.fbm(x * 0.003, z * 0.003, 2) + smooth(160, 600, -north) * 14 * r * r;
     const bed = SEA - 1 - 8 * Math.max(0, 1 - (d / W) ** 2);
     const sh = smooth(W * 0.8, W + 30, d);
-    return { h: lerp(bed, land, sh), north, d, W };
+    const T = nord.terrain(x, z, lerp(bed, land, sh));
+    return { h: T.h, north, d, W, wl: T.wl, nord: T.nord, rd: T.rd, nb: T.biome, dens: T.dens };
   }
   // ---------- structures (grille de cellules) ----------
   const cellCache = new Map();
@@ -31,7 +35,8 @@ export function createGen(seed) {
   }
   function makeCell(i, j) {
     let type;
-    const forced = { '0,0': 'ville', '1,0': 'cabane', '-1,0': 'village', '0,-1': 'chantier', '2,-1': 'grand', '-1,-1': 'none', '1,-1': 'none' }[i + ',' + j];
+    if (j <= -3) return null; // le Nord a ses propres lieux (nord.js)
+    const forced = { '0,0': 'ville', '1,0': 'cabane', '-1,0': 'village', '0,-1': 'chantier', '2,-1': 'grand', '-1,-1': 'none', '1,-1': 'none', '0,-2': 'none' }[i + ',' + j];
     const r = mulberry((seed * 7919) ^ (i * 92821 + j * 68917));
     const hv = r();
     type = forced || (hv < 0.36 ? 'village' : hv < 0.56 ? 'chantier' : hv < 0.74 ? 'cabane' : hv < 0.78 ? 'grand' : 'none');
@@ -54,10 +59,12 @@ export function createGen(seed) {
   function structsNear(x, z) {
     const ci = Math.round((x - VX) / CELL), cj = Math.round((z - VZ) / CELL), out = [];
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const s = cell(ci + a, cj + b); if (s) out.push(s); }
+    if (z < -400) for (const s of nord.structs) { const r = Math.max(s.R2, s.BR || 0) + 20; if (Math.abs(x - s.x) < r && Math.abs(z - s.z) < r) out.push(s); }
     return out;
   }
   function biomeRaw(x, z, R) {
     const { h, north, d, W } = R;
+    if (R.nb >= 0) return R.nb;
     if (d < W + 10 && h <= SEA + 2.5) return BIOME.RIVE;
     if (h > SEA + 30) return BIOME.COLLINES;
     const m = N4.n2(x * 0.0045 - 20, z * 0.0045 + 9), t = N2.n2(x * 0.004 + 50, z * 0.004);
@@ -74,13 +81,14 @@ export function createGen(seed) {
     }
     let biome = biomeRaw(x, z, R);
     if (st && st.type === 'ville' && w > 0.5) biome = BIOME.VILLE;
-    return { h: Math.floor(h), hc: h, biome, w, st, north: R.north, d: R.d, W: R.W };
+    return { h: Math.floor(h), hc: h, biome, w, st, north: R.north, d: R.d, W: R.W, wl: w > 0.5 && st && st.nord && st.type !== 'camp' ? 0 : R.wl, nord: R.nord, rd: R.rd, dens: R.dens };
   }
   // hauteur du dernier voxel plein (en mètres, multiple de VS) : la surface est à heightAt + 1
   function heightAt(x, z) { const c = column(Math.floor(x), Math.floor(z)); return Math.floor(c.hc * 2) / 2; }
   function allStructs(x0, z0, x1, z1) {
     const out = [];
     for (let i = Math.floor((x0 - VX) / CELL) - 1; i <= Math.ceil((x1 - VX) / CELL) + 1; i++) for (let j = Math.floor((z0 - VZ) / CELL) - 1; j <= Math.ceil((z1 - VZ) / CELL) + 1; j++) { const s = cell(i, j); if (s && s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s); }
+    for (const s of nord.structs) if (s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s);
     return out;
   }
 
@@ -105,7 +113,10 @@ export function createGen(seed) {
       for (let y = 1; y <= h; y++) data[idx(x, y, z)] = B.STONE;
       const hn = hash2(wx >> 1, wz >> 1, seed);
       let top = B.GRASS, sub = B.DIRT, sd = 6;
-      if (c.biome === BIOME.RIVE || h <= SEAV) { top = h <= SEAV + 2 ? (hn < 0.25 ? B.GRAVEL : (N3.n2(wx * 0.04, wz * 0.04) > 0.55 ? B.PEBBLE : B.SAND)) : B.GRASS; sub = B.SAND; }
+      const wv = c.wl ? c.wl * 2 + 1 : SEAV;
+      if (c.nord && c.w < 0.3) { const sl = Math.max(Math.abs(H(x + 2, z) - H(x - 2, z)), Math.abs(H(x, z + 2) - H(x, z - 2))); if (sl > 6) { top = B.STONE; sub = B.STONE; } }
+      if (top === B.STONE) {}
+      else if (c.biome === BIOME.RIVE || h <= wv) { top = h <= wv + 2 ? (hn < 0.25 ? B.GRAVEL : (N3.n2(wx * 0.04, wz * 0.04) > 0.55 ? B.PEBBLE : B.SAND)) : B.GRASS; sub = B.SAND; }
       else if (c.biome === BIOME.COLLINES) {
         const sl = Math.max(Math.abs(H(x + 2, z) - H(x - 2, z)), Math.abs(H(x, z + 2) - H(x, z - 2)));
         if (sl > 8) { top = B.STONE; sub = B.STONE; } else if (hm > SEA + 38 + hn * 4) { top = B.SNOW; sub = B.SNOW; sd = 2 + (hn * 4 | 0); } else if (hm > SEA + 33) top = B.SNOWGRASS;
@@ -113,8 +124,8 @@ export function createGen(seed) {
       else if (c.biome === BIOME.BOREALE && c.w < 0.05 && N2.n2(wx * 0.05 + 7, wz * 0.05) > 0.35) top = B.MOSS;
       for (let y = Math.max(1, h - sd); y < h; y++) data[idx(x, y, z)] = sub;
       data[idx(x, h, z)] = top;
-      for (let y = h + 1; y <= SEAV; y++) data[idx(x, y, z)] = B.WATER;
-      if (h < SEAV && c.north > 220 && c.d > c.W + 20) data[idx(x, SEAV, z)] = B.ICE; // lacs gelés au nord
+      for (let y = h + 1; y <= wv; y++) data[idx(x, y, z)] = B.WATER;
+      if (h < SEAV && c.north > 220 && c.d > c.W + 20 && !c.nord && !c.wl) data[idx(x, SEAV, z)] = B.ICE; // lacs gelés au nord (pas dans la réserve)
     }
     // primitives découpées au tronçon : ffill en voxels fins absolus, fill en mètres (blocs de 2×2×2 voxels)
     const ffill = (x0, y0, z0, x1, y1, z1, b, onlyAir) => {
@@ -130,21 +141,24 @@ export function createGen(seed) {
     // arbres et rochers (positions tirées sur la grille d'un mètre)
     for (let j = 0; j < GW; j++) for (let i = 0; i < GW; i++) {
       const c = cols[i + j * GW], wx = oxm - M + i, wz = ozm - M + j;
-      if (c.w > 0.02 || c.h <= SEA + 1 || c.biome === BIOME.RIVE) continue;
+      if (c.w > 0.02 || c.h <= SEA + 1 || c.biome === BIOME.RIVE || c.rd < 9 || (c.wl && c.h < c.wl + 1)) continue;
       const hv = hash2(wx, wz, seed + 9), fy = Math.min(WH - 3, Math.floor(c.hc * 2) + 1), fx = wx * 2, fz = wz * 2;
-      const dens = [0, 0.008, 0.05, 0.04, 0.016, 0][c.biome] * (c.biome === BIOME.COLLINES && c.h > SEA + 40 ? 0.2 : 1);
+      const dens = [0, 0.008, 0.05, 0.04, 0.016, 0][c.biome] * (c.biome === BIOME.COLLINES && c.h > SEA + 40 ? 0.2 : 1) * (c.dens || 1);
       if (hv >= dens) { if (hv < dens + [0, 0.002, 0.004, 0.002, 0.006, 0][c.biome]) rock(P, fx, fy, fz, hash2(wz, wx, seed + 31)); continue; }
       const hv2 = hash2(wz, wx, seed + 13);
-      if (c.biome === BIOME.BOREALE || c.biome === BIOME.COLLINES) spruce(P, fx, fy, fz, hv2, c.h > SEA + 33);
+      if (c.nord && c.biome === BIOME.BOREALE && hv2 < 0.16) birch(P, fx, fy, fz, hv2 * 6);
+      else if (c.biome === BIOME.BOREALE || c.biome === BIOME.COLLINES) spruce(P, fx, fy, fz, hv2, c.h > SEA + 33);
       else if (c.biome === BIOME.ERABLIERE) hv2 < 0.82 ? maple(P, fx, fy, fz, hv2) : birch(P, fx, fy, fz, hv2);
       else hv2 < 0.5 ? birch(P, fx, fy, fz, hv2) : maple(P, fx, fy, fz, hv2);
     }
+    // route 175 et ses panneaux (avant les lieux, qui peuvent la recouvrir)
+    if (oz * VS < -100 && oz * VS > -2420) buildRoad(nord, P, data, idx, hf, FW, FM, CS, WH, ox, oz);
     // structures
     const seen = new Set();
     for (const [dx, dz] of [[0, 0], [CSM, 0], [0, CSM], [CSM, CSM], [CSM / 2, CSM / 2]]) for (const s of structsNear(oxm + dx, ozm + dz)) {
       if (seen.has(s)) continue; seen.add(s);
-      const rad = s.R + 4; if (s.x + rad < oxm || s.x - rad > oxm + CSM || s.z + rad < ozm || s.z - rad > ozm + CSM) continue;
-      BUILD[s.type](P, s);
+      const rad = (s.BR || s.R) + 4; if (s.x + rad < oxm || s.x - rad > oxm + CSM || s.z + rad < ozm || s.z - rad > ozm + CSM) continue;
+      if (s.nord && s.type !== 'village') nordBuild(s, P, HELP); else BUILD[s.type](P, s);
     }
     // végétation au sol (herbes, fleurs, bleuets) sur le dessus resté libre
     for (let z = 0; z < CS; z++) for (let x = 0; x < CS; x++) {
@@ -163,7 +177,8 @@ export function createGen(seed) {
     }
     return data;
   }
-  return { genChunk, column, heightAt, rawH, riverZ, riverW, structsNear, cell, allStructs, VX, VZ, VH, VR, layout };
+  const HELP = { house, church, lampPost, nord };
+  return { genChunk, column, heightAt, rawH, riverZ, riverW, structsNear, cell, allStructs, VX, VZ, VH, VR, layout, nord };
 }
 
 // ---------- arbres (en voxels fins) ----------
@@ -313,6 +328,7 @@ function lampPost(P, x, z, h) {
 export function layout(s) {
   // Métadonnées d'une structure : PNJ, points d'apparition, objets à ramasser, entrées.
   const r = mulberry(s.seed), m = { npcs: [], spawns: [], items: [], gates: [], houses: [] };
+  if (s.nord && s.type !== 'village') { nordLayout(s, m, r); return m; }
   if (s.type === 'village') {
     const n = 5 + (r() * 2 | 0), a0 = r() * 6.28;
     for (let k = 0; k < n; k++) {
@@ -332,6 +348,7 @@ export function layout(s) {
     m.npcs.push({ role: 'gaston', x: s.x + 4.5, z: s.z + 8.5 }, { role: 'lapaperasse', x: s.x - 5.5, z: s.z - 7.5 }, { role: 'commercant', x: s.x + 12.5, z: s.z + 14.5 });
     for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 50, z: s.z + 8 + r() * 20 });
     m.npcs.push({ role: 'garde', x: s.x + 3, z: s.z - s.R + 3 }, { role: 'garde', x: s.x - 3, z: s.z + s.R - 3 });
+    m.npcs.push({ role: 'chauffeur', x: s.x + 6.5, z: s.z - 34 - 6.5, stop: 'ville' });
     m.gates.push({ x: s.x, z: s.z - 34 - 3 }, { x: s.x, z: s.z + 34 + 3 });
   } else if (s.type === 'cabane') {
     m.npcs.push({ role: s.i === 1 && s.j === 0 ? 'pepere' : 'acericulteur', x: s.x + 1.5, z: s.z + 5 });

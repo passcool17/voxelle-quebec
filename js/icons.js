@@ -31,6 +31,11 @@ const ART = {
   tourtiere: ['............', '............', '...CCCCCC...', '..CmCCCCmC..', '.CCCCmmCCCC.', '.CmCCCCCCmC.', '.CCCCCCCCCC.', '.SSSSSSSSSS.', '..SSSSSSSS..', '............', '............', '............'],
   permis: ['..pppppppp..', '..pUUUUUUp..', '..pppppppp..', '..pSSSSSSp..', '..pppppppp..', '..pSSSSSSp..', '..pppppppp..', '..pSSSSppp..', '..ppppprrp..', '..ppppprrp..', '..pppppppp..', '............'],
   chaudiere: ['............', '...kkkkkk...', '..k......k..', '..ssssssss..', '..sccccccs..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '...ssssss...', '............', '............'],
+  ble: ['............', '...ssssss...', '..ssssssss..', '..yyyyyyyy..', '..yyUUUyyy..', '..yUyyyUyy..', '..yyUUUyyy..', '..yyyyyyyy..', '..ssssssss..', '...ssssss...', '............', '............'],
+  gazette: ['............', '.pppppppppp.', '.pkkkkkkkkp.', '.pppppppppp.', '.pSSSp.SSSp.', '.pSSSp.pppp.', '.pSSSp.SSSp.', '.pppppppppp.', '.pSSSSSSSSp.', '.pppppppppp.', '............', '............'],
+  pate: ['............', '............', '..yyyyyyyy..', '.yyyCyyyCyy.', '.yyyyyyyyyy.', '.cccccccccc.', '.CCCCCCCCCC.', '.wwwwwwwwww.', '..wwwwwwww..', '............', '............', '............'],
+  bleuets: ['............', '....u..u....', '...uuuuuuu..', '..uuUuuUuu..', '..uuuuuuuu..', '.BBBBBBBBBB.', '.BccBccBccB.', '..BBBBBBBB..', '..BBBBBBBB..', '............', '............', '............'],
+  tarte: ['............', '............', '...CCCCCC...', '..CuCuCuCC..', '.CuuCuuCuuC.', '.CuCuuCuCuC.', '.CCCCCCCCCC.', '.SSSSSSSSSS.', '..SSSSSSSS..', '............', '............', '............'],
   glider: ['............', 'rrruurryyrrr', '.rruurryyrr.', '..ruurryyr..', '...uurryy...', '....rryy....', '.....rr.....', '.....BB.....', '....B..B....', '...B....B...', '............', '............'],
 };
 export function itemIcon(id) {

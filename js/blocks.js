@@ -5,7 +5,7 @@ export const VS = 0.5, IVS = 2, CS = 32, WH = 192, CSM = CS * VS, WHM = WH * VS,
 export const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5, SNOW: 6, ICE: 7, LOG: 8, SPRUCE: 9, MAPLE: 10, MAPLE2: 11, BIRCHLOG: 12, BIRCH: 13,
   PLANK: 14, COBBLE: 15, COPPER: 16, BRICK: 17, WHITE: 18, GLASS: 19, ROAD: 20, GRAVEL: 21, DPLANK: 22, REDROOF: 23, TIN: 24, HAY: 25, CONE: 26, LAMP: 27,
   BEDROCK: 28, FIELD: 29, PATH: 30, SNOWGRASS: 31, STRIPE: 32, BLUE: 33, SLOG: 34, GOLD: 35, YELLOW: 36, SNOWLEAF: 37,
-  TUFT: 38, FLOWR: 39, FLOWY: 40, FLOWV: 41, BERRY: 42, MOSS: 43, PEBBLE: 44, MAPLE3: 45, BIRCHMARK: 46, TRIM: 47, SHINGLE: 48, IRON: 49 };
+  TUFT: 38, FLOWR: 39, FLOWY: 40, FLOWV: 41, BERRY: 42, MOSS: 43, PEBBLE: 44, MAPLE3: 45, BIRCHMARK: 46, TRIM: 47, SHINGLE: 48, IRON: 49, SIGN: 50, BROWN: 51, NEON: 52 };
 const D = [
   ['Air'], ['Gazon', 0x55a033, 0x6f6a34, 0x7a5434], ['Terre', 0x7a5434], ['Pierre', 0x8a8a8e], ['Sable', 0xdccb8c], ['Eau', 0x2f6fb3], ['Neige', 0xf2f6fb], ['Glace', 0xa9d8f2],
   ['Bûche', 0x9b7a4d, 0x6b4a2b, 0x9b7a4d], ['Sapinage', 0x2c5a34], ['Feuilles d’érable', 0xc8361e], ['Feuilles d’érable', 0xe7862a], ['Bouleau', 0xd8d2c0, 0xe8e4d8, 0xd8d2c0], ['Feuilles de bouleau', 0x8fbf4a],
@@ -15,12 +15,13 @@ const D = [
   ['Or', 0xe8c040], ['Jaune chantier', 0xf2c12e], ['Sapinage enneigé', 0xe8eef2, 0x3b6440, 0x2c5a34],
   ['Herbes', 0x6fb544], ['Fleurs rouges', 0xd8342a], ['Fleurs jaunes', 0xf2d03a], ['Fleurs mauves', 0x8a5ad8], ['Bleuets', 0x2f4a8a],
   ['Mousse', 0x4f7a34], ['Galets', 0x7c7a76], ['Feuilles d’érable', 0xd8a02a], ['Écorce tachée', 0x2a2622], ['Cadre', 0xf4f1ea], ['Bardeau', 0x5a5a62], ['Fer', 0x2a2c30],
+  ['Panneau vert', 0x1f7a44], ['Panneau brun', 0x6a4026], ['Néon', 0xff4a3a],
 ];
 export const NAME = D.map(d => d[0]);
 export const COL = D.map(d => d.length < 2 ? [0, 0, 0] : [d[1], d[2] ?? d[1], d[3] ?? d[2] ?? d[1]]);
 export const OPAQUE = new Uint8Array(64), SOLID = new Uint8Array(64), GLOW = new Uint8Array(64), LEAF = new Uint8Array(64);
 for (let i = 1; i < D.length; i++) { OPAQUE[i] = i !== B.WATER ? 1 : 0; SOLID[i] = i !== B.WATER ? 1 : 0; }
-GLOW[B.GLASS] = GLOW[B.LAMP] = 1;
+GLOW[B.GLASS] = GLOW[B.LAMP] = GLOW[B.NEON] = 1;
 for (const b of [B.SPRUCE, B.MAPLE, B.MAPLE2, B.MAPLE3, B.BIRCH, B.SNOWLEAF]) { LEAF[b] = 1; SOLID[b] = 0; } // on traverse le feuillage
 // Végétation décorative (petits modèles dans le maillage, ni pleins ni opaques)
 export const SPRITE = new Uint8Array(64);
@@ -29,7 +30,7 @@ for (const b of [B.TUFT, B.FLOWR, B.FLOWY, B.FLOWV, B.BERRY]) { SPRITE[b] = 1; O
 export const TEX = new Uint8Array(64).fill(45);
 for (const [b, v] of [[B.GLASS, 0], [B.LAMP, 0], [B.WATER, 0], [B.GRASS, 80], [B.SNOWGRASS, 64], [B.FIELD, 80], [B.DIRT, 70], [B.STONE, 76], [B.COBBLE, 85], [B.GRAVEL, 100], [B.SAND, 55], [B.SNOW, 22], [B.ICE, 20],
   [B.SPRUCE, 95], [B.SNOWLEAF, 75], [B.MAPLE, 100], [B.MAPLE2, 100], [B.MAPLE3, 100], [B.BIRCH, 95], [B.PLANK, 60], [B.DPLANK, 60], [B.LOG, 70], [B.SLOG, 70], [B.BIRCHLOG, 35], [B.BRICK, 75],
-  [B.WHITE, 22], [B.TRIM, 12], [B.ROAD, 60], [B.PATH, 75], [B.MOSS, 85], [B.PEBBLE, 100], [B.CONE, 15], [B.STRIPE, 15], [B.GOLD, 30], [B.COPPER, 60], [B.TIN, 30], [B.REDROOF, 40], [B.SHINGLE, 65], [B.HAY, 85], [B.IRON, 20]]) TEX[b] = v;
+  [B.WHITE, 22], [B.TRIM, 12], [B.ROAD, 60], [B.PATH, 75], [B.MOSS, 85], [B.PEBBLE, 100], [B.CONE, 15], [B.STRIPE, 15], [B.GOLD, 30], [B.COPPER, 60], [B.TIN, 30], [B.REDROOF, 40], [B.SHINGLE, 65], [B.HAY, 85], [B.IRON, 20], [B.SIGN, 10], [B.BROWN, 30], [B.NEON, 0]]) TEX[b] = v;
 for (const b of [B.COBBLE, B.BRICK, B.PLANK, B.DPLANK, B.COPPER, B.TIN, B.REDROOF, B.SHINGLE, B.HAY, B.ROAD, B.STRIPE, B.CONE, B.WHITE, B.TRIM, B.IRON, B.GOLD, B.BLUE, B.YELLOW]) TEX[b] |= 128;
 // Blocs que l'on peut poser (dans la barre)
 export const PLACEABLE = [B.PLANK, B.COBBLE, B.BRICK, B.WHITE, B.GLASS, B.REDROOF, B.COPPER, B.LAMP, B.LOG, B.STONE, B.DIRT, B.SNOW, B.SAND, B.GRAVEL, B.TIN, B.DPLANK, B.HAY, B.BLUE, B.GOLD, B.CONE, B.ICE];

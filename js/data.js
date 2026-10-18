@@ -17,7 +17,13 @@ export const ITEMS = {
   tourtiere: { name: 'Tourtière', slot: 'conso', heal: 80, desc: 'Rend 80 PV. Recette secrète de matante.', price: 35 },
   permis: { name: 'Formulaire B-52', slot: 'quete', desc: 'Permis de construire, en trois copies.' },
   chaudiere: { name: 'Chaudière de sirop', slot: 'quete', desc: 'Pleine d’eau d’érable.' },
+  ble: { name: 'Canne de blé d’Inde en crème', slot: 'quete', desc: 'L’étage du milieu du pâté chinois. Sacré.' },
+  gazette: { name: 'Gazette des remparts', slot: 'quete', desc: 'Les nouvelles de Québec, imprimées à matin (ou l’an passé).' },
+  pate: { name: 'Pâté chinois', slot: 'conso', heal: 60, desc: 'Steak, blé d’Inde, patates. Rend 60 PV.', price: 24 },
+  bleuets: { name: 'Casseau de bleuets', slot: 'conso', heal: 15, stam: 1, desc: 'Des bleuets du Lac, gros comme des billes. Rend 15 PV et l’énergie.', price: 10 },
+  tarte: { name: 'Tarte aux bleuets', slot: 'conso', heal: 70, buff: 15, desc: 'Rend 70 PV et donne de la vitesse. Tache les dents.', price: 30 },
 };
+export const SHOPS = { etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone'] };
 export const RARITY = [{ n: 'commun', c: '#e8e8e8', m: 1 }, { n: 'rare', c: '#5ab8ff', m: 1.25 }, { n: 'épique', c: '#d07aff', m: 1.55 }];
 export const SHOP = ['poutine', 'sirop', 'tourtiere', 'bottes', 'mitaines_doublees', 'manteau', 'baton_carbone', 'pelle_alu'];
 
@@ -28,6 +34,7 @@ export const ENEMIES = {
   raton: { name: 'Raton voleur de poutine', hp: 24, dmg: 4, spd: 6.2, range: 1.3, cd: 1.0, xp: 20, cash: [3, 7], aggro: 14, hw: 0.3, h: 0.8 },
   mouches: { name: 'Mouches noires', hp: 14, dmg: 2, spd: 4.4, range: 1.2, cd: 0.6, xp: 12, cash: [1, 3], aggro: 13, hw: 0.4, h: 1.2, fly: true },
   trou: { name: 'Nid-de-poule', hp: 46, dmg: 12, spd: 1.2, range: 1.8, cd: 1.4, xp: 32, cash: [4, 10], aggro: 5, hw: 0.9, h: 0.5 },
+  orignal: { name: 'Orignal de mauvaise humeur', hp: 120, dmg: 15, spd: 4.0, range: 2.4, cd: 2.6, xp: 70, cash: [6, 14], aggro: 17, hw: 0.8, h: 2.6, charge: true },
   supreme: { name: 'Le Cône Suprême', hp: 650, dmg: 20, spd: 3.0, range: 3.6, cd: 1.6, xp: 600, cash: [120, 160], aggro: 26, hw: 1.0, h: 3.8, boss: true },
 };
 export const NPCS = {
@@ -40,6 +47,19 @@ export const NPCS = {
   acericulteur: { name: 'Acériculteur', look: { coat: 0x8a2a1a, hat: 0xc07a20, beard: 0x5a3a22 } },
   garde: { name: 'Garde des remparts', look: { coat: 0x1f3f8a, hatType: 'kepi', hat: 0x1f3f8a, sash: false, mitt: 0xf2f2f2 } },
   villageois: { name: 'Villageois' },
+  cuisiniere: { name: 'Rolande, cuisinière de L’Étape', look: { coat: 0xf2f2f2, hatType: 'filet', apron: 0xc8282e, hair: 0x8a8a90, sash: false, mitt: 0xf0c8a0 } },
+  gardeparc: { name: 'Agente Bérubé, garde-parc', look: { coat: 0x3a5a2a, hatType: 'kepi', hat: 0x6a4026, sash: false, mitt: 0x3a2a1a } },
+  pecheur: { name: 'Ti-Mé, pêcheur', look: { coat: 0xc02020, hat: 0x2c5a34, beard: 0x8a8a8a, hair: 0x8a8a8a } },
+  saguenayen: { name: 'Gilles, du port de Chicoutimi', look: { coat: 0x1f3f8a, hat: 0xf2c12e, beard: 0x5a3a22, pom: 0x1f3f8a } },
+  chauffeur: { name: 'Chauffeur d’autocar', look: { coat: 0x2e5fa8, hatType: 'kepi', hat: 0x2e5fa8, sash: false, mitt: 0xf0c8a0 } },
+  guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
+};
+export const ROLE_CHAT = {
+  cuisiniere: ['Ici, le café est chaud pis la tarte est frette. Comme il faut.', 'Les camionneurs disent que mon pâté chinois vaut le détour. Y’a pas de détour, c’est la seule route.'],
+  gardeparc: ['Bienvenue dans la Réserve! Pas de feu en dehors des foyers, pis on flatte pas les orignaux.', 'Les orignaux ont priorité sur la 175. C’est pas écrit dans le code, mais essaye de leur dire.', 'Les mouches noires? On les compte plus. Elles, elles nous comptent.'],
+  pecheur: ['La truite mord à matin. Les mouches noires, elles, mordent toute la journée.', 'J’ai pogné une truite grosse de même. Bon, de même. Correct, de même.', 'Aux Sept îles, y’a sept lacs. Ou six. Ça dépend du niveau d’eau pis de la bière.'],
+  saguenayen: ['Icitte, on dit « Royaume ». Ça fait plus chic que « région ».', 'Le fjord, c’est de l’eau salée en dessous pis de l’eau douce en dessus. Comme moi le samedi.'],
+  guide: ['Le vrai fjord a une centaine de kilomètres. Notre maquette en a trois mètres. On fait ce qu’on peut avec le budget.', 'Les falaises ici ont été creusées par un glacier. Le stationnement, lui, par une pépine.', 'Visite guidée gratuite! La sortie est payante. Non, je niaise.'],
 };
 export const CHATTER = [
   'Y fait frette en bonyenne à matin!', 'Les cônes orange, avant, ça restait tranquille. Astheure, ça marche!', 'Coudonc, t’as-tu vu le nid-de-poule sur le rang? Il m’a mangé un pneu.',
@@ -61,8 +81,14 @@ export const QUESTS = {
   poutine: { giver: 'ginette', title: 'Les voleurs de poutine', type: 'kill', target: 'raton', n: 4, reward: { cash: 70, xp: 180, item: 'pelle' },
     intro: 'Mes poutines disparaissent! Des ratons laveurs masqués rôdent autour du village, surtout la nuit. Chasse-m’en quatre, pis je te donne ma vieille pelle.',
     wait: 'Les ratons, c’est des voleurs masqués. Ils sortent surtout le soir.', done: 'Merci! Tiens, ma pelle à neige. Elle a déneigé trois générations d’entrées.' },
+  pate: { giver: 'cuisiniere', title: 'Le pâté chinois de Rolande', type: 'collect', item: 'ble', n: 3, reward: { cash: 90, xp: 260, give: { pate: 2 } },
+    intro: 'Mon pâté chinois! J’ai le steak, j’ai les patates, mais le camion de blé d’Inde en crème est resté pogné dans les travaux de la 175, au sud. Les cônes ont « sécurisé » les cannes. Ramène-m’en trois, pis je te nourris.',
+    wait: 'Les travaux sont sur la 175, au sud de L’Étape. Steak, blé d’Inde, patates : sans l’étage du milieu, c’est juste du hachis.', done: 'Steak, blé d’Inde, patates : l’ordre sacré est rétabli! Tiens, deux portions pour la route. Pis mets du ketchup, je regarde pas.' },
+  nouvelles: { giver: 'saguenayen', title: 'Des nouvelles de Québec', type: 'collect', item: 'gazette', n: 1, reward: { cash: 120, xp: 300, give: { bleuets: 4, tarte: 1 } },
+    intro: 'Salut l’étranger! Ça fait trois semaines qu’on a pas eu de nouvelles de Québec. Le tramway, y’é-tu fini? Le pont, y tient-tu encore? Va voir Gaston, le crieur de la Vieille-Ville, pis rapporte-moi sa gazette. Je te paye en bleuets!',
+    wait: 'Gaston, le crieur, est sur la place de la Vieille-Ville. Prends l’autocar si t’as pas envie de rouler.', done: '« Tramway : les travaux avancent. Pont : il tient. Cônes : en hausse. » Rien de neuf, d’abord! Tiens, des bleuets pis une tarte. Des vrais, gros comme des billes.' },
   supreme: { giver: 'gaston', requires: ['cones', 'permis'], title: 'Le Grand Chantier', type: 'kill', target: 'supreme', n: 1, where: [2, -1], reward: { cash: 300, xp: 650, item: 'baton_or' },
     intro: 'Mauvaise nouvelle : le Cône Suprême dirige un grand chantier dans les hauteurs, au nord-est. Si on l’arrête pas, il va mettre des cônes jusque dans le fleuve!',
     wait: 'Le Grand Chantier est au nord-est, dans les hauteurs. Prends des poutines.', done: 'Tu as vaincu le Cône Suprême! Les rues sont libres. Voici le Bâton doré du Carnaval.' },
 };
-export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches', 'raton', 'bureau'], 3: ['raton', 'mouches', 'bureau'], 4: ['plow', 'mouches'], 0: ['trou', 'raton'], 5: ['bureau'] };
+export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches', 'raton', 'orignal'], 3: ['raton', 'mouches', 'bureau'], 4: ['plow', 'mouches'], 0: ['trou', 'raton'], 5: ['bureau'] };

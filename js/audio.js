@@ -90,6 +90,7 @@ export class Audio {
       case 'horn': tone('square', 233, 0, 0.35, 0.07); tone('square', 277, 0, 0.35, 0.07); break;
       case 'squeak': tone('square', 1400, 2200, 0.08, 0.05); tone('square', 1800, 1200, 0.08, 0.05, 0.09); break;
       case 'buzz': { const g = c.createGain(); g.connect(S); this.env(g, t, 0.05, 0.5, 0.05 * v); const o = this.osc('sawtooth', 210, t, 0.5, g); const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = 30; lg.gain.value = 30; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + 0.55); break; }
+      case 'brame': tone('sawtooth', 150, 70, 0.75, 0.1 * v); tone('square', 95, 60, 0.6, 0.05 * v, 0.12); break;
       case 'paper': this.nz(t, 0.15, 0.2 * v, 'highpass', 3000); break;
       case 'chomp': tone('square', 140, 60, 0.15, 0.15); this.nz(t, 0.06, 0.25 * v, 'lowpass', 700); break;
       case 'die': tone('square', 300, 60, 0.6, 0.12); break;
