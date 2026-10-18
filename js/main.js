@@ -507,7 +507,7 @@ function npcsUpdate(dt) {
     if (!world.loadedAround(n.x, n.z, 0)) continue;
     n.t += dt; let tvx = 0, tvz = 0;
     const fixed = n.role !== 'villageois';
-    if (d < 4) { const ty = Math.atan2(dx, dz); n.yaw += Math.atan2(Math.sin(ty - n.yaw), Math.cos(ty - n.yaw)) * Math.min(1, dt * 6); }
+    if (d < 4) { const ty = Math.atan2(-dx, -dz); n.yaw += Math.atan2(Math.sin(ty - n.yaw), Math.cos(ty - n.yaw)) * Math.min(1, dt * 6); }
     else if (!fixed || Math.hypot(n.home.x - n.x, n.home.z - n.z) > 1.5) {
       n.wander += (Math.random() - 0.5) * dt * 1.5; const hx = n.home.x - n.x, hz = n.home.z - n.z, far = Math.hypot(hx, hz) > (fixed ? 1 : 7);
       const go = far || Math.sin(n.t * 0.4 + n.wander) > 0.2; if (go) { tvx = far ? hx / Math.hypot(hx, hz) * 1.6 : Math.sin(n.wander) * 1.3; tvz = far ? hz / Math.hypot(hx, hz) * 1.6 : Math.cos(n.wander) * 1.3; n.yaw = Math.atan2(-tvx, -tvz); }

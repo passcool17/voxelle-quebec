@@ -37,7 +37,7 @@ const SCENES = [
       for (const f of sc.foes || []) { const e = g.spawnEnemy(f[0], P.x + f[1], P.z + f[2], { lvl: 2 }); e.state = 'idle'; } }, sc);
     await p.waitForTimeout(sc.foes ? 400 : 1200);
     await p.evaluate(sc => { const g = __game, G = g.G, P = G.P; G.camYaw = sc.yaw; G.camPitch = sc.pitch; P.yaw = sc.face ? sc.yaw + Math.PI : sc.yaw; P.vx = P.vz = 0;
-      for (const e of G.enemies) { const dx = P.x - e.x, dz = P.z - e.z; e.model.g.rotation.y = Math.atan2(dx, dz); }
+      for (const e of G.enemies) { const dx = P.x - e.x, dz = P.z - e.z; e.model.g.rotation.y = Math.atan2(-dx, -dz); }
       if (sc.gaston) for (const [, q] of G.npcs) if (q.role === 'gaston') { q.x = P.x + sc.gaston[0]; q.z = P.z + sc.gaston[1]; q.model.g.position.set(q.x, g.world.ground(q.x, q.z, P.y + 3), q.z); q.model.g.rotation.y = sc.yaw + Math.PI - 0.4; }
       g.world.ray = () => null; g.sky.t = sc.t; G.state = 'fige'; for (const e of G.enemies) e.label.style.display = 'none'; document.querySelectorAll('.lb').forEach(l => l.style.visibility = 'hidden'); }, sc);
     await p.waitForTimeout(1500);

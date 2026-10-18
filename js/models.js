@@ -127,19 +127,25 @@ export function setWeapon(m, kind) {
   m.P.hand.add(m.weapon);
 }
 // Animation : t temps, mv vitesse 0..1, atk 0..1 (progression d'un coup), air, glide
+// Repère : les modèles regardent vers −z (visage, yaw du jeu). Autour de l'axe x, un angle POSITIF fait donc
+// passer un membre pendant (−y) vers l'avant (−z) ; un angle négatif l'envoie dans le dos.
+// (Avant : les angles « bras levés » étaient négatifs, comme si l'avant était +z : armes et bras de zombies dans le dos.)
+const FWD = 1;
 export function animHuman(m, t, mv, atk, air, glide, sit) {
   const P = m.P, s = Math.sin(t * 10) * mv;
   P.legL.rotation.x = s * 0.8; P.legR.rotation.x = -s * 0.8;
   P.armL.rotation.x = -s * 0.7; P.armR.rotation.x = s * 0.7; P.armR.rotation.z = 0; P.armL.rotation.z = 0; P.torso.rotation.y = 0; P.torso.rotation.x = 0;
   m.body.position.y = Math.abs(Math.sin(t * 10)) * 0.06 * mv;
-  if (m.c.zombie) { P.armL.rotation.x = -1.4 + Math.sin(t * 3) * 0.1; P.armR.rotation.x = -1.3 + Math.cos(t * 3) * 0.1; }
-  if (air && !glide) { P.legL.rotation.x = 0.5; P.legR.rotation.x = -0.3; P.armL.rotation.z = -0.5; P.armR.rotation.z = 0.5; }
-  if (glide) { P.armL.rotation.x = P.armR.rotation.x = -2.9; P.armL.rotation.z = 0.15; P.armR.rotation.z = -0.15; P.legL.rotation.x = 0.25; P.legR.rotation.x = 0.35; P.torso.rotation.x = -0.15; }
+  if (m.c.zombie) { P.armL.rotation.x = FWD * (1.4 + Math.sin(t * 3) * 0.1); P.armR.rotation.x = FWD * (1.3 + Math.cos(t * 3) * 0.1); }
+  if (air && !glide) { P.legL.rotation.x = FWD * -0.3; P.legR.rotation.x = FWD * 0.5; P.armL.rotation.z = -0.5; P.armR.rotation.z = 0.5; }
+  if (glide) { P.armL.rotation.x = P.armR.rotation.x = FWD * 2.9; P.armL.rotation.z = 0.15; P.armR.rotation.z = -0.15; P.legL.rotation.x = FWD * -0.25; P.legR.rotation.x = FWD * -0.35; P.torso.rotation.x = FWD * -0.15; }
   if (atk > 0) {
-    if (m.wkind === 'lanceur') { P.armR.rotation.x = -1.5 - Math.sin(atk * Math.PI) * 0.3; P.armL.rotation.x = -1.3; }
-    else { const k = atk < 0.35 ? atk / 0.35 : 1 - (atk - 0.35) / 0.65; P.armR.rotation.x = -0.6 - k * 1.2; P.armR.rotation.z = 0.2; P.torso.rotation.y = (atk < 0.35 ? -atk / 0.35 : -1 + (atk - 0.35) / 0.65 * 2.2) * 0.9; P.armL.rotation.x = -0.8; }
+    if (m.wkind === 'lanceur') { P.armR.rotation.x = FWD * (1.5 + Math.sin(atk * Math.PI) * 0.3); P.armL.rotation.x = FWD * 1.3; }
+    else { const k = atk < 0.35 ? atk / 0.35 : 1 - (atk - 0.35) / 0.65; P.armR.rotation.x = FWD * (0.6 + k * 1.6); P.armR.rotation.z = 0.2; P.torso.rotation.y = (atk < 0.35 ? -atk / 0.35 : -1 + (atk - 0.35) / 0.65 * 2.2) * 0.9; P.armL.rotation.x = FWD * 0.8; }
   }
-  if (sit) { P.legL.rotation.x = P.legR.rotation.x = -1.5; }
+  // le lanceur reste à l'horizontale, pointé vers l'avant, quelle que soit la position du bras
+  if (m.weapon && m.wkind === 'lanceur') m.weapon.rotation.x = -P.armR.rotation.x;
+  if (sit) { P.legL.rotation.x = P.legR.rotation.x = FWD * 1.5; }
 }
 
 // ---------- cerf-volant fléché ----------
@@ -237,7 +243,7 @@ export function animEnemy(e, t, dt) {
   const M = e.model, P = M.P;
   if (M.kind === 'human') return animHuman(M.m, t, e.moving ? 0.7 : 0, e.atkAnim, !e.ground, false);
   const mv = e.moving ? 1 : 0, s = Math.sin(t * 9);
-  if (e.type === 'cone' || e.type === 'supreme') { P.body.position.y = Math.abs(s) * 0.08 * mv; P.body.rotation.z = s * 0.06 * mv; P.armL.rotation.x = s * 0.8 * mv; P.armR.rotation.x = -s * 0.8 * mv; if (e.atkAnim > 0) { P.armL.rotation.x = P.armR.rotation.x = -2.2 * Math.sin(e.atkAnim * Math.PI); } }
+  if (e.type === 'cone' || e.type === 'supreme') { P.body.position.y = Math.abs(s) * 0.08 * mv; P.body.rotation.z = s * 0.06 * mv; P.armL.rotation.x = s * 0.8 * mv; P.armR.rotation.x = -s * 0.8 * mv; if (e.atkAnim > 0) { P.armL.rotation.x = P.armR.rotation.x = FWD * 2.2 * Math.sin(e.atkAnim * Math.PI); } }
   else if (e.type === 'plow') { P.light.visible = Math.sin(t * 14) > -0.2; P.light.rotation.y = t * 8; P.body.position.y = Math.sin(t * 30) * 0.02 * mv; P.blade.position.y = 0.55 + (e.state === 'wind' ? Math.sin(t * 20) * 0.08 : 0); }
   else if (e.type === 'raton') { P.body.position.y = Math.abs(s) * 0.1 * mv; P.tail.rotation.y = Math.sin(t * 6) * 0.4; P.head.rotation.x = e.atkAnim > 0 ? 0.4 : 0; P.poutine.visible = !e.stole; }
   else if (e.type === 'orignal') { const k = Math.min(1.6, Math.hypot(e.vx, e.vz) / 3); P.legs.forEach((L, i) => { L.rotation.x = Math.sin(t * 7 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k; }); P.head.rotation.x = e.charge && !e.charge.wind ? 0.5 : e.atkAnim > 0 ? 0.6 * Math.sin(e.atkAnim * Math.PI) : 0; P.body.rotation.x = e.charge && e.charge.wind ? Math.sin(t * 30) * 0.03 : 0; }
