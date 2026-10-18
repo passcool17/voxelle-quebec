@@ -15,10 +15,13 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   const settle = (x, z, r = 2) => p.waitForFunction(([x, z, r]) => __game.world.loadedAround(x, z, r), [x, z, r], { timeout: 90000 });
   const tp = async (x, z) => { await ev(([x, z]) => { const P = __game.G.P; if (__game.G.drive) __game.exitCar(); P.x = x; P.z = z; P.y = 95; P.vy = 0; window.__task = { type: 'idle' }; }, [x, z]);
     await settle(x, z, 1); await ev(([x, z]) => { const P = __game.G.P; P.y = __game.world.ground(x, z) + 0.2; P.vy = 0; P.iT = 1; }, [x, z]); await p.waitForTimeout(1800); };
-  const npc = role => ev(r => { let best = null, bd = 1e9; const P = __game.G.P; for (const [, n] of __game.G.npcs) if (n.role === r) { const d = Math.hypot(n.x - P.x, n.z - P.z); if (d < bd) { bd = d; best = [n.x, n.z]; } } return best; }, role);
+  const npc = role => ev(r => { let best = null, bd = 1e9; const P = __game.G.P; for (const [, n] of __game.G.npcs) if (n.role === r) { const d = Math.hypot(n.x - P.x, n.z - P.z); if (d < bd) { bd = d; best = [n.x, n.z, n.y]; } } return best; }, role);
   const talk = async role => { await p.waitForTimeout(800); let n = await npc(role); if (!n) { await p.waitForTimeout(3000); n = await npc(role); } if (!n) return 'pas de PNJ ' + role;
-    await tp(n[0], n[1] + 1.3); await ev(r => { const P = __game.G.P; for (const [, o] of __game.G.npcs) if (o.role !== r && Math.hypot(o.x - P.x, o.z - P.z) < 4) { o.x += 6; o.home.x += 6; } }, role);
-    await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(500); return await ev(() => __game.G.state); };
+    await tp(n[0], n[1] + 1.3); await ev(y => { const P = __game.G.P; P.y = y + 0.05; P.vy = 0; }, n[2]); await ev(r => { const P = __game.G.P; for (const [, o] of __game.G.npcs) if (o.role !== r && Math.hypot(o.x - P.x, o.z - P.z) < 4) { o.x += 6; o.home.x += 6; } }, role);
+    await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(500);
+    for (let k = 0; k < 4 && (await ev(() => __game.G.state)) !== 'dialog'; k++) { await p.waitForTimeout(1500); n = await npc(role); if (n) { await tp(n[0], n[1] + 1.3); await ev(y => { const P = __game.G.P; P.y = y + 0.05; P.vy = 0; }, n[2]); } await p.waitForTimeout(400); await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(500); }
+    const st = await ev(() => __game.G.state); if (st !== 'dialog') console.log('talk', role, JSON.stringify(await ev(r => { const P = __game.G.P; const o = [...__game.G.npcs.values()].find(n => n.role === r); return o && { d: Math.hypot(o.x - P.x, o.z - P.z), dy: P.y - o.y, py: P.y, ny: o.y, drive: !!__game.G.drive }; }, role)));
+    return st; };
   const btn = async label => { if (!(await p.isVisible('#dialog'))) return false; for (const x of await p.$$('#dbtns .btn')) if ((await x.textContent()).includes(label)) { await x.click(); await p.waitForTimeout(300); return true; } return false; };
   const region = () => ev(() => { const P = __game.G.P; return __game.gen.nord.region(P.x, P.z); });
   const view = async (yaw, pitch, dist) => { await ev(([y, pi, d]) => { const G = __game.G; G.camYaw = y; G.camPitch = pi; if (d) G.camDist = d; window.__task = { type: 'idle' }; }, [yaw, pitch, dist]); await p.waitForTimeout(2500); };
@@ -70,10 +73,12 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   res.nouv_dlg = await talk('saguenayen'); res.nouv_acc = await btn('ACCEPTER'); await ev(() => __game.G.state === 'dialog' && __game.closeDialog());
   await tp(W.stops[3].ax, W.stops[3].az); await talk('chauffeur'); await btn('VIEILLE-VILLE'); await waitPlay(); await p.waitForTimeout(1500);
   res.ville_back = (await ev(() => __game.G.P.z)) > -200;
-  await talk('gaston'); await ev(() => __game.closeDialog());
+  { const [gx, gz] = await ev(() => { const P = __game.G.P; return [P.x - 2, P.z + 49]; }); await tp(gx, gz); await settle(gx, gz, 2); }
+  res.gaston = await talk('gaston'); await ev(() => __game.closeDialog());
   res.nouv_ready = await ev(() => (__game.S.q.nouvelles || {}).st);
   await tp(W.stops[0].ax, W.stops[0].az); await talk('chauffeur'); await btn('CHICOUTIMI'); await waitPlay(); await p.waitForTimeout(1500);
-  await talk('saguenayen'); await btn('MERCI'); await ev(() => __game.closeDialog());
+  res.bus3 = await ev(() => __game.G.P.z) < -2200; await tp(px, pz - 18); await settle(px, pz - 18, 2);
+  res.gilles2 = await talk('saguenayen'); await btn('MERCI'); await ev(() => __game.closeDialog());
   res.nouv_done = await ev(() => (__game.S.q.nouvelles || {}).st === 'done' && __game.S.inv.some(i => i.id === 'bleuets') && !__game.S.inv.some(i => i.id === 'gazette'));
   // 7. mini-carte et grande carte
   await tp(await ev(() => __game.gen.nord.roadX(-1150) + 5), -1150); await p.waitForTimeout(1500);
