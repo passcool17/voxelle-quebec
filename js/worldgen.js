@@ -306,13 +306,13 @@ const BUILD = {
     // portes nord et sud (arches)
     for (const zz of [z0, z1]) { P.fill(s.x - 2, h + 1, zz - 1, s.x + 2, h + 5, zz + 1, B.AIR); P.fill(s.x - 3, h + 6, zz - 1, s.x + 3, WT + 2, zz + 1, B.COBBLE); P.fill(s.x - 1, WT + 3, zz, s.x + 1, WT + 3, zz, B.COPPER); }
     // le Château (fictif) : brique, toits de cuivre vert, tourelles
-    const cx0 = s.x - 12, cz0 = s.z - 30, cw = 24, cd = 13, CH = 11;
+    const cx0 = s.x + 6, cz0 = s.z - 30, cw = 24, cd = 13, CH = 11, mx = cx0 + 12;
     P.fill(cx0, h, cz0, cx0 + cw - 1, h, cz0 + cd - 1, B.COBBLE);
     P.fill(cx0, h + 1, cz0, cx0 + cw - 1, h + CH, cz0 + cd - 1, B.BRICK);
     P.fill(cx0 + 1, h + 1, cz0 + 1, cx0 + cw - 2, h + CH - 1, cz0 + cd - 2, B.AIR);
     for (let y = h + 3; y < h + CH; y += 3) for (let x = cx0 + 2; x < cx0 + cw - 2; x += 2) { P.set(x, y, cz0, B.GLASS); P.set(x, y, cz0 + cd - 1, B.GLASS); }
     for (let y = h + 3; y < h + CH; y += 3) for (let z = cz0 + 2; z < cz0 + cd - 2; z += 2) { P.set(cx0, y, z, B.GLASS); P.set(cx0 + cw - 1, y, z, B.GLASS); }
-    P.fill(s.x - 1, h + 1, cz0 + cd - 1, s.x + 1, h + 3, cz0 + cd - 1, B.AIR);
+    P.fill(mx - 1, h + 1, cz0 + cd - 1, mx + 1, h + 3, cz0 + cd - 1, B.AIR); P.fill(mx - 1, h, cz0 + cd, mx + 1, h, s.z - 12, B.COBBLE);
     for (let k = 0; k < 8; k++) { const y = h + CH + 1 + k, a = cz0 - 1 + k, b = cz0 + cd - k; if (a > b) break; P.fill(cx0 - 1, y, a, cx0 + cw, y, b, B.COPPER); }
     // lucarnes
     for (let x = cx0 + 3; x < cx0 + cw - 3; x += 4) { P.set(x, h + CH + 2, cz0 + cd, B.GLASS); P.set(x, h + CH + 2, cz0 - 1, B.GLASS); }
@@ -321,13 +321,15 @@ const BUILD = {
       P.fill(tx, h + CH + 5, tz, tx + 2, h + CH + 6, tz + 2, B.COPPER); P.fill(tx + 1, h + CH + 7, tz + 1, tx + 1, h + CH + 10, tz + 1, B.COPPER);
     }
     // tour centrale
-    const tx = s.x - 3, tz = cz0 + 3;
+    const tx = mx - 3, tz = cz0 + 3;
     P.fill(tx, h + CH, tz, tx + 6, h + CH + 10, tz + 6, B.BRICK);
     for (let y = h + CH + 3; y < h + CH + 10; y += 3) { P.set(tx + 3, y, tz + 6, B.GLASS); P.set(tx + 3, y, tz, B.GLASS); P.set(tx, y, tz + 3, B.GLASS); P.set(tx + 6, y, tz + 3, B.GLASS); }
     for (let k = 0; k < 4; k++) P.fill(tx - 1 + k, h + CH + 11 + k * 2, tz - 1 + k, tx + 7 - k, h + CH + 12 + k * 2, tz + 7 - k, B.COPPER);
-    P.fill(s.x, h + CH + 19, tz + 3, s.x, h + CH + 24, tz + 3, B.COPPER); P.set(s.x, h + CH + 25, tz + 3, B.GOLD);
+    P.fill(mx, h + CH + 19, tz + 3, mx, h + CH + 24, tz + 3, B.COPPER); P.set(mx, h + CH + 25, tz + 3, B.GOLD);
     // drapeau bleu et blanc (fictif)
-    P.fill(s.x + 1, h + CH + 22, tz + 3, s.x + 5, h + CH + 24, tz + 3, B.BLUE); P.fill(s.x + 3, h + CH + 22, tz + 3, s.x + 3, h + CH + 24, tz + 3, B.WHITE); P.fill(s.x + 1, h + CH + 23, tz + 3, s.x + 5, h + CH + 23, tz + 3, B.WHITE);
+    P.fill(mx + 1, h + CH + 22, tz + 3, mx + 5, h + CH + 24, tz + 3, B.BLUE); P.fill(mx + 3, h + CH + 22, tz + 3, mx + 3, h + CH + 24, tz + 3, B.WHITE); P.fill(mx + 1, h + CH + 23, tz + 3, mx + 5, h + CH + 23, tz + 3, B.WHITE);
+    // basilique (fictive) au nord-ouest
+    church(P, s.x - 18, s.z - 24, h);
     // maisons de la Vieille-Ville (rangées)
     const r = mulberry(s.seed);
     const rows = [[x0 + 4, s.z + 10], [s.x + 5, s.z + 10], [x0 + 4, s.z + 20], [s.x + 5, s.z + 20], [x0 + 4, s.z - 8], [s.x + 5, s.z - 8]];

@@ -1,0 +1,132 @@
+// Bot de test Playwright : apparaît, parle à Gaston, accepte la quête, explore jusqu'au chantier, combat les cônes-golems,
+// rend la quête, monte de niveau, casse/pose des blocs, monte sur les remparts et plane, sauvegarde, recharge, vérifie l'état.
+// Captures dans shots/. usage : PORT=8913 node tools/bot.js
+const { chromium } = require('/workspace/tnd-run/node_modules/playwright');
+const serve = require('./serve');
+const PORT = +(process.env.PORT || 8913), SH = __dirname + '/../shots/';
+const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
+function brain() {
+  // pilote dans la page : suit window.__task, combat ce qui s'approche
+  const B = { last: null, stuckT: 0, side: 1, strafeT: 0, unstuck: 0, lastPos: null, chk: 0 };
+  window.__botInfo = B;
+  window.__bot = (api, dt) => {
+    const G = api.G, P = G.P, T = window.__task; const I = api.input;
+    I.bot = { mx: 0, mz: 0, run: false, jump: false, jumpP: false, atk: false };
+    if (G.state !== 'play' || !P || !T) return;
+    const S = api.S, st = api.stats();
+    if (P.hp < st.hpMax * 0.45 && S.inv.some(i => ['poutine', 'sirop', 'tourtiere'].includes(i.id))) api.pressed.add('KeyR');
+    // ennemi à combattre
+    let foe = null, fd = 1e9;
+    if (T.fight !== false) for (const e of G.enemies) { if (e.dead || e.state === 'hidden' && T.type !== 'fight') continue; const d = Math.hypot(e.x - P.x, e.z - P.z); const lim = T.type === 'fight' ? 40 : (e.state === 'chase' ? 12 : 0); if (d < lim && Math.abs(e.y - P.y) < 6 && d < fd) { fd = d; foe = e; } }
+    let tx, tz, want = 0.8;
+    if (foe) { tx = foe.x; tz = foe.z; want = (st.W.kind === 'ranged' ? 8 : st.W.range * 0.7 + foe.T.hw); }
+    else if (T.type === 'goto' || T.type === 'fight') { const p = T.pts[T.i || 0]; if (!p) { T.done = true; return; } tx = p[0]; tz = p[1]; if (Math.hypot(tx - P.x, tz - P.z) < (p[2] || 1.6)) { T.i = (T.i || 0) + 1; if (T.i >= T.pts.length) { T.done = true; return; } } }
+    else if (T.type === 'idle') return;
+    const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz);
+    let yaw = Math.atan2(-dx, -dz);
+    if (foe) { G.camYaw += Math.atan2(Math.sin(yaw - G.camYaw), Math.cos(yaw - G.camYaw)) * Math.min(1, dt * 10); G.camPitch = 0.3; I.bot.atk = d < want + 1.2 || (st.W.kind === 'ranged' && d < 20);
+      I.bot.mz = d > want ? -1 : d < want - 1.5 ? 0.6 : 0; I.bot.mx = 0.35 * B.side; if (Math.random() < dt * 0.4) B.side *= -1; }
+    else { G.camYaw = yaw; G.camPitch = T.pitch ?? 0.3; I.bot.mz = -1; I.bot.run = d > 6 && P.stam > 0.3 && !T.walk; }
+    // blocage : sauter, puis contourner, puis se dégager
+    B.chk += dt; if (B.chk > 0.8) { B.chk = 0; const moved = B.lastPos ? Math.hypot(P.x - B.lastPos[0], P.z - B.lastPos[1]) : 9; B.lastPos = [P.x, P.z]; if (moved < 0.6 && !foe) B.stuckT += 0.8; else B.stuckT = Math.max(0, B.stuckT - 0.8); }
+    if (B.stuckT > 0.7) I.bot.jump = true, I.bot.jumpP = P.ground;
+    if (B.stuckT > 2.5) { if (B.strafeT <= 0) { B.strafeT = 1.2; B.side = Math.random() < 0.5 ? 1 : -1; } }
+    if (B.strafeT > 0) { B.strafeT -= dt; I.bot.mx = B.side; I.bot.mz = -0.3; }
+    if (B.stuckT > 14) { P.y += 3; P.x += Math.sign(dx) * 2; P.z += Math.sign(dz) * 2; B.unstuck++; B.stuckT = 0; }
+    if (P.hitWall && P.ground && !foe) I.bot.jumpP = true;
+  };
+}
+(async () => {
+  const srv = await serve(PORT); const t0 = Date.now();
+  const browser = await chromium.launch({ args: ARGS });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const p = await ctx.newPage(); const errs = [];
+  p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
+  const snap = async n => { await p.screenshot({ path: SH + n + '.png' }); console.log('capture', SH + n + '.png'); };
+  const ev = (f, a) => p.evaluate(f, a);
+  const state = () => ev(() => { const g = __game, P = g.G.P, S = g.S; return { st: g.G.state, x: +P.x.toFixed(1), y: +P.y.toFixed(1), z: +P.z.toFixed(1), hp: Math.round(P.hp), lvl: S.lvl, xp: S.xp, cash: S.cash, q: JSON.stringify(S.q), en: g.G.enemies.length, kills: S.stats.kills, fps: g.G.fps, unstuck: window.__botInfo ? window.__botInfo.unstuck : 0, view: g.world.view }; });
+  const run = async (task, maxS, label) => { await ev(t => { window.__task = t; }, task); const end = Date.now() + maxS * 1000; let k = 0;
+    while (Date.now() < end) { await p.waitForTimeout(500); const done = await ev(() => window.__task.done || (window.__task.until && eval(window.__task.until))); if (done) break; if (++k % 10 === 0) console.log(label, JSON.stringify(await state())); }
+    const s = await state(); console.log(label, 'fin', JSON.stringify(s)); return s; };
+  await p.goto(`http://localhost:${PORT}/`); await ev(() => { localStorage.clear(); localStorage.setItem('voxelle-france-opts', JSON.stringify({ qual: 'high', view: 6 })); }); await p.reload();
+  await p.waitForTimeout(7000); await snap('title');
+  await p.click('#bNew'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 90000 });
+  await ev(brain); await p.waitForTimeout(1500);
+  const W = await ev(() => { const g = __game.gen; const c = n => { const s = g.cell(...n); return [s.x, s.z, s.h]; }; return { ville: c([0, 0]), chantier: c([0, -1]), VR: g.VR }; });
+  console.log('monde', JSON.stringify(W));
+  const [vx, vz, vh] = W.ville, R = 34;
+  // 1. parler à Gaston
+  const gaston = await ev(() => { for (const [, n] of __game.G.npcs) if (n.role === 'gaston') return [n.x, n.z]; return null; });
+  console.log('gaston', gaston);
+  await run({ type: 'goto', pts: [[gaston[0], gaston[1] + 1.2, 1.2]], fight: false }, 30, 'versGaston');
+  await p.waitForTimeout(300); await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(600);
+  await snap('dialog_quete');
+  await p.click('#dbtns .btn.big'); await p.waitForTimeout(400);
+  // 2. explorer jusqu'au chantier par la porte Nord
+  const [cx, cz] = W.chantier;
+  await run({ type: 'goto', pts: [[vx, vz - 20], [vx, vz - R - 6], [vx, vz - R - 14]], fight: true }, 60, 'porteNord');
+  await ev(() => { __game.G.camPitch = 0.05; }); await ev(() => { window.__task = { type: 'idle' }; }); await p.waitForTimeout(1500);
+  await snap('paysage_jour');
+  await run({ type: 'goto', pts: [[(vx + cx) / 2, (vz - R + cz) / 2], [cx, cz + 14]], fight: true }, 150, 'versChantier');
+  // 3. combat au chantier jusqu'à l'objectif
+  let shotCombat = false;
+  await ev(() => { window.__task = { type: 'fight', pts: [], until: "__game.S.q.cones && __game.S.q.cones.st === 'ready'" }; });
+  for (let i = 0; i < 360; i++) { await p.waitForTimeout(500); const s = await state(); if (i % 12 === 0) console.log('combat', JSON.stringify(s));
+    if (!shotCombat && await ev(() => __game.G.enemies.some(e => e.state === 'chase' && Math.hypot(e.x - __game.G.P.x, e.z - __game.G.P.z) < 4))) { await p.waitForTimeout(250); await snap('combat'); shotCombat = true; }
+    if (JSON.parse(s.q).cones && JSON.parse(s.q).cones.st === 'ready') break;
+    if (s.st === 'dead') { console.log('mort, réapparition'); await p.click('#bRespawn'); await run({ type: 'goto', pts: [[vx, vz - R - 6], [cx, cz + 14]], fight: true }, 150, 'retourChantier'); await ev(() => { window.__task = { type: 'fight', pts: [] }; }); }
+    if (await ev(() => !__game.G.enemies.some(e => e.camp))) await ev(([a, b]) => { window.__task = { type: 'fight', pts: [[a, b, 2]] }; }, [cx, cz]);
+  }
+  // 4. revenir voir Gaston
+  await run({ type: 'goto', pts: [[vx, vz - R - 8], [vx, vz - R + 4], [gaston[0], gaston[1] + 1.2, 1.2]], fight: true }, 180, 'retourGaston');
+  await ev(() => { window.__task = { type: 'idle' }; }); await p.waitForTimeout(400);
+  await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(600); await snap('dialog_recompense');
+  await ev(() => __game.closeDialog()); await p.waitForTimeout(300);
+  // 5. casser / poser un bloc
+  const bp = await ev(async () => { const g = __game, G = g.G, P = G.P; G.camPitch = 0.75; await new Promise(r => setTimeout(r, 400)); const t = G.target; if (!t) return { err: 'pas de cible' };
+    const before = g.world.get(t.x, t.y, t.z), cnt0 = JSON.stringify(g.S.blocks); g.pressed.add('KeyF'); await new Promise(r => setTimeout(r, 300));
+    const after = g.world.get(t.x, t.y, t.z); await new Promise(r => setTimeout(r, 400)); const t2 = G.target;
+    g.input.rmbP = true; await new Promise(r => setTimeout(r, 300)); const placed = t2 ? g.world.get(t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2]) : -9;
+    return { broke: [t.x, t.y, t.z, before, after], placed: t2 ? [t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2], placed] : null, cnt0, cnt1: JSON.stringify(g.S.blocks), stats: g.S.stats }; });
+  console.log('blocs', JSON.stringify(bp));
+  await ev(() => { __game.G.camPitch = 0.3; });
+  // 6. sac à dos (équiper le lance-balles)
+  await ev(() => __game.pressed.add('KeyI')); await p.waitForTimeout(500);
+  const cell = await p.$('#invbody .cell'); if (cell) { await cell.click(); await p.waitForTimeout(200); }
+  await snap('inventaire'); await ev(() => __game.pressed.add('KeyI')); await p.waitForTimeout(300);
+  // 7. monter sur les remparts par l'escalier, sauter, planer
+  const x0 = vx - R, z1 = vz + R;
+  await run({ type: 'goto', pts: [[vx, vz + 8], [x0 + 6, z1 - 7], [x0 + 2.5, z1 - 6, 1], [x0 + 2.5, z1 - 3.4, 0.6], [x0 + 9.5, z1 - 2.9, 0.7], [x0 + 9.5, z1 - 1, 0.6]], fight: false, walk: true }, 70, 'remparts');
+  const topY = (await state()).y; console.log('hauteur sur les remparts', topY, 'sol', vh);
+  await ev(() => { window.__task = { type: 'goto', pts: [[__game.G.P.x, __game.G.P.z + 60]], fight: false, walk: true }; });
+  for (let i = 0; i < 40; i++) { await p.waitForTimeout(150); const s = await ev(() => ({ g: __game.G.P.ground, vy: __game.G.P.vy, gl: __game.G.P.gliding, y: __game.G.P.y })); if (!s.g && s.vy < 0) { await ev(() => { __game.input.bot.jumpP = true; __game.pressed.add('Space'); }); break; } }
+  await p.waitForTimeout(1200); await snap('planeur');
+  for (let i = 0; i < 40; i++) { await p.waitForTimeout(250); if (await ev(() => __game.G.P.ground)) break; }
+  const glide = await ev(() => __game.S.stats.glide); console.log('distance planée', glide.toFixed(1));
+  await ev(() => { window.__task = { type: 'idle' }; });
+  // 8. nuit avec aurores
+  await ev(() => { const g = __game; g.sky.t = 0.02; g.sky.snowT = 0; g.sky.snow = 0; g.G.weatherT = 999; g.G.camYaw = 0; g.G.camPitch = -0.35; g.G.camDist = 7; });
+  await p.waitForTimeout(1500); await snap('nuit_aurores');
+  await ev(() => { const g = __game; g.sky.t = 0.4; g.G.camPitch = 0.3; g.G.camDist = 5.8; });
+  // 9. sauvegarder, recharger, continuer
+  const before = await ev(() => { const g = __game; g.writeSave(); return { lvl: g.S.lvl, xp: g.S.xp, cash: g.S.cash, q: g.S.q, pos: g.S.pos.map(Math.round), placed: g.S.stats.placed }; });
+  await p.reload(); await p.waitForTimeout(3000);
+  const contVisible = await p.isVisible('#bCont'); await p.click('#bCont');
+  await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 90000 }); await p.waitForTimeout(1500);
+  const after = await ev(([pl]) => { const g = __game; return { lvl: g.S.lvl, xp: g.S.xp, cash: g.S.cash, q: g.S.q, pos: [g.G.P.x, g.G.P.y, g.G.P.z].map(Math.round), placed: g.S.stats.placed, block: pl ? g.world.get(pl[0], pl[1], pl[2]) : null }; }, [bp.placed]);
+  console.log('avant', JSON.stringify(before)); console.log('après', JSON.stringify(after), 'bouton Continuer', contVisible);
+  await browser.close();
+  // 10. mobile (tactile)
+  const b2 = await chromium.launch({ args: ARGS });
+  const mc = await b2.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const mp = await mc.newPage(); mp.on('pageerror', e => errs.push('mobile pageerror: ' + e.message)); mp.on('console', m => { if (m.type() === 'error') errs.push('mobile console: ' + m.text()); });
+  await mp.goto(`http://localhost:${PORT}/`); await mp.evaluate(() => localStorage.clear()); await mp.reload(); await mp.waitForTimeout(3000);
+  await mp.tap('#bNew'); await mp.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 }); await mp.waitForTimeout(4000);
+  const mInfo = await mp.evaluate(() => ({ view: __game.world.view, touch: document.body.classList.contains('touch'), fps: __game.G.fps }));
+  await mp.screenshot({ path: SH + 'mobile.png' }); console.log('capture', SH + 'mobile.png', JSON.stringify(mInfo));
+  await b2.close(); srv.close();
+  const ok = { quete: after.q.cones && after.q.cones.st === 'done', niveau: after.lvl >= 2, plane: glide > 8, bloc: bp.broke && bp.broke[4] === 0 && bp.placed && bp.placed[3] > 0, sauvegarde: after.lvl === before.lvl && after.cash === before.cash && JSON.stringify(after.q) === JSON.stringify(before.q) && after.block === bp.placed[3], erreurs: errs.length === 0 };
+  console.log('RÉSULTAT', JSON.stringify(ok), 'durée', Math.round((Date.now() - t0) / 1000) + ' s');
+  console.log(errs.length ? errs.slice(0, 20).join('\n') : 'aucune erreur JS');
+  process.exit(Object.values(ok).every(Boolean) ? 0 : 1);
+})().catch(e => { console.error('ÉCHEC', e); process.exit(2); });
