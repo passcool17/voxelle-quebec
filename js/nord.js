@@ -109,7 +109,7 @@ export function createNord({ N, N2, N3, seed }) {
   const SEPT = [[-648, 24, 10, 6, 0.3], [-672, 50, 13, 7, -0.4], [-702, 24, 8, 5, 1.0], [-692, -30, 11, 6, 0.6], [-730, 36, 10, 8, 0.2], [-712, 72, 8, 5, -0.8], [-754, -26, 12, 6, -0.3]]
     .map(([z, dx, a, b, ang]) => { const x = roadX(z) + dx; return { x, z, a, b, ang, level: perimLevel(x, z, a, b, ang), depth: 2.5, sept: true }; });
   const JC = { z0: -985, z1: -1522, level: 53 };
-  const jcHW = z => { const t = (JC.z0 - z) / (JC.z0 - JC.z1); return 8 + 30 * Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, t * 1.05))), 0.7) * (1 - 0.4 * t) + 4 * N2.n2(z * 0.02, 3.3); };
+  const jcHW = z => { const t = Math.max(0, Math.min(1, (JC.z0 - z) / (JC.z0 - JC.z1))); return 9 + 28 * Math.pow(Math.sin(Math.PI * (0.1 + 0.85 * t)), 0.6) * (1 - 0.3 * t) + 4 * N2.n2(z * 0.02, 3.3); };
   const jcCX = z => roadX(z) + 13 + jcHW(z);
   let structs = null; // défini plus bas
   function lakeCell(ci, cj) {
@@ -174,7 +174,7 @@ export function createNord({ N, N2, N3, seed }) {
   P.camp = add({ type: 'camp', key: 'camp', name: 'Camp de pêche', x: Math.round(SEPT[1].x - SEPT[1].a - 6), z: Math.round(SEPT[1].z + 3), h: SEPT[1].level + 1, R: 5, R2: 9, BR: 14, safe: true, lake: SEPT[1] });
   P.travaux = add({ type: 'travaux', key: 'travaux', name: 'Travaux sur la 175', x: Math.round(at(-862, 0)), z: -862, h: roadH(-862), R: 7, R2: 12, BR: 18 });
   P.etape = add({ type: 'etape', key: 'etape', name: 'L’Étape', x: Math.round(at(-1100, -24)), z: -1100, h: roadH(-1100), R: 19, R2: 30, BR: 30, safe: true });
-  P.belvedere = add({ type: 'belvedere', key: 'belvedere', name: 'Point de vue', x: Math.round(at(-1530, 15)), z: -1530, h: roadH(-1530) + 3, R: 6, R2: 15, BR: 12, safe: true });
+  P.belvedere = add({ type: 'belvedere', key: 'belvedere', name: 'Point de vue', x: Math.round(jcCX(JC.z1) - 4), z: JC.z1 - 16, h: roadH(JC.z1 - 16) + 1, R: 7, R2: 18, BR: 30, safe: true });
   const tz = x => { const zf = zF(x), wf = wF(x); return { shore: zf + wf, h: z => townH(x, z, z - zf, wf) }; };
   P.chicoutimi = add({ type: 'chicoutimi', key: 'chicoutimi', name: 'Chicoutimi', x: 48, z: Z_END, h: roadH(Z_END), R: 34, R2: 54, BR: 40, safe: true });
   { const s = tz(28); P.port = add({ type: 'port', key: 'port', name: 'Port de Chicoutimi', x: 28, z: Math.round(s.shore + 7), h: SEA + 2, R: 11, R2: 22, BR: 30, safe: true }); }
@@ -209,9 +209,9 @@ export function createNord({ N, N2, N3, seed }) {
   }
   // étiquettes de carte
   const labels = [
-    { n: 'Route 175', x: at(-300, 10), z: -300 }, { n: 'Poste d’accueil', x: P.poste.x, z: P.poste.z }, { n: 'Sept îles', x: at(-700, 30), z: -700 }, { n: 'Réserve faunique des Laurentides', sh: 'Réserve faunique', x: at(-1300, -70), z: -1300, big: true },
-    { n: 'Travaux', x: P.travaux.x, z: P.travaux.z }, { n: 'L’Étape', x: P.etape.x, z: P.etape.z }, { n: 'Lac Jacques-Cartier', sh: 'Lac J.-Cartier', x: jcCX(-1200), z: -1200 }, { n: 'Point de vue sur le Lac Jacques-Cartier', sh: 'Point de vue', x: P.belvedere.x, z: P.belvedere.z },
-    { n: 'Chicoutimi', x: P.chicoutimi.x, z: P.chicoutimi.z, big: true }, { n: 'Fjordorama', x: P.musee.x, z: P.musee.z }, { n: 'Port', x: P.port.x, z: P.port.z }, { n: 'Lac Kénogami', x: KC.x, z: KC.z }, { n: 'Saguenay', x: 260, z: zF(260) }, { n: 'Vieille-Ville', x: 0, z: -76, big: true },
+    { n: 'Route 175', x: at(-300, 10), z: -300 }, { n: 'Poste d’accueil', m: 1, x: P.poste.x, z: P.poste.z }, { n: 'Sept îles', m: 1, x: at(-700, 30), z: -700 }, { n: 'Réserve faunique des Laurentides', sh: 'Réserve faunique', x: at(-1300, -70), z: -1300, big: true },
+    { n: 'Travaux', x: P.travaux.x, z: P.travaux.z }, { n: 'L’Étape', m: 1, x: P.etape.x, z: P.etape.z }, { n: 'Lac Jacques-Cartier', m: 1, sh: 'Lac J.-Cartier', x: jcCX(-1200) + 30, z: -1200 }, { n: 'Point de vue sur le Lac Jacques-Cartier', sh: 'Point de vue', m: 1, x: P.belvedere.x, z: P.belvedere.z },
+    { n: 'Chicoutimi', x: P.chicoutimi.x, z: P.chicoutimi.z, big: true }, { n: 'Fjordorama', x: P.musee.x, z: P.musee.z }, { n: 'Port', x: P.port.x, z: P.port.z }, { n: 'Lac Kénogami', m: 1, x: KC.x, z: KC.z + 40 }, { n: 'Fjord du Saguenay', m: 1, x: 330, z: zF(330) - 50 }, { n: 'Vieille-Ville', x: 0, z: -76, big: true },
   ];
   const stops = [
     { key: 'ville', label: 'VIEILLE-VILLE', ax: 4, az: -121, car: [10, -126, 0] },
@@ -327,15 +327,17 @@ export function nordBuild(s, P, H) {
     P.fill(s.x - 4, h + 1, s.z - 14, s.x + 8, h + 4, s.z - 12, B.TIN); P.fill(s.x + 9, h + 1, s.z - 14, s.x + 11, h + 3, s.z - 12, B.BLUE); P.set(s.x + 11, h + 3, s.z - 13, B.GLASS);
     P.fill(s.x - 4, h + 4, s.z - 14, s.x + 8, h + 4, s.z - 12, B.WHITE); P.ffill(F(s.x - 3), F(h + 2), F(s.z - 12) + 2, F(s.x + 7), F(h + 2) + 1, F(s.z - 12) + 2, B.REDROOF);
   } else if (s.type === 'belvedere') {
-    P.fill(s.x - 4, h, s.z - 4, s.x + 4, h, s.z + 4, B.PLANK);
-    for (let k = -4; k <= 4; k++) { for (const [x, z] of [[s.x + k, s.z + 4], [s.x + 4, s.z + k], [s.x + k, s.z - 4]]) { P.ffill(F(x), F(h + 1), F(z), F(x), F(h + 1) + 1, F(z), B.DPLANK); P.ffill(F(x), F(h + 1) + 2, F(z), F(x) + 1, F(h + 1) + 2, F(z) + 1, B.PLANK); } }
-    for (let k = -4; k <= 4; k++) { P.ffill(F(s.x + k), F(h + 1), F(s.z + 4) + 1, F(s.x + k) + 1, F(h + 1) + 1, F(s.z + 4) + 1, 0); }
-    // longue-vue
-    P.ffill(F(s.x + 2), F(h + 1), F(s.z + 2), F(s.x + 2), F(h + 1) + 2, F(s.z + 2), B.IRON); P.ffill(F(s.x + 2), F(h + 1) + 3, F(s.z + 2), F(s.x + 2), F(h + 1) + 3, F(s.z + 2) + 2, B.COPPER);
-    // escalier depuis la route
-    for (let k = 0; k < 4; k++) P.fill(s.x - 5 - k, h - k, s.z - 1, s.x - 5 - k, h - k, s.z + 1, B.PLANK);
-    P.fill(s.x - 5, h + 1, s.z - 5, s.x - 5, h + 3, s.z - 5, B.LOG);
-    panel(P, ['POINT', 'DE VUE'], F(s.x - 5), F(h + 4) + 16, F(s.z - 5), 'z', B.BROWN, B.TRIM, true, 1);
+    // plateforme surélevée en bois, tournée vers le sud (le lac), escalier à l'ouest, sentier vers la route
+    const T = h + 5;
+    P.fill(s.x - 4, T, s.z - 4, s.x + 4, T, s.z + 4, B.PLANK);
+    for (const [x, z] of [[-4, -4], [4, -4], [-4, 4], [4, 4], [0, 4], [0, -4]]) P.fill(s.x + x, h + 1, s.z + z, s.x + x, T - 1, s.z + z, B.LOG);
+    for (let k = -4; k <= 4; k++) for (const [x, z] of [[s.x + k, s.z + 4], [s.x + 4, s.z + k], [s.x + k, s.z - 4]]) { P.ffill(F(x), F(T + 1), F(z), F(x), F(T + 1) + 1, F(z), B.DPLANK); P.ffill(F(x), F(T + 1) + 2, F(z), F(x) + 1, F(T + 1) + 2, F(z) + 1, B.PLANK); }
+    P.fill(s.x - 4, T + 1, s.z - 1, s.x - 4, T + 2, s.z + 1, 0);
+    P.ffill(F(s.x + 2), F(T + 1), F(s.z + 2), F(s.x + 2), F(T + 1) + 2, F(s.z + 2), B.IRON); P.ffill(F(s.x + 2), F(T + 1) + 3, F(s.z + 2), F(s.x + 2), F(T + 1) + 3, F(s.z + 2) + 2, B.COPPER);
+    for (let k = 0; k < 5; k++) P.fill(s.x - 5 - k, T - k, s.z - 1, s.x - 5 - k, T - k, s.z + 1, B.PLANK);
+    const rx = Math.round(H.nord.roadX(s.z)); for (let x = rx + 4; x <= s.x - 9; x++) P.fill(x, h, s.z, x, h, s.z + 1, B.PATH);
+    const px = rx + 7, pz = s.z + 4; P.fill(px, h - 1, pz, px, h + 3, pz, B.LOG);
+    panel(P, ['POINT', 'DE VUE'], F(px), F(h + 4) + 16, F(pz) - 1, 'x', B.BROWN, B.TRIM, true, 1);
   } else if (s.type === 'chicoutimi') {
     P.fill(s.x - 12, h, s.z - 12, s.x + 12, h, s.z + 12, B.COBBLE);
     P.fill(s.x - 34, h, s.z - 2, s.x + 34, h, s.z + 2, B.ROAD); P.fill(s.x - 2, h, s.z - 34, s.x + 2, h, s.z + 34, B.ROAD);
@@ -379,5 +381,7 @@ export function nordBuild(s, P, H) {
 function busStop(P, x, z, h) {
   const F = v => v * 2;
   P.ffill(F(x), F(h + 1), F(z), F(x), F(h + 1) + 6, F(z), B.IRON); P.ffill(F(x) - 1, F(h + 1) + 7, F(z), F(x) + 1, F(h + 1) + 9, F(z), B.BLUE); P.fset(F(x), F(h + 1) + 8, F(z) + 1, B.TRIM); P.fset(F(x), F(h + 1) + 8, F(z) - 1, B.TRIM);
-  P.fill(x + 1, h + 1, z - 2, x + 1, h + 3, z + 2, B.GLASS); P.fill(x + 1, h + 4, z - 2, x + 3, h + 4, z + 2, B.TIN); P.fill(x + 2, h + 1, z - 1, x + 2, h + 1, z + 1, B.PLANK);
+  P.ffill(F(x + 1), F(h + 1), F(z - 2), F(x + 1), F(h + 4) - 1, F(z - 2), B.IRON); P.ffill(F(x + 1), F(h + 1), F(z + 2) + 1, F(x + 1), F(h + 4) - 1, F(z + 2) + 1, B.IRON);
+  P.ffill(F(x + 3) + 1, F(h + 1), F(z - 2), F(x + 3) + 1, F(h + 4) - 1, F(z + 2) + 1, B.ICE); P.ffill(F(x + 1), F(h + 4), F(z - 2), F(x + 3) + 1, F(h + 4), F(z + 2) + 1, B.BLUE);
+  P.ffill(F(x + 2), F(h + 1) + 1, F(z - 1), F(x + 3), F(h + 1) + 1, F(z + 1) + 1, B.PLANK);
 }

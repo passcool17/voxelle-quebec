@@ -758,6 +758,7 @@ function drawMarkers(ctx, cx, cz, scale, W, round) {
   ctx.textAlign = 'center'; ctx.lineJoin = 'round';
   for (const L of gen.nord.labels) { const px = (L.x - cx) * scale + W / 2, pz = (L.z - cz) * scale + W / 2, t = round && L.sh ? L.sh : L.n;
     if (round ? Math.hypot(px - W / 2, pz - W / 2) > W / 2 - 12 : px < -40 || pz < 0 || px > W + 40 || pz > W) continue;
+    if (scale < 0.3 && !L.big && !L.m) continue;
     ctx.font = (round ? 13 : L.big ? 20 : 16) + 'px "Jersey 10", monospace'; ctx.lineWidth = 4; ctx.strokeStyle = '#0c1420'; ctx.strokeText(t, px, pz - 8); ctx.fillStyle = L.big ? '#ffd23a' : '#ffffff'; ctx.fillText(t, px, pz - 8); }
   for (const e of G.enemies) if (!e.dead && e.state !== 'hidden') put(e.x, e.z, '#ff4a4a', 4);
   for (const [, n] of G.npcs) { const mk = npcMark(n); if (mk) put(n.x, n.z, mk === 'ready' ? '#8dff6a' : '#ffd23a', 6); }

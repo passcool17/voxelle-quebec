@@ -17,7 +17,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0c1420; col
 .bar.xs { height: calc(var(--u) * .35); background: #141a30; } .bar.xs .fill { background: linear-gradient(#9ae0ff, #3a8ae0); }
 #mapbox { position: absolute; right: 2vh; top: 2vh; width: calc(var(--u) * 7.2); text-align: center; }
 #mini { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 3px #0c1420; background: #203040; image-rendering: pixelated; }
-#where { font-size: calc(var(--u) * .9); color: #cfe8ff; margin-top: 2px; white-space: nowrap; }
+#where { font-size: calc(var(--u) * .9); color: #cfe8ff; margin-top: 2px; white-space: normal; line-height: 1; width: calc(var(--u) * 10); margin-left: calc(var(--u) * -2.8); text-align: right; }
 #clock { font-size: calc(var(--u) * .85); color: #fff; }
 #tracker { position: absolute; right: 2vh; top: calc(2vh + var(--u) * 10.2); width: min(30vw, 330px); text-align: right; font-size: calc(var(--u) * .9); }
 #tracker .q { margin-bottom: 6px; background: rgba(8,16,28,.55); padding: 4px 8px; border-right: 4px solid var(--gold); }
