@@ -427,7 +427,7 @@ function enemiesUpdate(dt) {
 // apparition des ennemis selon le biome et l'heure
 function spawner(dt) {
   G.spawnT -= dt; if (G.spawnT > 0) return; G.spawnT = 1.3;
-  const P = G.P, wild = G.enemies.filter(e => !e.camp).length, cap = mobile ? 6 : 9;
+  const P = G.P, wild = G.enemies.filter(e => !e.camp).length, cap = mobile ? 5 : 7;
   const night = sky.dayF < 0.35;
   if (wild < cap + (night ? 2 : 0)) {
     const a = Math.random() * 6.28, r = 26 + Math.random() * 22, x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;

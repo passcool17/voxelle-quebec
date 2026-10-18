@@ -71,7 +71,8 @@ const brain = require('./brain');
   await ev(() => { window.__task = { type: 'goto', pts: [[__game.G.P.x, __game.G.P.z + 60]], fight: false, walk: true }; });
   for (let i = 0; i < 40; i++) { await p.waitForTimeout(150); const s = await ev(() => ({ g: __game.G.P.ground, vy: __game.G.P.vy, gl: __game.G.P.gliding, y: __game.G.P.y })); if (!s.g && s.vy < 0) { await ev(() => { __game.input.bot.jumpP = true; __game.pressed.add('Space'); }); break; } }
   await p.waitForTimeout(1200); await snap('planeur');
-  for (let i = 0; i < 40; i++) { await p.waitForTimeout(250); if (await ev(() => __game.G.P.ground)) break; }
+  for (let i = 0; i < 120; i++) { await p.waitForTimeout(250); if (await ev(() => __game.G.P.ground && !__game.G.P.gliding)) break; }
+  await ev(() => { window.__task = { type: 'idle' }; }); await p.waitForTimeout(500);
   const glide = await ev(() => __game.S.stats.glide); console.log('distance planée', glide.toFixed(1));
   await ev(() => { window.__task = { type: 'idle' }; });
   // 8. nuit avec aurores

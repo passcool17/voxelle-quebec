@@ -69,10 +69,10 @@ export class Sky {
     this.sun.position.set(camPos.x + sd.x * 100 * (el > 0 ? 1 : -1), camPos.y + Math.abs(sd.y) * 100 + 20, camPos.z + sd.z * 100);
     this.sun.target.position.copy(camPos);
     this.sun.color.set(0xffffff).lerp(C(0xffb070), setF).lerp(C(0x8fa8ff), 1 - dayF);
-    this.sun.intensity = (2.2 * dayF + 0.5 * moonUp * (1 - dayF)) * (1 - this.snow * 0.4);
-    this.hemi.intensity = 0.55 + 0.9 * dayF; this.hemi.color.copy(this.hor).lerp(C(0xffffff), 0.3); this.hemi.groundColor.set(0x4a3a28).multiplyScalar(0.4 + dayF * 0.6);
+    this.sun.intensity = (2.2 * dayF + 0.8 * moonUp * (1 - dayF)) * (1 - this.snow * 0.4);
+    this.hemi.intensity = 0.8 + 0.65 * dayF; this.hemi.color.copy(this.hor).lerp(C(0xffffff), 0.3); this.hemi.groundColor.set(0x4a3a28).multiplyScalar(0.4 + dayF * 0.6);
     // nuages
-    this.clouds.position.set(0, 112, 0); this.cloudMat.color.set(0xffffff).multiplyScalar(0.25 + dayF * 0.75);
+    this.clouds.position.set(0, 112, 0); this.cloudMat.color.set(0xffffff).lerp(this.hor, 0.25).multiplyScalar(0.35 + dayF * 0.65); this.cloudMat.opacity = 0.12 + 0.73 * dayF;
     for (const c of this.clouds.children) { c.position.x += dt * 2; if (c.position.x - camPos.x > 260) c.position.x -= 520; if (c.position.x - camPos.x < -260) c.position.x += 520; if (c.position.z - camPos.z > 260) c.position.z -= 520; if (c.position.z - camPos.z < -260) c.position.z += 520; }
     // neige
     this.snowMat.opacity = Math.min(1, this.snow * 1.3) * 0.9; this.snowPts.visible = this.snow > 0.02;
