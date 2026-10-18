@@ -6,7 +6,7 @@ import { World, moveBody, boxHit } from './world.js';
 import { B, CSM as CS, SEA, NAME, PLACEABLE, DROP, SOLID, COL, LEAF, VS } from './blocks.js';
 import { Sky } from './sky.js';
 import { Audio } from './audio.js';
-import { human, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel } from './models.js';
+import { human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel } from './models.js';
 import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS } from './data.js';
 import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
@@ -100,8 +100,12 @@ function stats() {
   return { def: Math.round(def), spd, hpMax: 100 + 14 * (S.lvl - 1), dmg: w.dmg * wm * (1 + 0.1 * (S.lvl - 1)), W: w };
 }
 const xpNext = l => 100 + (l - 1) * (l - 1) * 60 + (l - 1) * 80;
+// personnage choisi (gars = le héros, fille = l'héroïne) : gardé à part de la sauvegarde, changeable au menu
+const PERSO_KEY = 'voxelle-quebec-perso';
+const perso = () => localStorage.getItem(PERSO_KEY) === 'fille' ? 'fille' : 'gars';
+const PERSO_NOM = { gars: 'LE HÉROS', fille: 'L’HÉROÏNE' };
 function makePlayer() {
-  const m = human({}); setWeapon(m, S.equip.arme ? S.equip.arme.id : 'baton');
+  const m = human(PLAYER_LOOKS[perso()]); setWeapon(m, S.equip.arme ? S.equip.arme.id : 'baton');
   const gl = glider(); gl.position.set(0, 2.25, 0); gl.visible = false; m.g.add(gl);
   scene.add(m.g);
   const P = { x: S.pos[0], y: S.pos[1], z: S.pos[2], vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, hp: S.hp, stam: 1, yaw: S.yaw, model: m, gl, gliding: false, atkT: 0, atkCd: 0, hitAt: -1, iT: 0, buff: 0, brkCd: 0, fallV: 0, walkT: 0 };
@@ -956,9 +960,38 @@ function frame(now) {
   waterUpdate();
   renderer.render(scene, camera);
 }
+// écran de choix du personnage : portraits rendus avec les vrais modèles
+function drawPortraits() {
+  const sc = new THREE.Scene(); sc.add(new THREE.AmbientLight(0xffffff, 1.2)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-2, 3, -4); sc.add(sun);
+  const cam = new THREE.PerspectiveCamera(30, 180 / 260, 0.1, 20); cam.position.set(-0.9, 1.45, -4.1); cam.lookAt(0, 1.05, 0);
+  const W = 180 * 2, H = 260 * 2, rt = new THREE.WebGLRenderTarget(W, H), px = new Uint8Array(W * H * 4);
+  const keepSh = renderer.shadowMap.enabled, keepCol = renderer.getClearColor(new THREE.Color()), keepA = renderer.getClearAlpha(); renderer.shadowMap.enabled = false;
+  for (const card of document.querySelectorAll('#perso .pcard')) {
+    const m = human(PLAYER_LOOKS[card.dataset.p]); setWeapon(m, 'baton'); m.g.rotation.y = card.dataset.p === 'fille' ? 0.75 : 0.35; animHuman(m, 0, 0, 0, false, false); m.P.armR.rotation.x = 0.5; sc.add(m.g);
+    renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(sc, cam); renderer.readRenderTargetPixels(rt, 0, 0, W, H, px); renderer.setRenderTarget(null);
+    sc.remove(m.g);
+    const cv = card.querySelector('canvas'); cv.width = W; cv.height = H; const cx = cv.getContext('2d'), img = cx.createImageData(W, H);
+    for (let y = 0; y < H; y++) img.data.set(px.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), y * W * 4); // à l'endroit
+    cx.putImageData(img, 0, 0);
+  }
+  renderer.shadowMap.enabled = keepSh; renderer.setClearColor(keepCol, keepA); rt.dispose();
+}
+let persoMode = 'new', persoSel = 'gars', portraitsOk = false;
+function persoLabel() { $('persoNom').textContent = PERSO_NOM[perso()]; }
+function openPerso(mode) {
+  persoMode = mode; persoSel = perso(); hide('title'); show('perso');
+  if (!portraitsOk) { try { drawPortraits(); portraitsOk = true; } catch (er) { console.warn('portraits', er); } }
+  document.querySelectorAll('#perso .pcard').forEach(c => c.classList.toggle('on', c.dataset.p === persoSel));
+  $('bPersoGo').textContent = mode === 'new' ? 'C’EST PARTI!' : 'OK';
+}
+document.querySelectorAll('#perso .pcard').forEach(c => c.onclick = () => { persoSel = c.dataset.p; audio.fx('ui'); document.querySelectorAll('#perso .pcard').forEach(o => o.classList.toggle('on', o === c)); });
+$('bPersoGo').onclick = () => { localStorage.setItem(PERSO_KEY, persoSel); persoLabel(); hide('perso'); if (persoMode === 'new') startGame(true); else show('title'); };
+$('bPersoBack').onclick = () => { hide('perso'); show('title'); };
+$('bPerso').onclick = () => openPerso('change');
+persoLabel();
 // boutons
 $('bCont').onclick = () => startGame(false);
-$('bNew').onclick = () => { if (loadSave() && !confirm('Commencer une nouvelle partie? L’ancienne sauvegarde sera remplacée.')) return; startGame(true); };
+$('bNew').onclick = () => { if (loadSave() && !confirm('Commencer une nouvelle partie? L’ancienne sauvegarde sera remplacée.')) return; openPerso('new'); };
 $('bHelp').onclick = () => { G.prevScreen = 'title'; hide('title'); show('help'); };
 $('bOpts').onclick = () => { G.prevScreen = 'title'; hide('title'); show('opts'); };
 $('bResume').onclick = () => resume();
@@ -973,5 +1006,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
+const API = { perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
 window.__game = API;

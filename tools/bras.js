@@ -19,7 +19,7 @@ const SHOTS = [
   await p.goto(`http://localhost:${PORT}/`);
   await p.evaluate(perso => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 4 })); localStorage.setItem('voxelle-quebec-perso', perso); }, PERSO); await p.reload();
   await p.waitForTimeout(3000);
-  await p.click('#bNew'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+  await p.click('#bNew'); await p.click('#bPersoGo'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   await p.evaluate(() => { const g = __game, G = g.G, P = G.P; document.getElementById('hud').style.visibility = 'hidden';
     for (const e of G.enemies) { e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.style.display = 'none'; }
     G.spawnT = 1e9; G.weatherT = 1e9; g.sky.snowT = 0; g.sky.snow = 0; P.hp = 1e6;

@@ -48,10 +48,22 @@
   <div class="menu">
     <button class="btn big" id="bCont">CONTINUER</button>
     <button class="btn big" id="bNew">NOUVELLE PARTIE</button>
+    <button class="btn" id="bPerso">PERSONNAGE : <span id="persoNom">LE HÉROS</span></button>
     <button class="btn" id="bHelp">COMMENT JOUER</button>
     <button class="btn" id="bOpts">OPTIONS</button>
   </div>
   <div class="foot">Personnages fictifs et caricaturaux. Toute ressemblance avec un chantier réel serait une coïncidence.</div>
+</section>
+<section id="perso" class="screen hidden">
+  <div class="panel">
+    <h1>CHOISIS TON PERSONNAGE</h1>
+    <div class="persos">
+      <button class="pcard" data-p="gars"><canvas width="180" height="260"></canvas><span>LE HÉROS</span></button>
+      <button class="pcard" data-p="fille"><canvas width="180" height="260"></canvas><span>L’HÉROÏNE</span></button>
+    </div>
+    <p class="pnote">Même aventure, mêmes armes. Tu peux changer au menu principal.</p>
+    <div class="row"><button class="btn big" id="bPersoGo">C’EST PARTI!</button><button class="btn" id="bPersoBack">RETOUR</button></div>
+  </div>
 </section>
 <section id="loading" class="screen hidden"><div class="panel"><div id="loadtxt">Génération du monde…</div><div class="bar"><div class="fill" id="loadfill"></div></div></div></section>
 <section id="help" class="screen hidden">

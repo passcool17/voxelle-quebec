@@ -22,7 +22,7 @@ const SCENES = [
   await p.goto(`http://localhost:${PORT}/${mob ? '?touch' : ''}`);
   await p.evaluate(m => { localStorage.clear(); if (!m) localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'high', view: 6 })); }, mob); await p.reload();
   await p.waitForTimeout(3000);
-  await p.click('#bNew'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+  await p.click('#bNew'); await p.click('#bPersoGo'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   const res = [];
   for (const sc of (mob ? SCENES.filter(s => ['ville', 'perso', 'combat'].includes(s.n)) : SCENES)) {
     await p.evaluate(sc => { const g = __game, G = g.G, P = G.P; G.state = 'play'; document.getElementById('hud').style.visibility = 'hidden';

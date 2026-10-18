@@ -122,3 +122,13 @@ body.touch #cross { display: block; } body.touch #hotbar { bottom: auto; top: ca
 body.touch #weapon { display: none; } body.touch #tracker { top: calc(2vh + var(--u) * 10.2); font-size: calc(var(--u) * .8); width: 26vw; }
 body.touch #prompt { bottom: auto; top: 30%; }
 @media (max-height: 500px) { :root { --u: clamp(15px, 4vh, 22px); } }
+
+/* choix du personnage */
+.persos { display: flex; gap: 3vh; justify-content: center; margin: 1.5vh 0; }
+.pcard { font-family: inherit; font-size: calc(var(--u) * 1.15); color: #fff; text-shadow: inherit; background: rgba(31,63,138,.55); border: 3px solid #8a9ab8; box-shadow: 0 4px 0 #0c1420; padding: 1vh 1vh .6vh; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: .6vh; letter-spacing: .05em; }
+.pcard canvas { width: min(180px, 26vh); height: auto; image-rendering: auto; background: linear-gradient(#5a8ad8, #a8d0f0); }
+.pcard.on { border-color: var(--gold); background: rgba(46,95,168,.9); box-shadow: 0 0 0 3px #0c1420, 0 0 18px rgba(242,193,46,.6); }
+.pcard.on span { color: var(--gold); }
+.pcard:hover, .pcard:focus-visible { outline: none; border-color: #fff; }
+.pnote { text-align: center !important; color: #dde; font-size: calc(var(--u) * .9); }
+#perso .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }

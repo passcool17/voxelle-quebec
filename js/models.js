@@ -44,7 +44,7 @@ const shade = (c, f) => { const r = Math.min(255, (c >> 16 & 255) * f), g = Math
 
 // ---------- humains ----------
 export function human(o = {}) {
-  const c = Object.assign({ skin: 0xf0c8a0, coat: 0x2e5fa8, pants: 0x2b2f3a, boots: 0x5a3a22, hat: 0xc8282e, hatBand: 0xf2f2f2, pom: 0xf2f2f2, mitt: 0xc8282e, sash: true, hair: 0x5a3a22, beard: null, glasses: false, apron: null, hatType: 'tuque', scale: 1, zombie: false }, o);
+  const c = Object.assign({ skin: 0xf0c8a0, coat: 0x2e5fa8, pants: 0x2b2f3a, boots: 0x5a3a22, hat: 0xc8282e, hatBand: 0xf2f2f2, pom: 0xf2f2f2, mitt: 0xc8282e, sash: true, hair: 0x5a3a22, beard: null, glasses: false, apron: null, hatType: 'tuque', scale: 1, zombie: false, queue: false, cils: false, parka: false }, o);
   const g = new THREE.Group(), body = pivot(g, 0, 0, 0), P = {};
   for (const [k, sx] of [['legL', -0.15], ['legR', 0.15]]) {
     const L = P[k] = pivot(body, sx, 0.8, 0);
@@ -55,6 +55,7 @@ export function human(o = {}) {
   P.torso = pivot(body, 0, 0.8, 0);
   box(P.torso, 0.56, 0.62, 0.32, c.coat, 0, 0.31, 0);
   box(P.torso, 0.58, 0.1, 0.34, shade(c.coat, 0.82), 0, 0.03, 0); // ourlet
+  if (c.parka) { box(P.torso, 0.6, 0.18, 0.36, c.coat, 0, -0.06, 0); box(P.torso, 0.62, 0.05, 0.38, shade(c.coat, 0.8), 0, -0.15, 0); box(P.torso, 0.03, 0.2, 0.02, shade(c.coat, 0.6), 0, -0.06, -0.185); } // parka plus longue
   box(P.torso, 0.42, 0.08, 0.36, shade(c.coat, 1.18), 0, 0.6, 0.0); // col
   box(P.torso, 0.02, 0.44, 0.02, shade(c.coat, 0.6), 0, 0.33, -0.165); // fermeture
   for (const y of [0.48, 0.36, 0.24]) box(P.torso, 0.04, 0.04, 0.02, 0xd8c070, 0.04, y, -0.168);
@@ -75,6 +76,7 @@ export function human(o = {}) {
   for (const sx of [-1, 1]) {
     box(P.head, 0.09, 0.08, 0.02, eyeW, sx * 0.1, 0.27, -0.215); box(P.head, 0.045, 0.06, 0.02, c.zombie ? 0x802020 : 0x2a1e18, sx * 0.1 + 0.015, 0.265, -0.222);
     box(P.head, 0.015, 0.015, 0.01, 0xffffff, sx * 0.1 + 0.03, 0.285, -0.229);
+    if (c.cils) { box(P.head, 0.035, 0.025, 0.02, 0x2a1e18, sx * 0.155, 0.305, -0.218); }
     box(P.head, 0.1, 0.025, 0.02, c.zombie ? 0x3a3a3a : shade(c.hair, 0.9), sx * 0.1, 0.33 + (c.zombie ? sx * -0.01 : 0), -0.216);
     if (!c.zombie && !c.beard) box(P.head, 0.06, 0.035, 0.01, 0xe89a90, sx * 0.14, 0.17, -0.214);
   }
@@ -82,6 +84,12 @@ export function human(o = {}) {
   if (c.glasses) { box(P.head, 0.36, 0.025, 0.02, 0x222222, 0, 0.3, -0.228); box(P.head, 0.13, 0.11, 0.015, 0xa0d0f0, -0.1, 0.27, -0.226); box(P.head, 0.13, 0.11, 0.015, 0xa0d0f0, 0.1, 0.27, -0.226); }
   if (c.beard) { box(P.head, 0.44, 0.16, 0.1, c.beard, 0, 0.07, -0.19); box(P.head, 0.3, 0.08, 0.08, c.beard, 0, -0.02, -0.18); box(P.head, 0.2, 0.04, 0.03, shade(c.beard, 0.85), 0, 0.15, -0.235); box(P.head, 0.06, 0.08, 0.3, c.beard, -0.2, 0.16, -0.06); box(P.head, 0.06, 0.08, 0.3, c.beard, 0.2, 0.16, -0.06); }
   box(P.head, 0.44, 0.1, 0.44, c.hair, 0, 0.42, 0.02); box(P.head, 0.44, 0.22, 0.08, c.hair, 0, 0.32, 0.2); box(P.head, 0.05, 0.12, 0.3, c.hair, -0.215, 0.33, 0.06); box(P.head, 0.05, 0.12, 0.3, c.hair, 0.215, 0.33, 0.06);
+  if (c.queue) { // mèches devant les oreilles + queue de cheval qui dépasse sous la tuque
+    for (const sx of [-1, 1]) { box(P.head, 0.08, 0.34, 0.1, c.hair, sx * 0.205, 0.25, -0.17); box(P.head, 0.06, 0.12, 0.08, shade(c.hair, 0.88), sx * 0.2, 0.05, -0.17); box(P.head, 0.05, 0.3, 0.26, c.hair, sx * 0.218, 0.22, 0.08); }
+    box(P.head, 0.44, 0.3, 0.06, c.hair, 0, 0.27, 0.215);
+    P.queue = pivot(P.head, 0, 0.38, 0.26);
+    box(P.queue, 0.14, 0.08, 0.12, c.mitt, 0, 0, 0); box(P.queue, 0.16, 0.16, 0.12, c.hair, 0, -0.1, 0.03); box(P.queue, 0.14, 0.18, 0.11, c.hair, 0, -0.26, 0.05); box(P.queue, 0.1, 0.12, 0.09, shade(c.hair, 0.88), 0, -0.4, 0.05);
+  }
   if (c.hatType === 'tuque') {
     box(P.head, 0.46, 0.2, 0.46, c.hat, 0, 0.52, 0);
     box(P.head, 0.48, 0.08, 0.48, c.hatBand, 0, 0.43, 0); box(P.head, 0.485, 0.02, 0.485, shade(c.hatBand, 0.82), 0, 0.45, 0);
@@ -103,6 +111,11 @@ export function human(o = {}) {
   bake(g);
   return { g, P, body, c, kind: 'human' };
 }
+// les deux personnages jouables (même gameplay) : « gars » = le héros, « fille » = l'héroïne
+export const PLAYER_LOOKS = {
+  gars: {},
+  fille: { coat: 0x2c7a5a, pants: 0x3a3048, boots: 0x6a3a2a, hat: 0x1f4fa8, hatBand: 0xf2f2f2, pom: 0xf2c12e, mitt: 0x1f4fa8, hair: 0x9a4a22, queue: true, cils: true, parka: true },
+};
 export function weaponModel(kind) {
   const g = new THREE.Group();
   if (kind === 'baton' || kind === 'baton_carbone' || kind === 'baton_or') {
@@ -144,6 +157,7 @@ export function animHuman(m, t, mv, atk, air, glide, sit) {
     else { const k = atk < 0.35 ? atk / 0.35 : 1 - (atk - 0.35) / 0.65; P.armR.rotation.x = FWD * (0.6 + k * 1.6); P.armR.rotation.z = 0.2; P.torso.rotation.y = (atk < 0.35 ? -atk / 0.35 : -1 + (atk - 0.35) / 0.65 * 2.2) * 0.9; P.armL.rotation.x = FWD * 0.8; }
   }
   // le lanceur reste à l'horizontale, pointé vers l'avant, quelle que soit la position du bras
+  if (P.queue) P.queue.rotation.x = -(0.15 + Math.abs(Math.sin(t * 10)) * 0.25 * mv + (air ? 0.4 : 0) + (glide ? 0.9 : 0)); // vers l’arrière (+z)
   if (m.weapon && m.wkind === 'lanceur') m.weapon.rotation.x = -P.armR.rotation.x;
   if (sit) { P.legL.rotation.x = P.legR.rotation.x = FWD * 1.5; }
 }

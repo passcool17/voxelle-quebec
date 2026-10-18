@@ -9,7 +9,7 @@ const serve = require('./serve');
   await p.goto(`http://localhost:${PORT}/?seedtest`); await p.waitForTimeout(6000);
   await p.screenshot({ path: 'shots/smoke_title.png' });
   await p.evaluate(() => localStorage.clear());
-  await p.click('#bNew'); 
+  await p.click('#bNew'); await p.click('#bPersoGo'); 
   await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 60000 });
   await p.waitForTimeout(4000);
   await p.screenshot({ path: 'shots/smoke_play.png' });

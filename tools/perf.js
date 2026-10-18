@@ -8,7 +8,7 @@ const PORT = +(process.env.PORT || 8918), X = +(process.argv[2] ?? -7), Z = +(pr
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } }); const errs = [];
   p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   await p.goto(`http://localhost:${PORT}/`); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'high', view: 6 })); }); await p.reload(); await p.waitForTimeout(2500);
-  await p.click('#bNew'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+  await p.click('#bNew'); await p.click('#bPersoGo'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   await p.evaluate(([x, z]) => { const g = __game, P = g.G.P; P.x = x; P.z = z; P.y = g.gen.heightAt(x, z) + 3; P.hp = 1e6; g.G.spawnT = 1e9; window.__sc = [x, z]; }, [X, Z]);
   for (const q of ['high', 'mid', 'low']) {
     await p.evaluate(q => { const g = __game; g.OPT.qual = q; g.applyQuality(); g.G.state = 'play'; }, q);

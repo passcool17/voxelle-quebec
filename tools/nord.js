@@ -26,7 +26,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   const region = () => ev(() => { const P = __game.G.P; return __game.gen.nord.region(P.x, P.z); });
   const view = async (yaw, pitch, dist) => { await ev(([y, pi, d]) => { const G = __game.G; G.camYaw = y; G.camPitch = pi; if (d) G.camDist = d; window.__task = { type: 'idle' }; }, [yaw, pitch, dist]); await p.waitForTimeout(2500); };
   await p.goto(`http://localhost:${PORT}/`); await ev(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 5 })); }); await p.reload(); await p.waitForTimeout(2500);
-  await p.click('#bNew'); await waitPlay(); await ev(brain);
+  await p.click('#bNew'); await p.click('#bPersoGo'); await waitPlay(); await ev(brain);
   const W = await ev(() => { const n = __game.gen.nord; return { stops: n.stops, P: Object.fromEntries(Object.entries(n.places).map(([k, s]) => [k, [s.x, s.z, s.h]])) }; });
   await ev(() => { const S = __game.S; S.lvl = 6; S.equip.arme = { id: 'pelle_alu', r: 2 }; S.inv.push({ id: 'tourtiere', n: 6 }); __game.G.P.hp = __game.stats().hpMax; });
   // 1. bazou : monter et rouler vers le nord sur la 175
