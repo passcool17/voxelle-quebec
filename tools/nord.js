@@ -90,7 +90,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   // 9. mobile
   const m = await b.newPage({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true }); const merrs = [];
   m.on('pageerror', e => merrs.push('pageerror: ' + e.message)); m.on('console', x => { if (x.type() === 'error') merrs.push('console: ' + x.text()); });
-  await m.goto(`http://localhost:${PORT}/?touch`); await m.evaluate(() => localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 4 }))); await m.reload(); await m.waitForTimeout(2500); await m.click('#bNew'); await m.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+  await m.goto(`http://localhost:${PORT}/?touch`); await m.evaluate(() => localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 4 }))); await m.reload(); await m.waitForTimeout(2500); await m.click('#bNew'); await m.click('#bPersoGo'); await m.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   await m.evaluate(() => __game.travel('etape')); await m.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 }); await m.waitForTimeout(4000);
   res.mobile_region = await m.evaluate(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z));
   await m.evaluate(() => { const G = __game.G; G.camYaw = 0.72; G.camPitch = 0.3; }); await m.waitForTimeout(1500);
