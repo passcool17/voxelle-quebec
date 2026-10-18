@@ -16,7 +16,7 @@ export const COL = D.map(d => d.length < 2 ? [0, 0, 0] : [d[1], d[2] ?? d[1], d[
 export const OPAQUE = new Uint8Array(64), SOLID = new Uint8Array(64), GLOW = new Uint8Array(64), LEAF = new Uint8Array(64);
 for (let i = 1; i < D.length; i++) { OPAQUE[i] = i !== B.WATER ? 1 : 0; SOLID[i] = i !== B.WATER ? 1 : 0; }
 GLOW[B.GLASS] = GLOW[B.LAMP] = 1;
-for (const b of [B.SPRUCE, B.MAPLE, B.MAPLE2, B.BIRCH, B.SNOWLEAF]) LEAF[b] = 1;
+for (const b of [B.SPRUCE, B.MAPLE, B.MAPLE2, B.BIRCH, B.SNOWLEAF]) { LEAF[b] = 1; SOLID[b] = 0; } // on traverse le feuillage
 // Blocs que l'on peut poser (dans la barre)
 export const PLACEABLE = [B.PLANK, B.COBBLE, B.BRICK, B.WHITE, B.GLASS, B.REDROOF, B.COPPER, B.LAMP, B.LOG, B.STONE, B.DIRT, B.SNOW, B.SAND, B.GRAVEL, B.TIN, B.DPLANK, B.HAY, B.BLUE, B.GOLD, B.CONE, B.ICE];
 // Ce qu'on récupère en cassant

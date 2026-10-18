@@ -226,7 +226,7 @@ export function layout(s) {
     for (let k = 0; k < 3; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 16, z: s.z + (r() - 0.5) * 16 });
     if (s.i === -1 && s.j === 0) m.npcs.push({ role: 'ginette', x: s.x - 3, z: s.z + 3 });
   } else if (s.type === 'ville') {
-    m.npcs.push({ role: 'gaston', x: s.x + 2.5, z: s.z + 4.5 }, { role: 'lapaperasse', x: s.x - 5.5, z: s.z - 7.5 }, { role: 'commercant', x: s.x + 12.5, z: s.z + 14.5 });
+    m.npcs.push({ role: 'gaston', x: s.x + 4.5, z: s.z + 8.5 }, { role: 'lapaperasse', x: s.x - 5.5, z: s.z - 7.5 }, { role: 'commercant', x: s.x + 12.5, z: s.z + 14.5 });
     for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 50, z: s.z + 8 + r() * 20 });
     m.npcs.push({ role: 'garde', x: s.x + 3, z: s.z - s.R + 3 }, { role: 'garde', x: s.x - 3, z: s.z + s.R - 3 });
     m.gates.push({ x: s.x, z: s.z - 34 - 3 }, { x: s.x, z: s.z + 34 + 3 });
@@ -300,9 +300,11 @@ const BUILD = {
     for (let k = x0; k <= x1; k += 2) { P.set(k, WT + 1, z0, B.COBBLE); P.set(k, WT + 1, z1, B.COBBLE); }
     for (let k = z0; k <= z1; k += 2) { P.set(x0, WT + 1, k, B.COBBLE); P.set(x1, WT + 1, k, B.COBBLE); }
     // chemin de ronde accessible : escaliers intérieurs
-    for (let k = 0; k < 8; k++) P.fill(x0 + 2 + k, h + 1, z1 - 3, x0 + 2 + k, h + 1 + k, z1 - 2, B.COBBLE);
+    
     // bastions d'angle
     for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) { P.fill(cx - 3, h - 2, cz - 3, cx + 3, WT + 3, cz + 3, B.COBBLE); P.fill(cx - 2, WT + 3, cz - 2, cx + 2, WT + 3, cz + 2, B.AIR); P.set(cx, WT + 4, cz, B.LAMP); }
+    // chemin de ronde accessible : escalier intérieur au sud-ouest
+    for (let k = 0; k < 8; k++) P.fill(x0 + 5 + k, h + 1, z1 - 3, x0 + 5 + k, h + 1 + k, z1 - 2, B.COBBLE);
     // portes nord et sud (arches)
     for (const zz of [z0, z1]) { P.fill(s.x - 2, h + 1, zz - 1, s.x + 2, h + 5, zz + 1, B.AIR); P.fill(s.x - 3, h + 6, zz - 1, s.x + 3, WT + 2, zz + 1, B.COBBLE); P.fill(s.x - 1, WT + 3, zz, s.x + 1, WT + 3, zz, B.COPPER); }
     // le Château (fictif) : brique, toits de cuivre vert, tourelles
