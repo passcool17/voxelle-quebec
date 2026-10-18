@@ -18,7 +18,7 @@ const brain = require('./brain');
   const run = async (task, maxS, label) => { await ev(t => { window.__task = t; }, task); const end = Date.now() + maxS * 1000; let k = 0;
     while (Date.now() < end) { await p.waitForTimeout(500); const done = await ev(() => window.__task.done || (window.__task.until && eval(window.__task.until))); if (done) break; if (++k % 10 === 0) console.log(label, JSON.stringify(await state())); }
     const s = await state(); console.log(label, 'fin', JSON.stringify(s)); return s; };
-  await p.goto(`http://localhost:${PORT}/`); await ev(() => { localStorage.clear(); localStorage.setItem('voxelle-france-opts', JSON.stringify({ qual: 'high', view: 6 })); }); await p.reload();
+  await p.goto(`http://localhost:${PORT}/`); await ev(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'high', view: 6 })); }); await p.reload();
   await p.waitForTimeout(7000); await snap('title');
   await p.click('#bNew'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 90000 });
   await ev(brain); await p.waitForTimeout(1500);

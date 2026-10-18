@@ -1,4 +1,4 @@
-# Voxelle-France — Tuques, cônes et nids-de-poule
+# Voxelle-Québec — Tuques, cônes et nids-de-poule
 
 RPG d'action et d'exploration en voxels dans le navigateur, dans un Québec satirique et fictif. Inspiré du *genre* des RPG voxel en monde ouvert ; tout le code, l'art, les noms et les textes sont originaux.
 

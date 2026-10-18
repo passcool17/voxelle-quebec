@@ -1,4 +1,4 @@
-// Voxelle-France : RPG d'exploration en voxels, Québec satirique. Fil principal : jeu, entités, quêtes, interface.
+// Voxelle-Québec : RPG d'exploration en voxels, Québec satirique. Fil principal : jeu, entités, quêtes, interface.
 import * as THREE from 'three';
 import { createGen, BIOME, BIOME_NAME, layout, CELL } from './worldgen.js';
 import { World, moveBody, boxHit } from './world.js';
@@ -15,7 +15,7 @@ const Q = new URLSearchParams(location.search);
 const isTouch = Q.has('touch') || (matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window);
 const mobile = isTouch || Q.has('mobile') || /Android|iPhone|iPad/.test(navigator.userAgent);
 if (isTouch) document.body.classList.add('touch');
-const SEED = 20261018, SAVE_KEY = 'voxelle-france-v1', OPT_KEY = 'voxelle-france-opts';
+const SEED = 20261018, SAVE_KEY = 'voxelle-quebec-v1', OPT_KEY = 'voxelle-quebec-opts';
 const DAY_LEN = 600;
 
 // ---------- options ----------
@@ -773,7 +773,7 @@ function startGame(fresh) {
 function enterPlay() {
   hide('loading'); show('hud'); G.state = 'play'; G.dirtyHot = true; G.dirtyQ = true; setupTouchOnce();
   const P = G.P; const gy = world.ground(P.x, P.z, P.y + 2); if (P.y < gy - 0.5 || boxHit(world, P.x, P.y, P.z, P.hw, P.h)) P.y = gy;
-  if (!S.q.cones && !S.introDone) { S.introDone = true; banner('VOXELLE-FRANCE', 'Va parler à Gaston, le crieur public, sur la place'); }
+  if (!S.q.cones && !S.introDone) { S.introDone = true; banner('VOXELLE-QUÉBEC', 'Va parler à Gaston, le crieur public, sur la place'); }
   else banner('BON RETOUR!', 'Niveau ' + S.lvl + ' · ' + S.cash + ' piasses');
   audio.mode = 'day';
 }
