@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { createGen, BIOME, BIOME_NAME, layout, CELL } from './worldgen.js';
 import { World, moveBody, boxHit } from './world.js';
-import { B, CS, WH, SEA, NAME, PLACEABLE, DROP, SOLID, COL, LEAF } from './blocks.js';
+import { B, CSM as CS, SEA, NAME, PLACEABLE, DROP, SOLID, COL, LEAF, VS } from './blocks.js';
 import { Sky } from './sky.js';
 import { Audio } from './audio.js';
 import { human, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box } from './models.js';
@@ -15,7 +15,8 @@ const Q = new URLSearchParams(location.search);
 const isTouch = Q.has('touch') || (matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window);
 const mobile = isTouch || Q.has('mobile') || /Android|iPhone|iPad/.test(navigator.userAgent);
 if (isTouch) document.body.classList.add('touch');
-const SEED = 20261018, SAVE_KEY = 'voxelle-quebec-v1', OPT_KEY = 'voxelle-quebec-opts';
+// v2 : monde en voxels fins (0,5 m) ; les sauvegardes v1 sont reprises sans les blocs modifiés
+const SEED = 20261018, SAVE_KEY = 'voxelle-quebec-v2', OLD_SAVE_KEY = 'voxelle-quebec-v1', OPT_KEY = 'voxelle-quebec-opts';
 const DAY_LEN = 600;
 
 // ---------- options ----------
@@ -39,11 +40,15 @@ let world = null;
 // ---------- état ----------
 const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60 };
 function freshSave() {
-  return { v: 1, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
-    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 24, [B.COBBLE]: 16, [B.LAMP]: 4, [B.GLASS]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
+  return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
+    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
 }
 let S = null; // sauvegarde active
-function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1) return s; } catch (e) {} return null; }
+function loadSave() {
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 2) return s; } catch (e) {}
+  try { const o = JSON.parse(localStorage.getItem(OLD_SAVE_KEY)); if (o && o.v === 1) { o.v = 2; o.edits = {}; o.migrated = true; return o; } } catch (e) {}
+  return null;
+}
 function writeSave() {
   if (!S || !G.P) return;
   const P = G.P; S.pos = [P.x, P.y, P.z]; S.yaw = G.camYaw; S.hp = P.hp; S.time = sky.t; S.edits = world ? world.edits : S.edits;
@@ -102,7 +107,7 @@ function makePlayer() {
   return P;
 }
 const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
-const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.01, 1.01, 1.01)), new THREE.LineBasicMaterial({ color: 0x0c1420 }));
+const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(VS * 1.02, VS * 1.02, VS * 1.02)), new THREE.LineBasicMaterial({ color: 0x0c1420 }));
 outline.visible = false; scene.add(outline);
 
 function camUpdate(dt) {
@@ -178,9 +183,9 @@ function playerUpdate(dt) {
   const cd = tmpV.copy(camera.getWorldDirection(tmpV2)), co = camera.position;
   const hit = world.ray(co, cd, G.camDist + 8);
   G.target = null;
-  if (hit) { const hx = hit.x + 0.5, hy = hit.y + 0.5, hz = hit.z + 0.5; if (Math.hypot(hx - P.x, hy - (P.y + 1.4), hz - P.z) < 6.2) G.target = hit; }
+  if (hit) { const hx = hit.x + VS / 2, hy = hit.y + VS / 2, hz = hit.z + VS / 2; if (Math.hypot(hx - P.x, hy - (P.y + 1.4), hz - P.z) < 6.2) G.target = hit; }
   outline.visible = !!G.target && !isTouch || (!!G.target && isTouch);
-  if (G.target) outline.position.set(G.target.x + 0.5, G.target.y + 0.5, G.target.z + 0.5);
+  if (G.target) outline.position.set(G.target.x + VS / 2, G.target.y + VS / 2, G.target.z + VS / 2);
   if (pressed.has('KeyF') || input.tBrkP || (input.bot && input.bot.brkP)) breakBlock(); input.tBrkP = false; if (input.bot) input.bot.brkP = false;
   if (input.rmbP || input.tPlaceP || (input.bot && input.bot.placeP)) placeBlock(); input.rmbP = false; input.tPlaceP = false; if (input.bot) input.bot.placeP = false;
   // modèle
@@ -220,9 +225,9 @@ function breakBlock() {
   const P = G.P; if (P.brkCd > 0 || !G.target) return; const t = G.target;
   if (t.b === B.BEDROCK) { audio.fx('deny'); toast('Le roc-mère est incassable.'); P.brkCd = 0.3; return; }
   if (!world.set(t.x, t.y, t.z, B.AIR)) return;
-  P.brkCd = 0.22; audio.fx('break');
+  P.brkCd = 0.12; audio.fx('break');
   const d = DROP(t.b); if (d && PLACEABLE.includes(d)) { S.blocks[d] = (S.blocks[d] || 0) + 1; }
-  burst(t.x + 0.5, t.y + 0.5, t.z + 0.5, COL[t.b][1], 10); S.stats.blocks++; G.dirtyHot = true;
+  burst(t.x + VS / 2, t.y + VS / 2, t.z + VS / 2, COL[t.b][1], 8); S.stats.blocks++; G.dirtyHot = true;
 }
 function placeBlock() {
   const P = G.P, list = hotList(), b = list[S.hot % Math.max(1, list.length)]; if (!G.target) return;
@@ -230,7 +235,7 @@ function placeBlock() {
   const x = G.target.x + G.target.n[0], y = G.target.y + G.target.n[1], z = G.target.z + G.target.n[2];
   const cur = world.get(x, y, z); if (cur !== 0 && cur !== B.WATER) return;
   // pas dans le joueur ni dans un ennemi
-  const inBox = (e) => x + 1 > e.x - e.hw && x < e.x + e.hw && z + 1 > e.z - e.hw && z < e.z + e.hw && y + 1 > e.y && y < e.y + e.h;
+  const inBox = (e) => x + VS > e.x - e.hw && x < e.x + e.hw && z + VS > e.z - e.hw && z < e.z + e.hw && y + VS > e.y && y < e.y + e.h;
   if (inBox(P)) { audio.fx('deny'); return; }
   for (const e of G.enemies) if (inBox(e)) return;
   if (!world.set(x, y, z, b)) return;
@@ -434,7 +439,7 @@ function spawner(dt) {
     if (world.loadedAround(x, z, 0)) {
       const col = gen.column(Math.floor(x), Math.floor(z));
       const safe = col.st && col.w > 0.35 && (col.st.type === 'ville' || col.st.type === 'village' || col.st.type === 'cabane');
-      const y = world.ground(x, z), wb = world.get(x, y - 1, z);
+      const y = world.ground(x, z), wb = world.get(x, y - 0.25, z);
       if (wb !== B.WATER && Math.abs(y - P.y) < 14) {
         let pool;
         if (col.biome === BIOME.BOREALE) pool = night ? ['bureau', 'raton', 'mouches'] : ['mouches', 'mouches', 'raton'];
@@ -724,12 +729,20 @@ function bindOpts() {
   $('oMus').value = OPT.mus; $('oMus').oninput = () => { OPT.mus = +$('oMus').value; audio.setMusic(OPT.mus); saveOpts(); };
   $('oSens').value = OPT.sens; $('oSens').oninput = () => { OPT.sens = +$('oSens').value; saveOpts(); };
   $('oInv').checked = OPT.inv; $('oInv').onchange = () => { OPT.inv = $('oInv').checked; saveOpts(); };
-  $('bReset').onclick = () => { if (confirm('Effacer la sauvegarde? Ta partie sera perdue.')) { localStorage.removeItem(SAVE_KEY); location.reload(); } };
+  $('bReset').onclick = () => { if (confirm('Effacer la sauvegarde? Ta partie sera perdue.')) { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(OLD_SAVE_KEY); location.reload(); } };
 }
+// qualité : définition, ombres portées (soleil/lune), rayon des tronçons détaillés (le reste en demi-résolution)
 function applyQuality() {
-  const q = OPT.qual === 'auto' ? (mobile ? 'low' : 'high') : OPT.qual;
+  const q = OPT.qual === 'auto' ? (mobile ? 'low' : 'high') : OPT.qual; G.qual = q;
   pixelRatio = Math.min(devicePixelRatio || 1, q === 'low' ? 1 : q === 'mid' ? 1.25 : 1.75); renderer.setPixelRatio(pixelRatio); renderer.setSize(innerWidth, innerHeight);
+  const sh = q !== 'low' && !G.autoNoShadow;
+  if (renderer.shadowMap.enabled !== sh || G.shadowSize !== (q === 'high' ? 2048 : 1024)) {
+    renderer.shadowMap.enabled = sh; renderer.shadowMap.type = THREE.PCFShadowMap; G.shadowSize = q === 'high' ? 2048 : 1024;
+    sky.setShadows(sh, G.shadowSize); scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+  }
+  qualWorld();
 }
+function qualWorld() { if (!world) return; const q = G.qual || 'high'; world.setShadows(renderer.shadowMap.enabled); world.lod0 = q === 'high' ? 3 : q === 'mid' ? 2 : 1.5; }
 // ---------- tactile ----------
 function setupTouch() {
   if (!isTouch) return; show('touch');
@@ -754,7 +767,7 @@ function setupTouch() {
 // ---------- déroulement ----------
 function makeWorld(edits) {
   if (world) { world.worker.terminate(); scene.remove(world.group); for (const [, c] of world.chunks) for (const m of c.meshes) m.geometry.dispose(); }
-  world = new World(scene, gen, SEED, JSON.parse(JSON.stringify(edits || {}))); world.view = OPT.view; G.viewCap = OPT.view;
+  world = new World(scene, gen, SEED, JSON.parse(JSON.stringify(edits || {}))); world.view = OPT.view; G.viewCap = OPT.view; qualWorld();
 }
 function clearEntities() {
   for (const e of G.enemies) { scene.remove(e.model.g); e.label.remove(); } G.enemies = [];
@@ -770,9 +783,14 @@ function startGame(fresh) {
   G.P = makePlayer(); sky.t = S.time; hide('title'); show('loading'); G.state = 'loading'; G.loadT = 0;
   if (fresh) writeSave();
 }
+function waterUpdate() {
+  const u = world.matWa.uniforms; u.time.value = G.t; u.sunDir.value.copy(sky.sun.position).sub(sky.sun.target.position).normalize();
+  u.sunCol.value.copy(sky.sun.color); u.skyCol.value.copy(sky.hor).lerp(sky.top, 0.3); u.dayF.value = sky.dayF; u.sunInt.value = Math.min(1.2, sky.sun.intensity / 2);
+}
 function enterPlay() {
   hide('loading'); show('hud'); G.state = 'play'; G.dirtyHot = true; G.dirtyQ = true; setupTouchOnce();
   const P = G.P; const gy = world.ground(P.x, P.z, P.y + 2); if (P.y < gy - 0.5 || boxHit(world, P.x, P.y, P.z, P.hw, P.h)) P.y = gy;
+  if (S.migrated) { delete S.migrated; setTimeout(() => toast('Le monde est maintenant en voxels de 50 cm : tes anciennes constructions ont été remises à zéro.'), 2500); }
   if (!S.q.cones && !S.introDone) { S.introDone = true; banner('VOXELLE-QUÉBEC', 'Va parler à Gaston, le crieur public, sur la place'); }
   else banner('BON RETOUR!', 'Niveau ' + S.lvl + ' · ' + S.cash + ' piasses');
   audio.mode = 'day';
@@ -826,7 +844,9 @@ function frame(now) {
       // qualité automatique
       perfAcc += dt; perfN++; perfT += dt;
       if (perfT > 4) { const avg = perfAcc / perfN; G.fps = Math.round(1 / avg); perfT = perfAcc = perfN = 0;
-        if (OPT.qual === 'auto') { if (avg > 0.034 && world.view > 3) world.view--; else if (avg < 0.019 && world.view < G.viewCap) world.view++; } }
+        if (OPT.qual === 'auto') {
+          if (avg > 0.045 && renderer.shadowMap.enabled) { G.autoNoShadow = true; applyQuality(); }
+          else if (avg > 0.034 && world.view > 3) world.view--; else if (avg < 0.019 && world.view < G.viewCap) world.view++; } }
       const chasing = G.enemies.some(e => e.state === 'chase' && Math.hypot(e.x - P.x, e.z - P.z) < 22);
       audio.combat += ((chasing ? 1 : 0) - audio.combat) * Math.min(1, dt * 0.8);
       audio.mode = sky.dayF < 0.3 ? 'night' : 'day';
@@ -838,6 +858,7 @@ function frame(now) {
     if (st === 'play') { hudUpdate(dt); miniUpdate(dt); }
   }
   pressed.clear();
+  waterUpdate();
   renderer.render(scene, camera);
 }
 // boutons
@@ -857,5 +878,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast };
+const API = { G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
 window.__game = API;

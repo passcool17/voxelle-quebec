@@ -1,7 +1,7 @@
 // Génération procédurale du monde : relief, fleuve, biomes, arbres, structures (Vieille-Ville, villages, chantiers, cabanes à sucre).
 // Partagé entre le Web Worker (blocs) et le fil principal (hauteurs, positions des structures et des PNJ).
 import { makeNoise, mulberry, hash2, smooth } from './noise.js';
-import { B, CS, WH, SEA } from './blocks.js';
+import { B, CS, WH, SEA, SEAV, CSM, VS } from './blocks.js';
 export const BIOME = { RIVE: 0, CAMPAGNE: 1, BOREALE: 2, ERABLIERE: 3, COLLINES: 4, VILLE: 5 };
 export const BIOME_NAME = ['Rives du Fleuve', 'Campagne', 'Forêt boréale', 'Érablière', 'Laurentides enneigées', 'Vieille-Ville'];
 export const CELL = 144;
@@ -74,123 +74,217 @@ export function createGen(seed) {
     }
     let biome = biomeRaw(x, z, R);
     if (st && st.type === 'ville' && w > 0.5) biome = BIOME.VILLE;
-    return { h: Math.floor(h), biome, w, st, north: R.north, d: R.d, W: R.W };
+    return { h: Math.floor(h), hc: h, biome, w, st, north: R.north, d: R.d, W: R.W };
   }
-  function heightAt(x, z) { return column(Math.floor(x), Math.floor(z)).h; }
+  // hauteur du dernier voxel plein (en mètres, multiple de VS) : la surface est à heightAt + 1
+  function heightAt(x, z) { const c = column(Math.floor(x), Math.floor(z)); return Math.floor(c.hc * 2) / 2; }
   function allStructs(x0, z0, x1, z1) {
     const out = [];
     for (let i = Math.floor((x0 - VX) / CELL) - 1; i <= Math.ceil((x1 - VX) / CELL) + 1; i++) for (let j = Math.floor((z0 - VZ) / CELL) - 1; j <= Math.ceil((z1 - VZ) / CELL) + 1; j++) { const s = cell(i, j); if (s && s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s); }
     return out;
   }
 
-  // ---------- génération d'un tronçon ----------
+  // ---------- génération d'un tronçon (voxels fins de VS m) ----------
   function genChunk(cx, cz) {
-    const data = new Uint8Array(CS * CS * WH), ox = cx * CS, oz = cz * CS;
+    const data = new Uint8Array(CS * CS * WH), ox = cx * CS, oz = cz * CS, oxm = cx * CSM, ozm = cz * CSM;
     const idx = (x, y, z) => x + z * CS + y * CS * CS;
-    const M = 4, SW = CS + M * 2, cols = new Array(SW * SW);
-    for (let z = 0; z < SW; z++) for (let x = 0; x < SW; x++) cols[x + z * SW] = column(ox + x - M, oz + z - M);
+    // grille d'un mètre avec marge (bruit coûteux), interpolée au voxel
+    const M = 7, GW = CSM + 2 * M + 1, cols = new Array(GW * GW);
+    for (let j = 0; j < GW; j++) for (let i = 0; i < GW; i++) cols[i + j * GW] = column(oxm - M + i, ozm - M + j);
+    const FM = 2, FW = CS + 2 * FM, hf = new Int16Array(FW * FW), cf = new Array(FW * FW);
+    for (let zv = -FM; zv < CS + FM; zv++) for (let xv = -FM; xv < CS + FM; xv++) {
+      const gx = (xv + 0.5) * VS + M - 0.5, gz = (zv + 0.5) * VS + M - 0.5, i0 = Math.floor(gx), j0 = Math.floor(gz), fx = gx - i0, fz = gz - j0;
+      const c00 = cols[i0 + j0 * GW], c10 = cols[i0 + 1 + j0 * GW], c01 = cols[i0 + (j0 + 1) * GW], c11 = cols[i0 + 1 + (j0 + 1) * GW];
+      const hc = lerp(lerp(c00.hc, c10.hc, fx), lerp(c01.hc, c11.hc, fx), fz), k = (xv + FM) + (zv + FM) * FW;
+      hf[k] = Math.min(WH - 3, Math.floor(hc * 2) + 1); cf[k] = fx < 0.5 ? (fz < 0.5 ? c00 : c01) : (fz < 0.5 ? c10 : c11);
+    }
+    const H = (xv, zv) => hf[(xv + FM) + (zv + FM) * FW];
     for (let z = 0; z < CS; z++) for (let x = 0; x < CS; x++) {
-      const c = cols[(x + M) + (z + M) * SW], h = Math.min(WH - 2, c.h), wx = ox + x, wz = oz + z;
+      const k = (x + FM) + (z + FM) * FW, c = cf[k], h = hf[k], wx = ox + x, wz = oz + z, hm = h / 2;
       data[idx(x, 0, z)] = B.BEDROCK;
       for (let y = 1; y <= h; y++) data[idx(x, y, z)] = B.STONE;
-      const hn = hash2(wx, wz, seed);
-      let top = B.GRASS, sub = B.DIRT, sd = 3;
-      if (c.biome === BIOME.RIVE || h <= SEA) { top = h <= SEA + 1 ? (hn < 0.25 ? B.GRAVEL : B.SAND) : B.GRASS; sub = B.SAND; }
+      const hn = hash2(wx >> 1, wz >> 1, seed);
+      let top = B.GRASS, sub = B.DIRT, sd = 6;
+      if (c.biome === BIOME.RIVE || h <= SEAV) { top = h <= SEAV + 2 ? (hn < 0.25 ? B.GRAVEL : (N3.n2(wx * 0.04, wz * 0.04) > 0.55 ? B.PEBBLE : B.SAND)) : B.GRASS; sub = B.SAND; }
       else if (c.biome === BIOME.COLLINES) {
-        const sl = Math.max(Math.abs(cols[(x + M + 1) + (z + M) * SW].h - cols[(x + M - 1) + (z + M) * SW].h), Math.abs(cols[(x + M) + (z + M + 1) * SW].h - cols[(x + M) + (z + M - 1) * SW].h));
-        if (sl > 4) { top = B.STONE; sub = B.STONE; } else if (h > SEA + 38 + hn * 4) { top = B.SNOW; sub = B.SNOW; sd = 1 + (hn * 2 | 0); } else if (h > SEA + 33) top = B.SNOWGRASS;
-      } else if (c.biome === BIOME.CAMPAGNE && c.north < 0 && N4.n2(wx * 0.03, wz * 0.03) > 0.45 && c.w < 0.1) top = B.FIELD;
+        const sl = Math.max(Math.abs(H(x + 2, z) - H(x - 2, z)), Math.abs(H(x, z + 2) - H(x, z - 2)));
+        if (sl > 8) { top = B.STONE; sub = B.STONE; } else if (hm > SEA + 38 + hn * 4) { top = B.SNOW; sub = B.SNOW; sd = 2 + (hn * 4 | 0); } else if (hm > SEA + 33) top = B.SNOWGRASS;
+      } else if (c.biome === BIOME.CAMPAGNE && c.north < 0 && N4.n2(wx * 0.015, wz * 0.015) > 0.45 && c.w < 0.1) top = (wz & 3) < 2 ? B.FIELD : B.DIRT;
+      else if (c.biome === BIOME.BOREALE && c.w < 0.05 && N2.n2(wx * 0.05 + 7, wz * 0.05) > 0.35) top = B.MOSS;
       for (let y = Math.max(1, h - sd); y < h; y++) data[idx(x, y, z)] = sub;
       data[idx(x, h, z)] = top;
-      for (let y = h + 1; y <= SEA; y++) data[idx(x, y, z)] = B.WATER;
-      if (h < SEA && c.north > 220 && c.d > c.W + 20) data[idx(x, SEA, z)] = B.ICE; // lacs gelés au nord
+      for (let y = h + 1; y <= SEAV; y++) data[idx(x, y, z)] = B.WATER;
+      if (h < SEAV && c.north > 220 && c.d > c.W + 20) data[idx(x, SEAV, z)] = B.ICE; // lacs gelés au nord
     }
-    // primitives découpées au tronçon
-    const fill = (x0, y0, z0, x1, y1, z1, b, onlyAir) => {
-      if (x0 > x1) [x0, x1] = [x1, x0]; if (z0 > z1) [z0, z1] = [z1, z0];
+    // primitives découpées au tronçon : ffill en voxels fins absolus, fill en mètres (blocs de 2×2×2 voxels)
+    const ffill = (x0, y0, z0, x1, y1, z1, b, onlyAir) => {
+      if (x0 > x1) [x0, x1] = [x1, x0]; if (z0 > z1) [z0, z1] = [z1, z0]; if (y0 > y1) [y0, y1] = [y1, y0];
       const ax = Math.max(x0 - ox, 0), bx = Math.min(x1 - ox, CS - 1), az = Math.max(z0 - oz, 0), bz = Math.min(z1 - oz, CS - 1), ay = Math.max(y0, 1), by = Math.min(y1, WH - 1);
-      for (let y = ay; y <= by; y++) for (let z = az; z <= bz; z++) for (let x = ax; x <= bx; x++) { const i = idx(x, y, z); if (!onlyAir || data[i] === 0 || data[i] === B.WATER) data[i] = b; }
+      for (let y = ay; y <= by; y++) for (let z = az; z <= bz; z++) for (let x = ax; x <= bx; x++) { const i = idx(x, y, z); if (!onlyAir || data[i] === 0 || data[i] === B.WATER || data[i] >= B.TUFT && data[i] <= B.BERRY) data[i] = b; }
     };
+    const fset = (x, y, z, b, onlyAir) => { const lx = x - ox, lz = z - oz; if (lx < 0 || lz < 0 || lx >= CS || lz >= CS || y < 1 || y >= WH) return; const i = idx(lx, y, lz); if (!onlyAir || data[i] === 0 || data[i] === B.WATER || data[i] >= B.TUFT && data[i] <= B.BERRY) data[i] = b; };
+    const fget = (x, y, z) => { const lx = x - ox, lz = z - oz; if (lx < 0 || lz < 0 || lx >= CS || lz >= CS || y < 0 || y >= WH) return -1; return data[idx(lx, y, lz)]; };
+    const fill = (x0, y0, z0, x1, y1, z1, b, onlyAir) => { if (x0 > x1) [x0, x1] = [x1, x0]; if (z0 > z1) [z0, z1] = [z1, z0]; if (y0 > y1) [y0, y1] = [y1, y0]; ffill(2 * x0, 2 * y0, 2 * z0, 2 * x1 + 1, 2 * y1 + 1, 2 * z1 + 1, b, onlyAir); };
     const set = (x, y, z, b, onlyAir) => fill(x, y, z, x, y, z, b, onlyAir);
-    const P = { fill, set, ox, oz };
-    // arbres
-    for (let z = 0; z < SW; z++) for (let x = 0; x < SW; x++) {
-      const c = cols[x + z * SW], wx = ox + x - M, wz = oz + z - M;
+    const P = { fill, set, ffill, fset, fget, ox, oz };
+    // arbres et rochers (positions tirées sur la grille d'un mètre)
+    for (let j = 0; j < GW; j++) for (let i = 0; i < GW; i++) {
+      const c = cols[i + j * GW], wx = oxm - M + i, wz = ozm - M + j;
       if (c.w > 0.02 || c.h <= SEA + 1 || c.biome === BIOME.RIVE) continue;
-      const hv = hash2(wx, wz, seed + 9);
+      const hv = hash2(wx, wz, seed + 9), fy = Math.min(WH - 3, Math.floor(c.hc * 2) + 1), fx = wx * 2, fz = wz * 2;
       const dens = [0, 0.008, 0.05, 0.04, 0.016, 0][c.biome] * (c.biome === BIOME.COLLINES && c.h > SEA + 40 ? 0.2 : 1);
-      if (hv >= dens) continue;
+      if (hv >= dens) { if (hv < dens + [0, 0.002, 0.004, 0.002, 0.006, 0][c.biome]) rock(P, fx, fy, fz, hash2(wz, wx, seed + 31)); continue; }
       const hv2 = hash2(wz, wx, seed + 13);
-      if (c.biome === BIOME.BOREALE || c.biome === BIOME.COLLINES) spruce(P, wx, c.h, wz, hv2, c.h > SEA + 33);
-      else if (c.biome === BIOME.ERABLIERE) hv2 < 0.82 ? maple(P, wx, c.h, wz, hv2) : birch(P, wx, c.h, wz, hv2);
-      else hv2 < 0.5 ? birch(P, wx, c.h, wz, hv2) : maple(P, wx, c.h, wz, hv2);
+      if (c.biome === BIOME.BOREALE || c.biome === BIOME.COLLINES) spruce(P, fx, fy, fz, hv2, c.h > SEA + 33);
+      else if (c.biome === BIOME.ERABLIERE) hv2 < 0.82 ? maple(P, fx, fy, fz, hv2) : birch(P, fx, fy, fz, hv2);
+      else hv2 < 0.5 ? birch(P, fx, fy, fz, hv2) : maple(P, fx, fy, fz, hv2);
     }
     // structures
     const seen = new Set();
-    for (const [dx, dz] of [[0, 0], [CS, 0], [0, CS], [CS, CS], [CS / 2, CS / 2]]) for (const s of structsNear(ox + dx, oz + dz)) {
+    for (const [dx, dz] of [[0, 0], [CSM, 0], [0, CSM], [CSM, CSM], [CSM / 2, CSM / 2]]) for (const s of structsNear(oxm + dx, ozm + dz)) {
       if (seen.has(s)) continue; seen.add(s);
-      const rad = s.R + 4; if (s.x + rad < ox || s.x - rad > ox + CS || s.z + rad < oz || s.z - rad > oz + CS) continue;
+      const rad = s.R + 4; if (s.x + rad < oxm || s.x - rad > oxm + CSM || s.z + rad < ozm || s.z - rad > ozm + CSM) continue;
       BUILD[s.type](P, s);
+    }
+    // végétation au sol (herbes, fleurs, bleuets) sur le dessus resté libre
+    for (let z = 0; z < CS; z++) for (let x = 0; x < CS; x++) {
+      const k = (x + FM) + (z + FM) * FW, c = cf[k], h = hf[k];
+      if (h + 1 >= WH || c.w > 0.3) continue;
+      const tb = data[idx(x, h, z)]; if ((tb !== B.GRASS && tb !== B.SNOWGRASS && tb !== B.MOSS) || data[idx(x, h + 1, z)] !== 0) continue;
+      const wx = ox + x, wz = oz + z, r = hash2(wx, wz, seed + 77), r2 = hash2(wz, wx, seed + 78);
+      const pf = N.n2(wx * 0.03 + 11, wz * 0.03) * 0.5 + 0.5;
+      let sp = 0;
+      if (c.biome === BIOME.CAMPAGNE || c.biome === BIOME.VILLE) { if (r < 0.02 * pf) sp = [B.FLOWR, B.FLOWY, B.FLOWV][r2 * 3 | 0]; else if (r < 0.12) sp = B.TUFT; }
+      else if (c.biome === BIOME.ERABLIERE) { if (r < 0.008) sp = r2 < 0.5 ? B.FLOWY : B.FLOWR; else if (r < 0.08) sp = B.TUFT; }
+      else if (c.biome === BIOME.BOREALE) { if (r < 0.014) sp = B.BERRY; else if (r < 0.07) sp = B.TUFT; }
+      else if (c.biome === BIOME.COLLINES) { if (r < 0.03 && tb !== B.SNOWGRASS) sp = B.TUFT; }
+      else if (c.biome === BIOME.RIVE) { if (r < 0.15) sp = B.TUFT; }
+      if (sp) data[idx(x, h + 1, z)] = sp;
     }
     return data;
   }
   return { genChunk, column, heightAt, rawH, riverZ, riverW, structsNear, cell, allStructs, VX, VZ, VH, VR, layout };
 }
 
-// ---------- arbres ----------
+// ---------- arbres (en voxels fins) ----------
 function spruce(P, x, h, z, r, snowy) {
-  const t = 6 + (r * 5 | 0);
-  P.fill(x, h + 1, z, x, h + t, z, B.SLOG);
-  for (let y = h + 3; y <= h + t + 1; y++) {
-    const rr = Math.min(3, Math.round((h + t + 1 - y) / 2.6 + ((y - h) % 2 ? 0 : 0.4)));
-    for (let a = -rr; a <= rr; a++) for (let b = -rr; b <= rr; b++) if (Math.abs(a) + Math.abs(b) <= rr + (rr > 1 ? 1 : 0) && (a || b || y > h + t)) P.set(x + a, y, z + b, snowy && (y - h) % 2 === 0 ? B.SNOWLEAF : B.SPRUCE, true);
+  const T = 14 + (r * 10 | 0), top = h + T + 2, y0 = h + 4, R0 = 4.2 + r * 1.6;
+  P.ffill(x, h + 1, z, x, h + T, z, B.SLOG);
+  for (let y = y0; y <= top; y++) {
+    const t = (y - y0) / (top - y0), ph = (top - y) % 3, R = (R0 * Math.pow(1 - t, 0.95) + 0.7) * [1, 0.78, 0.58][2 - ph];
+    const Ri = Math.ceil(R);
+    for (let a = -Ri; a <= Ri; a++) for (let b = -Ri; b <= Ri; b++) {
+      const d2 = a * a + b * b; if (d2 > R * R + 0.3 || (!a && !b && y <= h + T)) continue;
+      const hv = hash2(x + a * 7 + y * 131, z + b * 13, 911);
+      if (d2 > (R - 1) * (R - 1) && hv < 0.3) continue;
+      P.fset(x + a, y, z + b, snowy && ph === 2 && hv > 0.15 ? B.SNOWLEAF : B.SPRUCE, true);
+    }
   }
-  P.set(x, h + t + 2, z, snowy ? B.SNOWLEAF : B.SPRUCE, true);
+  P.fset(x, top + 1, z, snowy ? B.SNOWLEAF : B.SPRUCE, true);
+}
+function blob(P, cx, cy, cz, R, pick, sy = 1) {
+  const Ri = Math.ceil(R);
+  for (let a = -Ri; a <= Ri; a++) for (let b = -Ri; b <= Ri; b++) for (let c = -Ri; c <= Ri; c++) {
+    const d = Math.hypot(a, b / sy, c); if (d > R) continue;
+    const hv = hash2(cx + a * 7 + b * 131, cz + c * 13 + b, 777 + cy);
+    if (d > R - 1.2 && hv < 0.4) continue;
+    P.fset(cx + a, cy + b, cz + c, pick(hv, b), true);
+  }
 }
 function maple(P, x, h, z, r) {
-  const t = 4 + (r * 3 | 0), cy = h + t + 1, R = 2.4 + r * 0.9;
-  P.fill(x, h + 1, z, x, h + t, z, B.LOG);
-  for (let a = -3; a <= 3; a++) for (let b = -2; b <= 3; b++) for (let c = -3; c <= 3; c++) {
-    const d = Math.hypot(a, b * 1.15, c); if (d > R) continue;
-    const hv = hash2(x + a * 7 + b * 131, z + c * 13, 777);
-    if (d > R - 0.8 && hv < 0.25) continue;
-    P.set(x + a, cy + b, z + c, hv < 0.55 ? B.MAPLE : B.MAPLE2, true);
+  const T = 7 + (r * 5 | 0), cy = h + T + 4;
+  P.ffill(x, h + 1, z, x + 1, h + 3, z + 1, B.LOG); P.ffill(x, h + 1, z, x, h + T + 3, z, B.LOG);
+  const mix = r * 3 | 0; // teinte dominante : rouge, orangé, jaune
+  const pick = (hv) => { const k = (hv * 1000 % 1); return k < 0.12 ? B.MAPLE3 : mix === 0 ? (k < 0.7 ? B.MAPLE : B.MAPLE2) : mix === 1 ? (k < 0.6 ? B.MAPLE2 : B.MAPLE) : (k < 0.55 ? B.MAPLE3 : B.MAPLE2); };
+  const n = 4 + (r * 3 | 0);
+  blob(P, x, cy, z, 3.8 + r * 1.2, pick, 0.85);
+  for (let k = 0; k < n; k++) {
+    const a = k / n * 6.283 + r * 9, d = 2.6 + hash2(x + k, z, 5) * 2.2, bx = Math.round(x + Math.cos(a) * d), bz = Math.round(z + Math.sin(a) * d), by = cy - 1 + Math.round(hash2(z, x + k, 6) * 3);
+    // branche
+    for (let t = 0.3; t <= 0.85; t += 0.15) P.fset(Math.round(x + (bx - x) * t), Math.round(h + T + (by - h - T) * t), Math.round(z + (bz - z) * t), B.LOG, true);
+    blob(P, bx, by, bz, 2.4 + hash2(bx, bz, 7) * 1.3, pick, 0.8);
   }
 }
 function birch(P, x, h, z, r) {
-  const t = 5 + (r * 3 | 0), cy = h + t;
-  P.fill(x, h + 1, z, x, h + t, z, B.BIRCHLOG);
-  for (let a = -2; a <= 2; a++) for (let b = -1; b <= 2; b++) for (let c = -2; c <= 2; c++) if (Math.hypot(a, b * 1.3, c) <= 2.2) P.set(x + a, cy + b, z + c, B.BIRCH, true);
+  const T = 10 + (r * 6 | 0), cy = h + T + 2;
+  for (let y = h + 1; y <= h + T; y++) P.fset(x, y, z, hash2(x, z + y * 17, 41) < 0.2 ? B.BIRCHMARK : B.BIRCHLOG);
+  const pick = (hv) => (hv * 977 % 1) < 0.15 ? B.MAPLE3 : B.BIRCH;
+  blob(P, x, cy, z, 2.6 + r, pick, 1.5);
+  blob(P, x + (r < 0.5 ? 2 : -2), cy - 2, z + 1, 2.0, pick, 1.2);
+  blob(P, x - 1, cy + 3, z - (r < 0.5 ? 1 : -1), 1.8, pick, 1.3);
+}
+function rock(P, x, h, z, r) {
+  const R = 1.2 + r * 1.8, Ri = Math.ceil(R);
+  for (let a = -Ri; a <= Ri; a++) for (let b = -1; b <= Ri; b++) for (let c = -Ri; c <= Ri; c++) {
+    const d = Math.hypot(a, b * 1.4, c); if (d > R) continue;
+    P.fset(x + a, h + b, z + c, b >= R * 0.55 - 0.5 && hash2(x + a, z + c, 3) < 0.6 ? B.MOSS : B.STONE);
+  }
 }
 
-// ---------- bâtiments ----------
+// ---------- bâtiments (gabarit au mètre, finitions au voxel fin) ----------
+// fenêtre vue de l'extérieur : appui, linteau, volets colorés en saillie d'un voxel fin
+function windowF(P, x, y, z, side, shutter) {
+  const fy = 2 * y;
+  if (side === 'n' || side === 's') {
+    const oz = side === 'n' ? 2 * z - 1 : 2 * z + 2, fx = 2 * x;
+    P.ffill(fx - 1, fy - 1, oz, fx + 2, fy - 1, oz, B.TRIM); P.ffill(fx - 1, fy + 2, oz, fx + 2, fy + 2, oz, B.TRIM);
+    if (shutter) { P.ffill(fx - 1, fy, oz, fx - 1, fy + 1, oz, shutter); P.ffill(fx + 2, fy, oz, fx + 2, fy + 1, oz, shutter); }
+  } else {
+    const ox = side === 'w' ? 2 * x - 1 : 2 * x + 2, fz = 2 * z;
+    P.ffill(ox, fy - 1, fz - 1, ox, fy - 1, fz + 2, B.TRIM); P.ffill(ox, fy + 2, fz - 1, ox, fy + 2, fz + 2, B.TRIM);
+    if (shutter) { P.ffill(ox, fy, fz - 1, ox, fy + 1, fz - 1, shutter); P.ffill(ox, fy, fz + 2, ox, fy + 1, fz + 2, shutter); }
+  }
+}
+// lanterne murale fine : petit voxel lumineux sous un chapeau de fer
+function lanternF(P, fx, fy, fz) { P.fset(fx, fy, fz, B.LAMP); P.fset(fx, fy + 1, fz, B.IRON); P.fset(fx, fy - 1, fz, B.IRON); }
 function house(P, x0, z0, w, d, h, wall, roof, door, H = 4, chimney = false, ridgeX = null) {
   const x1 = x0 + w - 1, z1 = z0 + d - 1;
+  const shut = [B.BLUE, B.REDROOF, B.COPPER, B.DPLANK, 0][((x0 * 7 + z0 * 13) % 5 + 5) % 5];
   P.fill(x0, h, z0, x1, h, z1, B.DPLANK);
   P.fill(x0, h + 1, z0, x1, h + H, z1, wall);
+  if (wall === B.WHITE) for (let y = 2 * (h + 1) + 1; y <= 2 * (h + H) + 1; y += 2) P.ffill(2 * x0, y, 2 * z0, 2 * x1 + 1, y, 2 * z1 + 1, B.TRIM);
   P.fill(x0 + 1, h + 1, z0 + 1, x1 - 1, h + H + 8, z1 - 1, B.AIR);
   for (const [cx, cz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) P.fill(cx, h + 1, cz, cx, h + H, cz, B.DPLANK);
+  // soubassement de pierre (un voxel fin)
+  P.ffill(2 * x0, 2 * h + 2, 2 * z0, 2 * x1 + 1, 2 * h + 2, 2 * z1 + 1, B.COBBLE); P.fill(x0 + 1, h + 1, z0 + 1, x1 - 1, h + 1, z1 - 1, B.AIR);
   // fenêtres
-  for (let x = x0 + 2; x < x1 - 0; x += 3) { P.set(x, h + 2, z0, B.GLASS); P.set(x, h + 2, z1, B.GLASS); }
-  for (let z = z0 + 2; z < z1 - 0; z += 3) { P.set(x0, h + 2, z, B.GLASS); P.set(x1, h + 2, z, B.GLASS); }
-  // porte (2 de haut)
+  for (let x = x0 + 2; x < x1 - 0; x += 3) { P.set(x, h + 2, z0, B.GLASS); P.set(x, h + 2, z1, B.GLASS); windowF(P, x, h + 2, z0, 'n', shut); windowF(P, x, h + 2, z1, 's', shut); }
+  for (let z = z0 + 2; z < z1 - 0; z += 3) { P.set(x0, h + 2, z, B.GLASS); P.set(x1, h + 2, z, B.GLASS); windowF(P, x0, h + 2, z, 'w', shut); windowF(P, x1, h + 2, z, 'e', shut); }
+  // porte (2 de haut) avec cadre
   const mx = (x0 + x1) >> 1, mz = (z0 + z1) >> 1;
   const dp = { n: [mx, z0], s: [mx, z1], w: [x0, mz], e: [x1, mz] }[door];
   P.fill(dp[0], h + 1, dp[1], dp[0], h + 2, dp[1], B.AIR);
-  const lamp = { n: [mx + 1, z0 - 1], s: [mx + 1, z1 + 1], w: [x0 - 1, mz + 1], e: [x1 + 1, mz + 1] }[door];
-  P.set(lamp[0], h + 3, lamp[1], B.LAMP);
-  // toit à deux versants, pente raide (style québécois)
+  const fy0 = 2 * h + 2, fy1 = 2 * h + 6;
+  if (door === 'n' || door === 's') { const oz = door === 'n' ? 2 * dp[1] - 1 : 2 * dp[1] + 2, fx = 2 * dp[0];
+    P.ffill(fx - 1, fy0, oz, fx - 1, fy1, oz, B.TRIM); P.ffill(fx + 2, fy0, oz, fx + 2, fy1, oz, B.TRIM); P.ffill(fx - 1, fy1, oz, fx + 2, fy1, oz, B.TRIM);
+    lanternF(P, fx + 3, fy1 - 1, oz); P.ffill(fx - 1, 2 * h + 1, oz, fx + 2, 2 * h + 1, oz + (door === 'n' ? -1 : 1), B.COBBLE); }
+  else { const ox = door === 'w' ? 2 * dp[0] - 1 : 2 * dp[0] + 2, fz = 2 * dp[1];
+    P.ffill(ox, fy0, fz - 1, ox, fy1, fz - 1, B.TRIM); P.ffill(ox, fy0, fz + 2, ox, fy1, fz + 2, B.TRIM); P.ffill(ox, fy1, fz - 1, ox, fy1, fz + 2, B.TRIM);
+    lanternF(P, ox, fy1 - 1, fz + 3); P.ffill(ox, 2 * h + 1, fz - 1, ox + (door === 'w' ? -1 : 1), 2 * h + 1, fz + 2, B.COBBLE); }
+  // toit à deux versants au voxel fin, avant-toit retroussé (style québécois)
   const alongX = ridgeX ?? (w >= d);
-  const span = alongX ? d : w;
-  for (let k = 0; k <= (span >> 1) + 1; k++) {
-    const y = h + H + 1 + k;
-    if (alongX) { const a = z0 - 1 + k, b = z1 + 1 - k; if (a > b) break; P.fill(x0 - 1, y, a, x1 + 1, y, b, roof); if (b - a >= 2) P.fill(x0, y, a + 1, x1, y, b - 1, k === 0 ? B.AIR : roof); }
-    else { const a = x0 - 1 + k, b = x1 + 1 - k; if (a > b) break; P.fill(a, y, z0 - 1, b, y, z1 + 1, roof); if (b - a >= 2) P.fill(a + 1, y, z0, b - 1, y, z1, k === 0 ? B.AIR : roof); }
+  const U0 = alongX ? 2 * x0 - 1 : 2 * z0 - 1, U1 = alongX ? 2 * x1 + 2 : 2 * z1 + 2; // long du faîte
+  const V0 = alongX ? 2 * z0 - 2 : 2 * x0 - 2, V1 = alongX ? 2 * z1 + 3 : 2 * x1 + 3;   // en travers
+  const put = (u0, y, v0, u1, v1, b) => alongX ? P.ffill(u0, y, v0, u1, y, v1, b) : P.ffill(v0, y, u0, v1, y, u1, b);
+  const yb = 2 * (h + H + 1), off = k => k < 2 ? k * 2 : k + 2;
+  let kTop = 0;
+  for (let k = 0; ; k++) {
+    const a = V0 + off(k), b = V1 - off(k); if (a > b) { kTop = k - 1; break; }
+    put(U0, yb + k, a, U1, b, roof);
+    if (k === 0 && b - a >= 4) put(U0 + 1, yb, a + 2, U1 - 1, b - 2, B.AIR);
+    // pignons (murs triangulaires)
+    const ga = a + 2, gb = b - 2;
+    if (ga <= gb) { if (alongX) { P.ffill(2 * x0, yb + k, ga, 2 * x0 + 1, yb + k, gb, wall); P.ffill(2 * x1, yb + k, ga, 2 * x1 + 1, yb + k, gb, wall); }
+      else { P.ffill(ga, yb + k, 2 * z0, gb, yb + k, 2 * z0 + 1, wall); P.ffill(ga, yb + k, 2 * z1, gb, yb + k, 2 * z1 + 1, wall); } }
   }
-  // pignons
-  if (alongX) for (let k = 0; k <= span >> 1; k++) { const y = h + H + 1 + k, a = z0 + k, b = z1 - k; if (a > b) break; P.fill(x0, y, a, x0, y, b, wall); P.fill(x1, y, a, x1, y, b, wall); }
-  else for (let k = 0; k <= span >> 1; k++) { const y = h + H + 1 + k, a = x0 + k, b = x1 - k; if (a > b) break; P.fill(a, y, z0, b, y, z0, wall); P.fill(a, y, z1, b, y, z1, wall); }
-  if (chimney) P.fill(x1 - 1, h + H, z0 + 1, x1 - 1, h + H + (span >> 1) + 3, z0 + 1, B.BRICK);
+  // faîtière
+  { const mid = (V0 + V1) >> 1; put(U0, yb + kTop + 1, mid, U1, mid + ((V1 - V0) & 1), B.TRIM === roof ? B.WHITE : roof); }
+  // lucarne de pignon
+  if (H >= 4) { const gy = yb + 2, c = alongX ? (2 * z0 + 2 * z1 + 1) >> 1 : (2 * x0 + 2 * x1 + 1) >> 1;
+    if (alongX) { P.ffill(2 * x0, gy, c, 2 * x0, gy + 1, c + 1, B.GLASS); P.ffill(2 * x1 + 1, gy, c, 2 * x1 + 1, gy + 1, c + 1, B.GLASS); }
+    else { P.ffill(c, gy, 2 * z0, c + 1, gy + 1, 2 * z0, B.GLASS); P.ffill(c, gy, 2 * z1 + 1, c + 1, gy + 1, 2 * z1 + 1, B.GLASS); } }
+  if (chimney) { const fx = 2 * (x1 - 1), fz = 2 * (z0 + 1), ytop = yb + kTop + 4;
+    P.ffill(fx, 2 * (h + H), fz, fx + 1, ytop, fz + 1, B.BRICK); P.ffill(fx, ytop + 1, fz, fx + 1, ytop + 1, fz + 1, B.COBBLE); }
 }
 function church(P, cx, cz, h) {
   const w = 7, d = 12, x0 = cx - 3, z0 = cz - 6;
@@ -198,14 +292,23 @@ function church(P, cx, cz, h) {
   // clocher à l'avant (sud)
   const tz = z0 + d - 1;
   P.fill(cx - 1, h + 1, tz - 1, cx + 1, h + 12, tz + 1, B.WHITE);
+  for (let y = 2 * (h + 1) + 1; y <= 2 * (h + 12) + 1; y += 2) P.ffill(2 * cx - 2, y, 2 * tz - 2, 2 * cx + 3, y, 2 * tz + 3, B.TRIM);
   P.fill(cx, h + 1, tz + 1, cx, h + 3, tz + 1, B.AIR);
   P.fill(cx, h + 9, tz - 1, cx, h + 10, tz + 1, B.AIR); P.fill(cx - 1, h + 9, tz, cx + 1, h + 10, tz, B.AIR);
+  // horloge
+  { const fz = 2 * tz + 4, fx = 2 * cx, fy = 2 * (h + 7); P.ffill(fx - 1, fy - 1, fz, fx + 2, fy + 2, fz, B.TRIM); P.ffill(fx, fy, fz, fx, fy + 1, fz, B.IRON); P.fset(fx + 1, fy, fz, B.IRON); }
   P.fill(cx - 2, h + 13, tz - 2, cx + 2, h + 13, tz + 2, B.TIN);
-  P.fill(cx - 1, h + 14, tz - 1, cx + 1, h + 16, tz + 1, B.TIN);
-  P.fill(cx, h + 17, tz, cx, h + 22, tz, B.TIN);
-  P.fill(cx, h + 23, tz, cx, h + 25, tz, B.GOLD); P.fill(cx - 1, h + 24, tz, cx + 1, h + 24, tz, B.GOLD);
+  P.fill(cx - 1, h + 14, tz - 1, cx + 1, h + 15, tz + 1, B.TIN);
+  // flèche fine et effilée
+  const fx = 2 * cx, fz = 2 * tz;
+  for (let k = 0; k < 14; k++) { const r = k < 4 ? 1 : 0, y = 2 * (h + 16) + k; P.ffill(fx - r, y, fz - r, fx + 1 + r, y, fz + 1 + r, B.TIN); }
+  P.ffill(fx, 2 * (h + 16) + 14, fz, fx, 2 * (h + 16) + 21, fz, B.GOLD); P.ffill(fx - 2, 2 * (h + 16) + 18, fz, fx + 2, 2 * (h + 16) + 18, fz, B.GOLD);
 }
-function lampPost(P, x, z, h) { P.fill(x, h + 1, z, x, h + 3, z, B.DPLANK); P.set(x, h + 4, z, B.LAMP); }
+function lampPost(P, x, z, h) {
+  const fx = 2 * x, fz = 2 * z, y0 = 2 * h + 2;
+  P.ffill(fx, y0, fz, fx, y0 + 5, fz, B.IRON);
+  P.fset(fx, y0 + 6, fz, B.LAMP); P.fset(fx, y0 + 7, fz, B.IRON);
+}
 
 export function layout(s) {
   // Métadonnées d'une structure : PNJ, points d'apparition, objets à ramasser, entrées.
@@ -299,6 +402,9 @@ const BUILD = {
     for (const [a, b, c, d] of [[x0, z0, x1, z0 + 1], [x0, z1 - 1, x1, z1], [x0, z0, x0 + 1, z1], [x1 - 1, z0, x1, z1]]) P.fill(a, h - 2, b, c, WT, d, B.COBBLE);
     for (let k = x0; k <= x1; k += 2) { P.set(k, WT + 1, z0, B.COBBLE); P.set(k, WT + 1, z1, B.COBBLE); }
     for (let k = z0; k <= z1; k += 2) { P.set(x0, WT + 1, k, B.COBBLE); P.set(x1, WT + 1, k, B.COBBLE); }
+    // corniche en saillie sous le chemin de ronde (voxel fin, côté extérieur)
+    P.ffill(2 * x0, 2 * WT, 2 * z0 - 1, 2 * x1 + 1, 2 * WT, 2 * z0 - 1, B.STONE); P.ffill(2 * x0, 2 * WT, 2 * z1 + 2, 2 * x1 + 1, 2 * WT, 2 * z1 + 2, B.STONE);
+    P.ffill(2 * x0 - 1, 2 * WT, 2 * z0, 2 * x0 - 1, 2 * WT, 2 * z1 + 1, B.STONE); P.ffill(2 * x1 + 2, 2 * WT, 2 * z0, 2 * x1 + 2, 2 * WT, 2 * z1 + 1, B.STONE);
     // chemin de ronde accessible : escaliers intérieurs
     
     // bastions d'angle
@@ -315,7 +421,8 @@ const BUILD = {
     for (let y = h + 3; y < h + CH; y += 3) for (let x = cx0 + 2; x < cx0 + cw - 2; x += 2) { P.set(x, y, cz0, B.GLASS); P.set(x, y, cz0 + cd - 1, B.GLASS); }
     for (let y = h + 3; y < h + CH; y += 3) for (let z = cz0 + 2; z < cz0 + cd - 2; z += 2) { P.set(cx0, y, z, B.GLASS); P.set(cx0 + cw - 1, y, z, B.GLASS); }
     P.fill(mx - 1, h + 1, cz0 + cd - 1, mx + 1, h + 3, cz0 + cd - 1, B.AIR); P.fill(mx - 1, h, cz0 + cd, mx + 1, h, s.z - 12, B.COBBLE);
-    for (let k = 0; k < 8; k++) { const y = h + CH + 1 + k, a = cz0 - 1 + k, b = cz0 + cd - k; if (a > b) break; P.fill(cx0 - 1, y, a, cx0 + cw, y, b, B.COPPER); }
+    for (let k = 0; k < 16; k++) { const y = 2 * (h + CH + 1) + k, a = 2 * (cz0 - 1) + k, b = 2 * (cz0 + cd) + 1 - k; if (a > b) break; P.ffill(2 * (cx0 - 1), y, a, 2 * (cx0 + cw) + 1, y, b, B.COPPER); }
+    P.ffill(2 * cx0 - 1, 2 * (h + CH) + 1, 2 * cz0 - 1, 2 * (cx0 + cw) , 2 * (h + CH) + 1, 2 * (cz0 + cd), B.COBBLE, true);
     // lucarnes
     for (let x = cx0 + 3; x < cx0 + cw - 3; x += 4) { P.set(x, h + CH + 2, cz0 + cd, B.GLASS); P.set(x, h + CH + 2, cz0 - 1, B.GLASS); }
     for (const [tx, tz] of [[cx0 - 1, cz0 - 1], [cx0 + cw - 2, cz0 - 1], [cx0 - 1, cz0 + cd - 2], [cx0 + cw - 2, cz0 + cd - 2]]) {

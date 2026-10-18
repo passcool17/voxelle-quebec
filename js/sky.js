@@ -10,8 +10,11 @@ export class Sky {
     const sm = new THREE.ShaderMaterial({ uniforms: this.u, side: THREE.BackSide, depthWrite: false, fog: false,
       vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
       fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sun; uniform float dayF; varying vec3 vP;
-        void main(){ float h = clamp(vP.y,-0.2,1.); vec3 c = mix(hor, top, pow(max(h,0.),0.55)); if(h<0.) c = mix(hor, hor*0.7, -h*5.);
-          float s = max(dot(vP, normalize(sun)),0.); c += vec3(1.,.85,.6)*pow(s,400.)*2.0*step(-0.05,sun.y); c += vec3(1.,.6,.3)*pow(s,8.)*0.25*(1.-abs(sun.y))*dayF;
+        void main(){ float h = clamp(vP.y,-0.2,1.); vec3 c = mix(hor, top, pow(max(h,0.),0.5)); if(h<0.) c = mix(hor, hor*0.7, -h*5.);
+          c = mix(c, hor * 1.06 + vec3(0.02), exp(-max(h, 0.) * 14.) * 0.45 * dayF);
+          float s = max(dot(vP, normalize(sun)),0.); float up = step(-0.05,sun.y);
+          c += vec3(1.,.9,.7)*smoothstep(0.9992,0.9996,s)*2.5*up + vec3(1.,.85,.6)*pow(s,600.)*1.6*up + vec3(1.,.78,.5)*pow(s,40.)*0.25*dayF;
+          c += vec3(1.,.55,.28)*pow(s,6.)*0.32*(1.-abs(sun.y))*dayF*exp(-max(h,0.)*3.);
           vec3 m = -normalize(sun); float ms = max(dot(vP,m),0.); c += vec3(.9,.95,1.)*smoothstep(0.9993,0.9996,ms)*(1.-dayF);
           gl_FragColor = vec4(c,1.); }` });
     this.dome = new THREE.Mesh(new THREE.SphereGeometry(480, 24, 16), sm); this.dome.renderOrder = -10; this.dome.frustumCulled = false; scene.add(this.dome);
@@ -37,9 +40,9 @@ export class Sky {
       g.computeBoundingSphere(); const m = new THREE.Mesh(g, am); m.frustumCulled = false; m.renderOrder = -8; this.aurora.add(m);
     }
     scene.add(this.aurora);
-    // nuages voxel
-    this.clouds = new THREE.Group(); const cm = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: true }), bg = new THREE.BoxGeometry(1, 1, 1);
-    for (let i = 0; i < (mobile ? 14 : 28); i++) { const c = new THREE.Mesh(bg, cm); c.scale.set(16 + Math.random() * 30, 4, 12 + Math.random() * 20); c.position.set((Math.random() - 0.5) * 500, 0, (Math.random() - 0.5) * 500); this.clouds.add(c); }
+    // nuages voxel : amas de cubes de 3 m (une géométrie par nuage), dessous ombré
+    this.clouds = new THREE.Group(); const cm = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, transparent: true, opacity: 0.85, fog: true });
+    for (let i = 0; i < (mobile ? 14 : 26); i++) { const c = new THREE.Mesh(cloudGeo(), cm); c.position.set((Math.random() - 0.5) * 500, Math.random() * 14, (Math.random() - 0.5) * 500); this.clouds.add(c); }
     this.cloudMat = cm; scene.add(this.clouds);
     // neige
     const N = mobile ? 700 : 1800, pos = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) pos[i] = (Math.random() - 0.5) * 50;
@@ -47,7 +50,7 @@ export class Sky {
     this.snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: mobile ? 0.16 : 0.12, transparent: true, opacity: 0, depthWrite: false });
     this.snowPts = new THREE.Points(ng, this.snowMat); this.snowPts.frustumCulled = false; scene.add(this.snowPts);
     // lumières
-    this.sun = new THREE.DirectionalLight(0xffffff, 2); this.hemi = new THREE.HemisphereLight(0xbfe0ff, 0x5a4a30, 1); scene.add(this.sun, this.hemi, this.sun.target);
+    this.sun = new THREE.DirectionalLight(0xffffff, 2); this.shadowR = 38; this.hemi = new THREE.HemisphereLight(0xbfe0ff, 0x5a4a30, 1); scene.add(this.sun, this.hemi, this.sun.target);
     this.fog = new THREE.Fog(0xc4e2ff, 60, 120); scene.fog = this.fog;
     this.top = C(0); this.hor = C(0);
   }
@@ -60,14 +63,16 @@ export class Sky {
     this.top.copy(NIGHT_TOP).lerp(DAY_TOP, dayF).lerp(SET_TOP, setF * 0.5); this.hor.copy(NIGHT_HOR).lerp(DAY_HOR, dayF).lerp(SET_HOR, setF * 0.7);
     const sn = this.snow * 0.75; this.top.lerp(SNOW_TOP.clone().multiplyScalar(0.25 + dayF * 0.75), sn); this.hor.lerp(SNOW_HOR.clone().multiplyScalar(0.2 + dayF * 0.8), sn);
     this.u.top.value.copy(this.top); this.u.hor.value.copy(this.hor);
-    this.fog.color.copy(this.hor); this.fog.far = viewDist * (1 - this.snow * 0.45); this.fog.near = this.fog.far * (0.6 - this.snow * 0.35);
+    this.fog.color.copy(this.hor); this.fog.far = viewDist * (1 - this.snow * 0.45); this.fog.near = this.fog.far * (0.38 - this.snow * 0.25);
     this.dome.position.copy(camPos); this.stars.position.copy(camPos); this.aurora.position.set(camPos.x, camPos.y * 0.3, camPos.z);
     this.starMat.opacity = (1 - dayF) * (1 - this.snow * 0.9) * 0.9; this.stars.rotation.y = now * 0.002;
     this.au.t.value = now; this.au.a.value = (1 - smooth(-0.25, 0.05, el)) * (1 - this.snow * 0.85) * 0.8; this.aurora.visible = this.au.a.value > 0.01;
     // lumière
     const moonUp = Math.max(0, -el);
     this.sun.position.set(camPos.x + sd.x * 100 * (el > 0 ? 1 : -1), camPos.y + Math.abs(sd.y) * 100 + 20, camPos.z + sd.z * 100);
-    this.sun.target.position.copy(camPos);
+    if (this.sun.castShadow) { const g = this.shadowR * 2 / this.sun.shadow.mapSize.x * 4; const tx = Math.round(camPos.x / g) * g, ty = Math.round(camPos.y / g) * g, tz = Math.round(camPos.z / g) * g;
+      this.sun.position.set(tx + sd.x * 100 * (el > 0 ? 1 : -1), ty + Math.abs(sd.y) * 100 + 20, tz + sd.z * 100); this.sun.target.position.set(tx, ty, tz); }
+    else this.sun.target.position.copy(camPos);
     this.sun.color.set(0xffffff).lerp(C(0xffb070), setF).lerp(C(0x8fa8ff), 1 - dayF);
     this.sun.intensity = (2.2 * dayF + 0.8 * moonUp * (1 - dayF)) * (1 - this.snow * 0.4);
     this.hemi.intensity = 0.8 + 0.65 * dayF; this.hemi.color.copy(this.hor).lerp(C(0xffffff), 0.3); this.hemi.groundColor.set(0x4a3a28).multiplyScalar(0.4 + dayF * 0.6);
@@ -81,5 +86,24 @@ export class Sky {
       for (let i = 0; i < A.length; i += 3) { const wx = A[i] + this.snowPts.position.x - camPos.x; if (wx > 25) A[i] -= 50; else if (wx < -25) A[i] += 50; const wz = A[i + 2] + this.snowPts.position.z - camPos.z; if (wz > 25) A[i + 2] -= 50; else if (wz < -25) A[i + 2] += 50; } }
     return { dayF, el };
   }
+  setShadows(on, size) {
+    const s = this.sun; s.castShadow = on; if (!on) return;
+    if (s.shadow.map && s.shadow.mapSize.x !== size) { s.shadow.map.dispose(); s.shadow.map = null; }
+    s.shadow.mapSize.set(size, size); const c = s.shadow.camera, R = this.shadowR; c.left = -R; c.right = R; c.top = R; c.bottom = -R; c.near = 1; c.far = 320; c.updateProjectionMatrix();
+    s.shadow.bias = -0.0006; s.shadow.normalBias = 0.04;
+  }
   clock() { const m = Math.floor(((this.t * 24) % 24) * 60); return String(Math.floor(m / 60)).padStart(2, '0') + ' h ' + String(m % 60).padStart(2, '0'); }
+}
+
+// géométrie d'un nuage : cubes de 3 m en amas, couleur plus sombre dessous
+function cloudGeo() {
+  const S = 3, cells = new Set(), n = 18 + Math.random() * 40 | 0, w = 3 + Math.random() * 5;
+  for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, r = Math.random() * w; const x = Math.round(Math.cos(a) * r * 1.4), z = Math.round(Math.sin(a) * r), y = Math.random() < 0.3 && r < w * 0.6 ? 1 : 0; cells.add(x + ',' + y + ',' + z); if (y) cells.add(x + ',0,' + z); }
+  const pos = [], nor = [], col = [], idx = [];
+  const F = [[[1, 0, 0], [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]]], [[-1, 0, 0], [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]]], [[0, 1, 0], [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]]], [[0, -1, 0], [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]]], [[0, 0, 1], [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]]], [[0, 0, -1], [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]]]];
+  for (const k of cells) { const [x, y, z] = k.split(',').map(Number);
+    for (const [n, cs] of F) { if (cells.has((x + n[0]) + ',' + (y + n[1]) + ',' + (z + n[2]))) continue; const v0 = pos.length / 3;
+      for (const c of cs) { pos.push((x + c[0]) * S * 1.6, (y + c[1]) * S * 0.9, (z + c[2]) * S * 1.6); nor.push(...n); const m = n[1] < 0 ? 0.72 : n[1] > 0 ? 1 : 0.88 - (1 - c[1]) * 0.08; col.push(m, m, m * 1.02); }
+      idx.push(v0, v0 + 1, v0 + 2, v0, v0 + 2, v0 + 3); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeBoundingSphere(); return g;
 }
