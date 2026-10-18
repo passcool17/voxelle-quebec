@@ -7,7 +7,7 @@ export const B = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, WATER: 5, SNOW:
   BEDROCK: 28, FIELD: 29, PATH: 30, SNOWGRASS: 31, STRIPE: 32, BLUE: 33, SLOG: 34, GOLD: 35, YELLOW: 36, SNOWLEAF: 37,
   TUFT: 38, FLOWR: 39, FLOWY: 40, FLOWV: 41, BERRY: 42, MOSS: 43, PEBBLE: 44, MAPLE3: 45, BIRCHMARK: 46, TRIM: 47, SHINGLE: 48, IRON: 49 };
 const D = [
-  ['Air'], ['Gazon', 0x5fa83a, 0x6f6a34, 0x7a5434], ['Terre', 0x7a5434], ['Pierre', 0x8a8a8e], ['Sable', 0xdccb8c], ['Eau', 0x2f6fb3], ['Neige', 0xf2f6fb], ['Glace', 0xa9d8f2],
+  ['Air'], ['Gazon', 0x55a033, 0x6f6a34, 0x7a5434], ['Terre', 0x7a5434], ['Pierre', 0x8a8a8e], ['Sable', 0xdccb8c], ['Eau', 0x2f6fb3], ['Neige', 0xf2f6fb], ['Glace', 0xa9d8f2],
   ['Bûche', 0x9b7a4d, 0x6b4a2b, 0x9b7a4d], ['Sapinage', 0x2c5a34], ['Feuilles d’érable', 0xc8361e], ['Feuilles d’érable', 0xe7862a], ['Bouleau', 0xd8d2c0, 0xe8e4d8, 0xd8d2c0], ['Feuilles de bouleau', 0x8fbf4a],
   ['Planches', 0xb98b52], ['Pavé', 0x9a958a], ['Cuivre vert', 0x4fa58c], ['Brique', 0xa8553e], ['Clin blanc', 0xeeeae0], ['Fenêtre', 0xffe7a0], ['Asphalte', 0x3d3f44], ['Gravier', 0x8f877c],
   ['Planches foncées', 0x6e4b2e], ['Tôle rouge', 0xb8322a], ['Tôle', 0xc9ced6], ['Ballot de foin', 0xd9b44a], ['Cône', 0xff7a1a, 0xff7a1a, 0xff7a1a], ['Lanterne', 0xffd86b],
@@ -25,11 +25,12 @@ for (const b of [B.SPRUCE, B.MAPLE, B.MAPLE2, B.MAPLE3, B.BIRCH, B.SNOWLEAF]) { 
 // Végétation décorative (petits modèles dans le maillage, ni pleins ni opaques)
 export const SPRITE = new Uint8Array(64);
 for (const b of [B.TUFT, B.FLOWR, B.FLOWY, B.FLOWV, B.BERRY]) { SPRITE[b] = 1; OPAQUE[b] = 0; SOLID[b] = 0; }
-// Grain de texture par voxel (0 = uni, 255 = fort) : utilisé par le nuanceur du terrain
-export const TEX = new Uint8Array(64).fill(90);
-for (const [b, v] of [[B.GLASS, 0], [B.LAMP, 0], [B.WATER, 0], [B.GRASS, 150], [B.SNOWGRASS, 120], [B.FIELD, 150], [B.DIRT, 130], [B.STONE, 150], [B.COBBLE, 170], [B.GRAVEL, 200], [B.SAND, 110], [B.SNOW, 45], [B.ICE, 40],
-  [B.SPRUCE, 190], [B.SNOWLEAF, 150], [B.MAPLE, 200], [B.MAPLE2, 200], [B.MAPLE3, 200], [B.BIRCH, 190], [B.PLANK, 120], [B.DPLANK, 120], [B.LOG, 140], [B.SLOG, 140], [B.BIRCHLOG, 70], [B.BRICK, 150],
-  [B.WHITE, 45], [B.TRIM, 25], [B.ROAD, 120], [B.PATH, 150], [B.MOSS, 170], [B.PEBBLE, 200], [B.CONE, 30], [B.STRIPE, 30], [B.GOLD, 60], [B.COPPER, 120], [B.TIN, 60], [B.REDROOF, 80], [B.SHINGLE, 130], [B.HAY, 170]]) TEX[b] = v;
+// Grain de texture par voxel : bits 0-6 = amplitude (0 = uni), bit 7 = biseau (arêtes marquées, matériaux bâtis)
+export const TEX = new Uint8Array(64).fill(45);
+for (const [b, v] of [[B.GLASS, 0], [B.LAMP, 0], [B.WATER, 0], [B.GRASS, 80], [B.SNOWGRASS, 64], [B.FIELD, 80], [B.DIRT, 70], [B.STONE, 76], [B.COBBLE, 85], [B.GRAVEL, 100], [B.SAND, 55], [B.SNOW, 22], [B.ICE, 20],
+  [B.SPRUCE, 95], [B.SNOWLEAF, 75], [B.MAPLE, 100], [B.MAPLE2, 100], [B.MAPLE3, 100], [B.BIRCH, 95], [B.PLANK, 60], [B.DPLANK, 60], [B.LOG, 70], [B.SLOG, 70], [B.BIRCHLOG, 35], [B.BRICK, 75],
+  [B.WHITE, 22], [B.TRIM, 12], [B.ROAD, 60], [B.PATH, 75], [B.MOSS, 85], [B.PEBBLE, 100], [B.CONE, 15], [B.STRIPE, 15], [B.GOLD, 30], [B.COPPER, 60], [B.TIN, 30], [B.REDROOF, 40], [B.SHINGLE, 65], [B.HAY, 85], [B.IRON, 20]]) TEX[b] = v;
+for (const b of [B.COBBLE, B.BRICK, B.PLANK, B.DPLANK, B.COPPER, B.TIN, B.REDROOF, B.SHINGLE, B.HAY, B.ROAD, B.STRIPE, B.CONE, B.WHITE, B.TRIM, B.IRON, B.GOLD, B.BLUE, B.YELLOW]) TEX[b] |= 128;
 // Blocs que l'on peut poser (dans la barre)
 export const PLACEABLE = [B.PLANK, B.COBBLE, B.BRICK, B.WHITE, B.GLASS, B.REDROOF, B.COPPER, B.LAMP, B.LOG, B.STONE, B.DIRT, B.SNOW, B.SAND, B.GRAVEL, B.TIN, B.DPLANK, B.HAY, B.BLUE, B.GOLD, B.CONE, B.ICE];
 // Ce qu'on récupère en cassant

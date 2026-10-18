@@ -14,15 +14,16 @@ export function terrainMaterial() {
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vTex; varying vec3 vVox; varying vec3 vNw;' + HASH)
       .replace('#include <color_fragment>', `#include <color_fragment>
       { vec3 inside = vVox - vNw * 0.5; vec3 cell = floor(inside);
-        float px = length(fwidth(vVox)); float near = 1.0 - smoothstep(0.25, 0.9, px);
-        float h1 = vqHash(cell), h2 = vqHash(floor(inside * 4.0) + 17.0), mac = vqNoise(cell.xz * 0.06) + 0.5 * vqNoise(cell.xz * 0.21 + 3.0);
-        float amp = vTex;
-        float v = (h1 - 0.5) * 0.17 * amp + (h2 - 0.5) * 0.08 * amp * near + (mac - 0.75) * 0.16 * amp;
-        vec3 f = fract(vVox); vec3 e3 = min(f, 1.0 - f) + abs(vNw) * 10.0; float e = min(e3.x, min(e3.y, e3.z));
-        float bev = mix(0.88, 1.0, smoothstep(0.0, 0.09, e));
-        diffuseColor.rgb *= (1.0 + v) * mix(1.0, bev, step(0.02, amp) * near);
-        // léger reflet chaud/froid selon la teinte du voxel
-        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.04, 1.0, 0.95), (h1 - 0.5) * amp); }`);
+        float tb = floor(vTex * 255.0 + 0.5), bevF = step(127.5, tb), amp = mod(tb, 128.0) / 127.0;
+        float px = length(fwidth(vVox)); float near = 1.0 - smoothstep(0.3, 1.0, px);
+        float h1 = vqHash(cell), mac = vqNoise(cell.xz * 0.045 + cell.y * 0.02);
+        float v = (h1 - 0.5) * 0.2 * amp + (mac - 0.5) * 0.34 * amp;
+        diffuseColor.rgb *= 1.0 + v;
+        // plaques plus sèches / plus fraîches (teinte)
+        diffuseColor.rgb *= mix(vec3(1.0), vec3(1.07, 1.03, 0.84), smoothstep(0.55, 0.95, mac) * amp);
+        if (bevF > 0.5) { vec3 f = fract(vVox); vec3 e3 = min(f, 1.0 - f) + abs(vNw) * 10.0; float e = min(e3.x, min(e3.y, e3.z));
+          diffuseColor.rgb *= mix(1.0, mix(0.86, 1.0, smoothstep(0.0, 0.1, e)), near); }
+      }`);
   };
   m.customProgramCacheKey = () => 'vq-terrain';
   return m;

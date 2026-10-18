@@ -1,5 +1,5 @@
 // Web Worker : génère les tronçons (voxels fins) et calcule leurs maillages hors du fil principal.
-// Niveau de détail : lod 0 = voxels fins + végétation, lod 1 = voxels de 2×2×2 (tronçons lointains, bords fermés).
+// Niveaux de détail : lod 0 = voxels fins + végétation, lod 1 = cellules de 2×2×2, lod 2 = 4×4×4 (lointains, bords fermés).
 import { createGen } from './worldgen.js';
 import { meshChunk, topInfo } from './mesher.js';
 import { CS, WH, B, OPAQUE, SPRITE, CSM } from './blocks.js';
@@ -28,18 +28,20 @@ function padFine(cx, cz) {
   }
   return pad;
 }
-// réduction 2×2×2 : on garde le bloc le plus haut de la cellule s'il y a assez de matière ; bords = air (jupes)
-function padCoarse(cx, cz) {
-  const S = CS >> 1, H = WH >> 1, P = S + 2, PP = P * P, pad = new Uint8Array(PP * H), d = chunk(cx, cz);
+// réduction f×f×f (f = 2 ou 4) : on garde le bloc le plus haut de la cellule s'il y a assez de matière ; bords = air (jupes)
+function padCoarse(cx, cz, f) {
+  const S = CS / f, H = WH / f, P = S + 2, PP = P * P, pad = new Uint8Array(PP * H), d = chunk(cx, cz), need = Math.ceil(f * f * f * 0.38);
   for (let z = 0; z < S; z++) for (let x = 0; x < S; x++) for (let y = 0; y < H; y++) {
     let n = 0, w = 0, top = 0;
-    for (let k = 7; k >= 0; k--) { const b = d[(2 * x + (k & 1)) + (2 * z + (k >> 1 & 1)) * CS + (2 * y + (k >> 2)) * CS2]; if (!b || SPRITE[b]) continue; if (b === B.WATER) { w++; continue; } n++; if (!top) top = b; }
-    pad[(x + 1) + (z + 1) * P + y * PP] = n >= 3 ? top : w + n >= 3 ? B.WATER : 0;
+    for (let yy = f - 1; yy >= 0; yy--) for (let zz = 0; zz < f; zz++) for (let xx = 0; xx < f; xx++) {
+      const b = d[(f * x + xx) + (f * z + zz) * CS + (f * y + yy) * CS2]; if (!b || SPRITE[b]) continue; if (b === B.WATER) { w++; continue; } n++; if (!top) top = b; }
+    pad[(x + 1) + (z + 1) * P + y * PP] = n >= need ? top : w + n >= need ? B.WATER : 0;
   }
   return pad;
 }
 function meshMsg(t, cx, cz, withData, lod) {
-  const m = lod ? meshChunk(padCoarse(cx, cz), CS >> 1, WH >> 1, 2, cx * (CS >> 1), cz * (CS >> 1), false)
+  const f = 1 << lod;
+  const m = lod ? meshChunk(padCoarse(cx, cz, f), CS / f, WH / f, f, cx * CS / f, cz * CS / f, false)
                 : meshChunk(padFine(cx, cz), CS, WH, 1, cx * CS, cz * CS, true);
   const d = chunk(cx, cz), ti = topInfo((x, y, z) => d[x + z * CS + y * CS2], CS, WH, 2);
   const msg = { t, cx, cz, lod, m, top: ti.top, hm: ti.hm }, tr = [];

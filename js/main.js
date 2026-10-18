@@ -742,7 +742,7 @@ function applyQuality() {
   }
   qualWorld();
 }
-function qualWorld() { if (!world) return; const q = G.qual || 'high'; world.setShadows(renderer.shadowMap.enabled); world.lod0 = q === 'high' ? 3 : q === 'mid' ? 2 : 1.5; }
+function qualWorld() { if (!world) return; const q = G.qual || 'high'; world.setShadows(renderer.shadowMap.enabled); world.lod0 = q === 'high' ? 2.6 : q === 'mid' ? 2 : 1.5; }
 // ---------- tactile ----------
 function setupTouch() {
   if (!isTouch) return; show('touch');
@@ -819,7 +819,7 @@ function resume() { hide('pause'); G.state = 'play'; if (!isTouch) { try { const
 let last = performance.now(), perfT = 0, perfAcc = 0, perfN = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  let dt = Math.min(0.05, (now - last) / 1000); last = now; G.frameAvg += ((now - G.lastNow || 16) - G.frameAvg) * 0.05; G.lastNow = now;
+  let dt = Math.min(0.1, (now - last) / 1000); last = now; G.frameAvg += ((now - G.lastNow || 16) - G.frameAvg) * 0.05; G.lastNow = now;
   G.t += dt; pollPad();
   if (window.__bot && G.state !== 'title') try { window.__bot(API, dt); } catch (e) { console.error('bot: ' + e.message); }
   handleKeys();

@@ -56,7 +56,7 @@ export class World {
       if (d > R + 2.5) { for (const m of c.meshes) { this.group.remove(m); m.geometry.dispose(); } this.chunks.delete(k); continue; }
       // changement de niveau de détail (avec hystérésis)
       if (c.want == null && remesh < 2) {
-        const want = d <= L + 0.5 ? 0 : d > L + 1.8 ? 1 : c.lod;
+        const want = this.lodFor(d, c.lod);
         if (want !== c.lod) { c.want = want; remesh++; this.worker.postMessage({ t: 'remesh', cx: c.cx, cz: c.cz, lod: want }); }
       }
     }
@@ -68,8 +68,15 @@ export class World {
         bd = d; best = [pcx + dx, pcz + dz, k];
       }
       if (!best) break;
-      this.pending.add(best[2]); this.inflight++; this.worker.postMessage({ t: 'chunk', cx: best[0], cz: best[1], lod: bd <= L + 0.5 ? 0 : 1 });
+      this.pending.add(best[2]); this.inflight++; this.worker.postMessage({ t: 'chunk', cx: best[0], cz: best[1], lod: this.lodFor(bd, -1) });
     }
+  }
+  // niveau voulu selon la distance (en tronçons), avec hystérésis autour du niveau actuel
+  lodFor(d, cur) {
+    const T = [this.lod0 + 0.5, this.lod0 + 2.6], base = d <= T[0] ? 0 : d <= T[1] ? 1 : 2;
+    if (cur < 0 || cur === base) return base;
+    const lo = cur === 0 ? -1 : T[cur - 1], hi = cur === 2 ? 1e9 : T[cur];
+    return d >= lo - 0.7 && d <= hi + 0.7 ? cur : base;
   }
   triangles() { let t = 0; for (const [, c] of this.chunks) for (const m of c.meshes) t += m.geometry.index.count / 3; return t; }
   loadedAround(x, z, r = 1) { const cx = Math.floor(x / CSM), cz = Math.floor(z / CSM); for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) { const c = this.chunks.get(this.key(cx + a, cz + b)); if (!c || !c.data) return false; } return true; }

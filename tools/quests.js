@@ -9,7 +9,7 @@ const PORT = +(process.env.PORT || 8915), SH = __dirname + '/../shots/';
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } }); const errs = [], res = {};
   p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
   const ev = (f, a) => p.evaluate(f, a);
-  await p.goto(`http://localhost:${PORT}/`); await ev(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'high', view: 4 })); }); await p.reload(); await p.waitForTimeout(2000);
+  await p.goto(`http://localhost:${PORT}/`); await ev(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 4 })); }); await p.reload(); await p.waitForTimeout(2000);
   await p.click('#bNew'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 90000 }); await ev(brain);
   const tp = async (x, z) => { await ev(([x, z]) => { const P = __game.G.P; P.x = x; P.z = z; P.y = 90; P.vy = 0; window.__task = { type: 'idle' }; }, [x, z]);
     await p.waitForFunction(([x, z]) => __game.world.loadedAround(x, z, 1), [x, z], { timeout: 60000 });

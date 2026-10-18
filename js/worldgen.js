@@ -176,7 +176,7 @@ function spruce(P, x, h, z, r, snowy) {
     for (let a = -Ri; a <= Ri; a++) for (let b = -Ri; b <= Ri; b++) {
       const d2 = a * a + b * b; if (d2 > R * R + 0.3 || (!a && !b && y <= h + T)) continue;
       const hv = hash2(x + a * 7 + y * 131, z + b * 13, 911);
-      if (d2 > (R - 1) * (R - 1) && hv < 0.3) continue;
+      if (d2 > (R - 1) * (R - 1) && hv < 0.2) continue;
       P.fset(x + a, y, z + b, snowy && ph === 2 && hv > 0.15 ? B.SNOWLEAF : B.SPRUCE, true);
     }
   }
@@ -187,7 +187,7 @@ function blob(P, cx, cy, cz, R, pick, sy = 1) {
   for (let a = -Ri; a <= Ri; a++) for (let b = -Ri; b <= Ri; b++) for (let c = -Ri; c <= Ri; c++) {
     const d = Math.hypot(a, b / sy, c); if (d > R) continue;
     const hv = hash2(cx + a * 7 + b * 131, cz + c * 13 + b, 777 + cy);
-    if (d > R - 1.2 && hv < 0.4) continue;
+    if (d > R - 1.1 && hv < 0.28) continue;
     P.fset(cx + a, cy + b, cz + c, pick(hv, b), true);
   }
 }
