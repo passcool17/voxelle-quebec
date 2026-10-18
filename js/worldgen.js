@@ -61,7 +61,7 @@ export function createGen(seed) {
     if (d < W + 10 && h <= SEA + 2.5) return BIOME.RIVE;
     if (h > SEA + 30) return BIOME.COLLINES;
     const m = N4.n2(x * 0.0045 - 20, z * 0.0045 + 9), t = N2.n2(x * 0.004 + 50, z * 0.004);
-    if (m > 0.22) return BIOME.ERABLIERE;
+    if (m > 0.3) return BIOME.ERABLIERE;
     if (north > 70 || t < -0.35) return BIOME.BOREALE;
     return BIOME.CAMPAGNE;
   }

@@ -1,0 +1,1 @@
+{ "name": "Voxelle-France", "short_name": "Voxelle-France", "start_url": "./", "display": "fullscreen", "orientation": "landscape", "background_color": "#14243a", "theme_color": "#14243a", "icons": [{ "src": "assets/icon192.png", "sizes": "192x192", "type": "image/png" }, { "src": "assets/icon512.png", "sizes": "512x512", "type": "image/png" }] }

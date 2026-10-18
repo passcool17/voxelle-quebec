@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Voxelle-France</title>
+<meta name="theme-color" content="#14243a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon192.png">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="labels"></div>
+<div id="hurt"></div>
+<div id="hud" class="hidden">
+  <div id="stats">
+    <div class="row"><span id="lvl">NIV. 1</span><span id="cash"><i class="coin"></i><b>0</b> piasses</span></div>
+    <div class="bar" id="hpbar"><div class="fill"></div><span>100 / 100</span></div>
+    <div class="bar small" id="stbar"><div class="fill"></div></div>
+    <div class="bar xs" id="xpbar"><div class="fill"></div></div>
+  </div>
+  <div id="mapbox"><canvas id="mini" width="160" height="160"></canvas><div id="where"></div><div id="clock"></div></div>
+  <div id="tracker"></div>
+  <div id="cross"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="hotbar"></div>
+  <div id="weapon"></div>
+  <div id="toast"></div>
+  <div id="banner"></div>
+  <div id="bossbox" class="hidden"><div id="bossname"></div><div class="bar"><div class="fill"></div></div></div>
+</div>
+<div id="touch" class="hidden">
+  <div id="stick"><div id="knob"></div></div>
+  <button class="tb" id="tAtk">FRAPPE</button>
+  <button class="tb" id="tJump">SAUT</button>
+  <button class="tb" id="tBrk">CASSE</button>
+  <button class="tb" id="tPlace">POSE</button>
+  <button class="tb hidden" id="tTalk">PARLE</button>
+  <button class="tb sm" id="tEat">MANGE</button>
+  <button class="tb sm" id="tSwap">ARME</button>
+  <div id="tTop"><button class="tb sm" id="tInv">SAC</button><button class="tb sm" id="tQuest">QUÊTES</button><button class="tb sm" id="tMap">CARTE</button><button class="tb sm" id="tPause">II</button></div>
+</div>
+
+<section id="title" class="screen">
+  <div class="logo"><div class="l1">VOXELLE</div><div class="l2">FRANCE</div><div class="sub">Tuques, cônes et nids-de-poule</div></div>
+  <div class="menu">
+    <button class="btn big" id="bCont">CONTINUER</button>
+    <button class="btn big" id="bNew">NOUVELLE PARTIE</button>
+    <button class="btn" id="bHelp">COMMENT JOUER</button>
+    <button class="btn" id="bOpts">OPTIONS</button>
+  </div>
+  <div class="foot">Personnages fictifs et caricaturaux. Toute ressemblance avec un chantier réel serait une coïncidence.</div>
+</section>
+<section id="loading" class="screen hidden"><div class="panel"><div id="loadtxt">Génération du monde…</div><div class="bar"><div class="fill" id="loadfill"></div></div></div></section>
+<section id="help" class="screen hidden">
+  <div class="panel wide">
+    <h1>COMMENT JOUER</h1>
+    <p>Explore la Voxelle-France : la Vieille-Ville et ses remparts, le Fleuve, les villages, les érablières, la forêt boréale et les Laurentides. Parle aux gens (marque <b class="gold">!</b>), fais leurs quêtes, gagne des piasses et de l’expérience.</p>
+    <table><tr><th></th><th>Clavier / souris</th><th>Manette</th><th>Tactile</th></tr>
+      <tr><td>Bouger</td><td>WASD (ZQSD)</td><td>Stick gauche</td><td>Pouce gauche</td></tr>
+      <tr><td>Caméra</td><td>Souris</td><td>Stick droit</td><td>Glisser à droite</td></tr>
+      <tr><td>Sauter / planer</td><td>Espace (en l’air : cerf-volant)</td><td>A</td><td>SAUT</td></tr>
+      <tr><td>Frapper</td><td>Clic gauche</td><td>RT</td><td>FRAPPE</td></tr>
+      <tr><td>Casser / poser</td><td>F / clic droit</td><td>RB / LT</td><td>CASSE / POSE</td></tr>
+      <tr><td>Parler</td><td>E</td><td>B</td><td>PARLE</td></tr>
+      <tr><td>Courir</td><td>Maj</td><td>LB</td><td>Pousser le pouce au bout</td></tr>
+      <tr><td>Manger / arme</td><td>R / Q</td><td>X / Y</td><td>MANGE / ARME</td></tr>
+      <tr><td>Bloc choisi</td><td>1 à 9, molette</td><td>Croix ◀ ▶</td><td>Toucher la barre</td></tr>
+      <tr><td>Sac / quêtes / carte</td><td>I / J / M</td><td>Select</td><td>SAC / QUÊTES / CARTE</td></tr>
+      <tr><td>Pause</td><td>Échap / P</td><td>Start</td><td>II</td></tr></table>
+    <button class="btn" data-close>RETOUR</button>
+  </div>
+</section>
+<section id="opts" class="screen hidden">
+  <div class="panel">
+    <h1>OPTIONS</h1>
+    <label>Distance de vue <b id="oViewV"></b><input type="range" id="oView" min="2" max="12" step="1"></label>
+    <label>Qualité <select id="oQual"><option value="auto">Automatique</option><option value="low">Basse</option><option value="mid">Moyenne</option><option value="high">Haute</option></select></label>
+    <label>Volume <input type="range" id="oVol" min="0" max="1" step="0.05"></label>
+    <label>Musique <input type="range" id="oMus" min="0" max="1" step="0.05"></label>
+    <label>Sensibilité <input type="range" id="oSens" min="0.3" max="2.5" step="0.1"></label>
+    <label class="chk"><input type="checkbox" id="oInv"> Inverser l’axe vertical</label>
+    <div class="row2"><button class="btn" data-close>RETOUR</button><button class="btn danger" id="bReset">EFFACER LA SAUVEGARDE</button></div>
+  </div>
+</section>
+<section id="pause" class="screen hidden"><div class="panel"><h1>PAUSE</h1><div class="menu">
+  <button class="btn big" id="bResume">REPRENDRE</button><button class="btn" id="bSave">SAUVEGARDER</button><button class="btn" id="bPOpts">OPTIONS</button><button class="btn" id="bPHelp">COMMENT JOUER</button><button class="btn" id="bQuit">MENU PRINCIPAL</button></div></div></section>
+<section id="dialog" class="screen hidden overlay"><div class="panel dlg"><div id="dname"></div><div id="dtext"></div><div id="dbtns"></div></div></section>
+<section id="inv" class="screen hidden overlay"><div class="panel wide"><h1>SAC À DOS</h1><div id="invbody"></div><button class="btn" data-close>FERMER (I)</button></div></section>
+<section id="quests" class="screen hidden overlay"><div class="panel wide"><h1>JOURNAL DE QUÊTES</h1><div id="qbody"></div><button class="btn" data-close>FERMER (J)</button></div></section>
+<section id="map" class="screen hidden overlay"><div class="panel wide"><h1>CARTE</h1><canvas id="bigmap" width="480" height="480"></canvas><div id="maplegend"></div><button class="btn" data-close>FERMER (M)</button></div></section>
+<section id="dead" class="screen hidden"><div class="panel"><h1 class="red">TU T’ES FAIT RAMASSER!</h1><p id="deadtxt"></p><button class="btn big" id="bRespawn">REVENIR À LA VIEILLE-VILLE</button></div></section>
+<div id="floats"></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
