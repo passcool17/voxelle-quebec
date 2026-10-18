@@ -84,7 +84,9 @@ const brain = require('./brain');
   await p.reload(); await p.waitForTimeout(3000);
   const contVisible = await p.isVisible('#bCont'); await p.click('#bCont');
   await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 90000 }); await p.waitForTimeout(1500);
-  const after = await ev(([pl]) => { const g = __game; return { lvl: g.S.lvl, xp: g.S.xp, cash: g.S.cash, q: g.S.q, pos: [g.G.P.x, g.G.P.y, g.G.P.z].map(Math.round), placed: g.S.stats.placed, block: pl ? g.world.get(pl[0], pl[1], pl[2]) : null }; }, [bp.placed]);
+  const restored = await ev(() => [__game.G.P.x, __game.G.P.y, __game.G.P.z].map(Math.round)); console.log('position restaurée', restored);
+  if (bp.placed) { await ev(([x, z]) => { const P = __game.G.P; P.x = x + 3.5; P.z = z + 3.5; P.y = 80; P.vy = 0; }, [bp.placed[0], bp.placed[2]]); await p.waitForFunction(([x, z]) => __game.world.loadedAround(x, z, 1), [bp.placed[0], bp.placed[2]], { timeout: 60000 }); }
+  const after = await ev(([pl, before_pos]) => { const g = __game; return { edits: Object.keys(g.S.edits || {}).length, lvl: g.S.lvl, xp: g.S.xp, cash: g.S.cash, q: g.S.q, pos: before_pos, placed: g.S.stats.placed, block: pl ? g.world.get(pl[0], pl[1], pl[2]) : null }; }, [bp.placed, before.pos]);
   console.log('avant', JSON.stringify(before)); console.log('après', JSON.stringify(after), 'bouton Continuer', contVisible);
   await browser.close();
   // 10. mobile (tactile)
@@ -96,7 +98,7 @@ const brain = require('./brain');
   const mInfo = await mp.evaluate(() => ({ view: __game.world.view, touch: document.body.classList.contains('touch'), fps: __game.G.fps }));
   await mp.screenshot({ path: SH + 'mobile.png' }); console.log('capture', SH + 'mobile.png', JSON.stringify(mInfo));
   await b2.close(); srv.close();
-  const ok = { quete: after.q.cones && after.q.cones.st === 'done', niveau: after.lvl >= 2, plane: glide > 8, bloc: bp.broke && bp.broke[4] === 0 && bp.placed && bp.placed[3] > 0, sauvegarde: after.lvl === before.lvl && after.cash === before.cash && JSON.stringify(after.q) === JSON.stringify(before.q) && after.block === bp.placed[3], erreurs: errs.length === 0 };
+  const ok = { quete: after.q.cones && after.q.cones.st === 'done', niveau: after.lvl >= 2, plane: glide > 8, bloc: bp.broke && bp.broke[4] === 0 && bp.placed && bp.placed[3] > 0, sauvegarde: Math.hypot(restored[0] - before.pos[0], restored[2] - before.pos[2]) < 2 && after.lvl === before.lvl && after.cash === before.cash && JSON.stringify(after.q) === JSON.stringify(before.q) && after.block === bp.placed[3], erreurs: errs.length === 0 };
   console.log('RÉSULTAT', JSON.stringify(ok), 'durée', Math.round((Date.now() - t0) / 1000) + ' s');
   console.log(errs.length ? errs.slice(0, 20).join('\n') : 'aucune erreur JS');
   process.exit(Object.values(ok).every(Boolean) ? 0 : 1);
