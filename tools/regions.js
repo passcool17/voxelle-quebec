@@ -49,10 +49,10 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   // 3) Montmagny : autocar, puis battures + quête de l'accordéon
   await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); __game.travel('montmagny'); }); await arrive();
   res.montmagny = { region: await ev(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z)), accordeoniste: await npc('accordeoniste'), oiseleur: await npc('oiseleur'), commercant: await npc('commercant'), cycliste: await npc('cycliste'), carRoof: await ev(() => { const C = __game.G.car, s = __game.gen.reg.places.mm; if (!C) return null; const gy = __game.gen.heightAt(C.x, C.z) + 1; return { x: +C.x.toFixed(1), z: +C.z.toFixed(1), y: +C.y.toFixed(1), gy: +gy.toFixed(1), onRoof: C.y > gy + 2.5 }; }) };
-  // plan large depuis le sud : église + place + salle (caméra dans le ciel, pas dans un mur)
+  // plan large : panneau MONTMAGNY freestanding (est), clocher à l'ouest hors cadre
   await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); const G = __game.G, s = __game.gen.reg.places.mm, P = G.P;
-    P.x = s.x; P.z = s.z + 22; P.y = __game.gen.heightAt(P.x, P.z) + 1.5; P.vx = P.vz = P.vy = 0;
-    G.camYaw = Math.atan2(P.x - s.x, P.z - (s.z + 6)); G.camPitch = 0.35; G.camDist = 12; __game.sky.t = 0.4;
+    P.x = s.x + 8; P.z = s.z + 36; P.y = __game.gen.heightAt(P.x, P.z) + 1.5; P.vx = P.vz = P.vy = 0;
+    G.camYaw = Math.atan2(0, 1); G.camPitch = 0.12; G.camDist = 9; __game.sky.t = 0.4; // face au panneau, yaw 0 = −z
     if (G.car) { const C = G.car; C.x = s.x - 2; C.z = s.z + 1; C.yaw = 0; C.y = __game.gen.heightAt(C.x, C.z) + 1; C.settled = true; C.m.g.visible = false; }
     G.enemies.length = 0;
   });
@@ -71,7 +71,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     P.x = x + 4; P.z = z + 8; P.y = g.gen.heightAt(P.x, P.z) + 1.2; P.vx = P.vz = P.vy = 0;
     for (let k = 0; k < 9; k++) {
       const ox = x - 4 + (k % 3) * 4, oz = z - 2 + Math.floor(k / 3) * 3.5;
-      g.critterSpawn('oie', ox, oz);
+      g.critterSpawn('oie_blanche', ox, oz);
     }
     if (G.flock) { for (const b of G.flock.birds) { if (b.M.g.parent) b.M.g.parent.remove(b.M.g); } G.flock = null; }
     G.flockT = 0;
@@ -83,11 +83,11 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     if (G.flock) { const F = G.flock, yaw = G.camYaw, dx = Math.sin(yaw), dz = Math.cos(yaw);
       F.dx = dx; F.dz = dz; F.y = P.y + 7; F.x = P.x - dx * 20; F.z = P.z - dz * 20; F.t = 1.2; }
     // remise à niveau des oies au sol (chunks chargés)
-    for (const c of G.critters) if (c.kind === 'oie') c.y = __game.world.ground(c.x, c.z, c.y + 2);
+    for (const c of G.critters) if (c.kind === 'oie_blanche' || c.kind === 'oie') c.y = __game.world.ground(c.x, c.z, c.y + 2);
   });
   await p.waitForTimeout(2000);
   await p.screenshot({ path: SH + 'apres-montmagny-oies.png' });
-  res.oiesVues = await ev(() => ({ sol: __game.G.critters.filter(c => c.kind === 'oie').length, volee: __game.G.flock ? __game.G.flock.birds.length : 0, sand: true }));
+  res.oiesVues = await ev(() => ({ sol: __game.G.critters.filter(c => c.kind === 'oie_blanche' || c.kind === 'oie').length, volee: __game.G.flock ? __game.G.flock.birds.length : 0, sand: true }));
   const mm = await place('mm'); await goto(mm[0], mm[1]); await arrive();
   res.accordeonFini = (await talk('accordeoniste', 'MERCI'), await qst('accordeon'));
   // marina : rive est, regard vers quai + bateau blanc/bleu + fleuve (cadrage ouvert)

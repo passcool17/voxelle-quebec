@@ -334,10 +334,16 @@ export function critterModel(kind) {
     box(body, 0.04, 0.04, 0.02, 0x8ad84a, -0.05, 0.38, -0.355, true); box(body, 0.04, 0.04, 0.02, 0x8ad84a, 0.05, 0.38, -0.355, true); box(body, 0.04, 0.03, 0.02, 0xf0a0a0, 0, 0.33, -0.355);
     for (const [x, z] of [[-0.07, -0.15], [0.07, -0.15], [-0.07, 0.15], [0.07, 0.15]]) box(body, 0.06, 0.14, 0.06, c, x, 0.07, z);
     P.tail = pivot(body, 0, 0.28, 0.2); box(P.tail, 0.05, 0.36, 0.05, c, 0, 0.17, 0.02);
-  } else { // bernache (oie) : corps brun, long cou noir, joue blanche (origine au sol)
+  } else if (kind === 'oie_blanche') { // oie blanche (Montmagny) : corps blanc, bouts d'ailes noirs, bec/pattes rose-orangé
+    box(body, 0.34, 0.28, 0.7, 0xf4f6f8, 0, 0.22, 0); box(body, 0.28, 0.1, 0.28, 0xe8eef4, 0, 0.1, 0.25);
+    box(body, 0.1, 0.1, 0.38, 0xf4f6f8, 0, 0.3, -0.48); box(body, 0.12, 0.11, 0.14, 0xf4f6f8, 0, 0.32, -0.72);
+    box(body, 0.06, 0.05, 0.1, 0xe87840, 0, 0.3, -0.86); // bec rose-orangé
+    for (const sx of [-1, 1]) { const W = P[sx < 0 ? 'wL' : 'wR'] = pivot(body, sx * 0.16, 0.28, 0); box(W, 0.55, 0.04, 0.32, 0xf4f6f8, sx * 0.28, 0, 0); box(W, 0.28, 0.045, 0.28, 0x1a1a1a, sx * 0.58, 0, 0.02); } // bouts noirs
+    box(body, 0.06, 0.1, 0.08, 0xe87840, -0.1, 0.05, 0.15); box(body, 0.06, 0.1, 0.08, 0xe87840, 0.1, 0.05, 0.15); // pattes
+  } else { // bernache (ailleurs) : corps brun, long cou noir, joue blanche
     box(body, 0.34, 0.28, 0.7, 0x7a6a58, 0, 0.22, 0); box(body, 0.3, 0.1, 0.3, 0xe8e0d0, 0, 0.1, 0.25); box(body, 0.1, 0.1, 0.42, 0x1a1a1a, 0, 0.3, -0.5); box(body, 0.13, 0.12, 0.16, 0x1a1a1a, 0, 0.32, -0.76); box(body, 0.135, 0.06, 0.08, 0xf2f2f2, 0, 0.3, -0.74); box(body, 0.06, 0.05, 0.08, 0x111111, 0, 0.3, -0.88);
     for (const sx of [-1, 1]) { const W = P[sx < 0 ? 'wL' : 'wR'] = pivot(body, sx * 0.16, 0.28, 0); box(W, 0.7, 0.04, 0.34, 0x6a5a48, sx * 0.35, 0, 0); box(W, 0.3, 0.045, 0.3, 0x3a3028, sx * 0.62, 0, 0.02); }
-    box(body, 0.06, 0.1, 0.08, 0x7a6a58, -0.1, 0.05, 0.15); box(body, 0.06, 0.1, 0.08, 0x7a6a58, 0.1, 0.05, 0.15); // pattes
+    box(body, 0.06, 0.1, 0.08, 0x7a6a58, -0.1, 0.05, 0.15); box(body, 0.06, 0.1, 0.08, 0x7a6a58, 0.1, 0.05, 0.15);
   }
   bake(g); return { g, P, kind };
 }

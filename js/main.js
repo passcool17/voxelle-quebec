@@ -790,16 +790,16 @@ function crittersUpdate(dt) {
     const a = Math.random() * 6.28, r = 14 + Math.random() * 16, x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
     if (world.loadedAround(x, z, 0)) { const col = gen.column(Math.floor(x), Math.floor(z)), y = world.ground(x, z), wet = world.get(x, y - 0.25, z) === B.WATER;
       const town = col.st && col.w > 0.35 && ['ville', 'village', 'chicoutimi', 'etape', 'cabane'].includes(col.st.type), nE = G.critters.filter(c => c.kind === 'ecureuil').length, nC = G.critters.filter(c => c.kind === 'chat').length;
-      const nO = G.critters.filter(c => c.kind === 'oie').length, mm = col.reg === 'montmagny';
+      const nO = G.critters.filter(c => c.kind === 'oie' || c.kind === 'oie_blanche').length, mm = col.reg === 'montmagny';
       if (!wet && Math.abs(y - P.y) < 8) {
-        if (mm && nO < (mobile ? 4 : 8) && (col.biome === BIOME.RIVE || Math.random() < 0.65)) critterSpawn('oie', x, z);
+        if (mm && nO < (mobile ? 4 : 8) && (col.biome === BIOME.RIVE || Math.random() < 0.65)) critterSpawn('oie_blanche', x, z);
         else if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && !mm && col.biome !== BIOME.RIVE && nE < (mobile ? 3 : 5)) critterSpawn('ecureuil', x, z);
       } } }
   // volée d'oies en V, le jour
   G.flockT -= dt;
   const nearMM = gen.nord.region(P.x, P.z) === 'montmagny' || gen.nord.region(P.x, P.z) === 'mm' || gen.nord.region(P.x, P.z) === 'battures';
   if (!G.flock && G.flockT <= 0 && sky.dayF > 0.35) { G.flockT = nearMM ? 12 + Math.random() * 18 : 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + (nearMM ? 10 + Math.random() * 6 : 28 + Math.random() * 10), birds = [], nB = nearMM ? 11 : 9;
-    for (let i = 0; i < nB; i++) { const M = critterModel('oie'), row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; scene.add(M.g); birds.push({ M, ox: -dz * side * row * 2.2 - dx * row * 2.4, oz: dx * side * row * 2.2 - dz * row * 2.4, ph: Math.random() * 6 }); }
+    for (let i = 0; i < nB; i++) { const M = critterModel(nearMM ? 'oie_blanche' : 'oie'), row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; scene.add(M.g); birds.push({ M, ox: -dz * side * row * 2.2 - dx * row * 2.4, oz: dx * side * row * 2.2 - dz * row * 2.4, ph: Math.random() * 6 }); }
     G.flock = { x: P.x - dx * (nearMM ? 40 : 160), z: P.z - dz * (nearMM ? 40 : 160), y, dx, dz, birds, t: 0, honk: 0 }; }
   if (G.flock) { const F = G.flock; F.t += dt; F.x += F.dx * 10 * dt; F.z += F.dz * 10 * dt; F.honk -= dt;
     if (F.honk <= 0 && Math.hypot(F.x - P.x, F.z - P.z) < 70) { F.honk = 1.5 + Math.random() * 2; audio.fx('honk', 0.5); }
@@ -810,12 +810,12 @@ function crittersUpdate(dt) {
     if (!world.loadedAround(c.x, c.z, 0)) continue;
     c.t += dt; let sp = 0;
     if (c.kind === 'ecureuil') { if (d < 5) { c.yaw = Math.atan2(-dx, -dz); sp = 6; c.pause = 0.8; } else if (c.pause > 0) { c.pause -= dt; } else { c.hopT -= dt; sp = 3.2; if (c.hopT <= 0) { c.hopT = 0.4 + Math.random() * 0.8; c.yaw += (Math.random() - 0.5) * 2.5; if (Math.random() < 0.3) c.pause = 1 + Math.random() * 2; } } }
-    else if (c.kind === 'oie') { if (d < 3.5) { c.yaw = Math.atan2(-dx, -dz); sp = 2.8; if (!(c.honked > G.t)) { c.honked = G.t + 4 + Math.random() * 5; audio.fx('honk', 0.35); } } else if (c.pause > 0) c.pause -= dt; else { sp = 1.4; c.hopT -= dt; if (c.hopT <= 0) { c.hopT = 0.6 + Math.random(); c.yaw += (Math.random() - 0.5) * 1.2; } } }
+    else if (c.kind === 'oie' || c.kind === 'oie_blanche') { if (d < 3.5) { c.yaw = Math.atan2(-dx, -dz); sp = 2.8; if (!(c.honked > G.t)) { c.honked = G.t + 4 + Math.random() * 5; audio.fx('honk', 0.35); } } else if (c.pause > 0) c.pause -= dt; else { sp = 1.4; c.hopT -= dt; if (c.hopT <= 0) { c.hopT = 0.6 + Math.random(); c.yaw += (Math.random() - 0.5) * 1.2; } } }
     else { if (d < 2.4 && !(c.meow > G.t)) { c.meow = G.t + 8; audio.fx('miaou', 0.6); floatTxt(c.x, c.y + 0.8, c.z, 'miaou', '#ffd23a'); } if (c.pause > 0) c.pause -= dt; else { sp = 1.1; c.hopT -= dt; if (c.hopT <= 0) { c.hopT = 1 + Math.random() * 2; c.yaw += (Math.random() - 0.5) * 2; if (Math.random() < 0.4) c.pause = 2 + Math.random() * 4; } } }
     const nx = c.x - Math.sin(c.yaw) * sp * dt, nz = c.z - Math.cos(c.yaw) * sp * dt, ny = world.ground(nx, nz, c.y + 1);
     if (Math.abs(ny - c.y) < 0.6 && world.get(nx, ny - 0.25, nz) !== B.WATER) { c.x = nx; c.z = nz; c.y = ny; } else c.yaw += 2;
     const hop = c.kind === 'ecureuil' && sp > 0 ? Math.abs(Math.sin(c.t * 14)) * 0.12 : 0;
-    c.M.g.position.set(c.x, c.y + hop, c.z); c.M.g.rotation.y = c.yaw; if (c.M.P.tail) c.M.P.tail.rotation.x = c.kind === 'chat' ? Math.sin(c.t * 2) * 0.2 : -0.2 + Math.sin(c.t * 8) * 0.15; if (c.kind === 'oie' && c.M.P.wL) { const f = Math.sin(c.t * 6) * (sp > 0 ? 0.35 : 0.08); c.M.P.wL.rotation.z = f; c.M.P.wR.rotation.z = -f; } c.M.P.body.rotation.x = c.kind === 'ecureuil' && sp === 0 ? -0.5 : 0; }
+    c.M.g.position.set(c.x, c.y + hop, c.z); c.M.g.rotation.y = c.yaw; if (c.M.P.tail) c.M.P.tail.rotation.x = c.kind === 'chat' ? Math.sin(c.t * 2) * 0.2 : -0.2 + Math.sin(c.t * 8) * 0.15; if ((c.kind === 'oie' || c.kind === 'oie_blanche') && c.M.P.wL) { const f = Math.sin(c.t * 6) * (sp > 0 ? 0.35 : 0.08); c.M.P.wL.rotation.z = f; c.M.P.wR.rotation.z = -f; } c.M.P.body.rotation.x = c.kind === 'ecureuil' && sp === 0 ? -0.5 : 0; }
 }
 function questsOf(role) { return Object.entries(QUESTS).filter(([id, q]) => q.giver === role); }
 function questAvailable(id) { const q = QUESTS[id]; if (S.q[id]) return false; return !(q.requires || []).some(r => !S.q[r] || S.q[r].st !== 'done'); }

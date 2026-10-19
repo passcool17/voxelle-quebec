@@ -2,7 +2,7 @@
 // Relief, lieux (pseudo-structures), PNJ, constructions et ville en voxels. Tout est fictif sauf les noms de lieux.
 import { B, SEA } from './blocks.js';
 import { smooth, hash2 } from './noise.js';
-import { REGIONS, panel } from './nord.js';
+import { REGIONS, panel, textW } from './nord.js';
 import { dunBuild, dunLayout, dunPlan } from './donjons.js';
 
 Object.assign(REGIONS, {
@@ -286,8 +286,10 @@ export function regBuild(s, P, H) {
     P.fill(s.x - 20, h, s.z - 3, s.x + 20, h, s.z + 3, B.COBBLE); P.fill(s.x - 3, h, s.z - 24, s.x + 3, h, s.z + 16, B.COBBLE);
     P.fill(s.x - 14, h, s.z - 2, s.x - 4, h, s.z + 5, B.COBBLE);
     const cols = [B.WHITE, B.BRICK, B.YELLOW, B.BLUE, B.COPPER, B.REDROOF];
-    [[-22, -5], [16, -5], [-22, 9], [18, 9], [-12, 14], [12, 14]].forEach(([dx, dz], k) => H.house(P, s.x + dx - 3, s.z + dz, 6, 5, h, cols[k % 6] === B.YELLOW ? B.PLANK : cols[k % 6], k % 2 ? B.TIN : B.SHINGLE, dz < 0 ? 's' : 'n', 3));
-    H.church(P, s.x - 4, s.z + 14, h);
+    // maisons hors clocher / hors panneau d'accueil (z+26)
+    [[-22, -5], [16, -5], [-22, 8], [18, 8], [-16, 12], [14, 12]].forEach(([dx, dz], k) => H.house(P, s.x + dx - 3, s.z + dz, 6, 5, h, cols[k % 6] === B.YELLOW ? B.PLANK : cols[k % 6], k % 2 ? B.TIN : B.SHINGLE, dz < 0 ? 's' : 'n', 3));
+    // église à l'ouest : clocher loin du panneau d'accueil (est)
+    H.church(P, s.x - 14, s.z + 6, h);
     P.fill(s.x + 6, h + 1, s.z - 2, s.x + 16, h + 6, s.z + 6, B.PLANK); P.fill(s.x + 7, h + 1, s.z - 1, s.x + 15, h + 5, s.z + 5, 0); P.fill(s.x + 6, h + 7, s.z - 2, s.x + 16, h + 7, s.z + 6, B.REDROOF);
     P.fill(s.x + 10, h + 1, s.z - 2, s.x + 12, h + 3, s.z - 2, 0);
     busSign(P, s.x + 11, s.z - 5, h, 'ACCORDÉON');
@@ -300,7 +302,8 @@ export function regBuild(s, P, H) {
     P.fill(fx + 1, SEA + 3, fz - 3, fx + 5, SEA + 5, fz + 3, B.WHITE);
     P.fill(fx + 3, SEA + 6, fz - 1, fx + 4, SEA + 7, fz + 1, B.REDROOF);
     H.lampPost(P, s.x - 16, s.z + 3, h); busSign(P, s.x - 18, s.z + 2, h, 'MONTMAGNY');
-        panel(P, ['MONTMAGNY'], F(s.x), F(h + 8) + 2, F(s.z + 20), 'x', B.SIGN, B.TRIM, true);
+    // panneau d'accueil à l'est (hors alignement du clocher) + poteaux seuls hors lettres
+    busSign(P, s.x + 8, s.z + 24, h, 'MONTMAGNY');
   } else if (s.type === 'batt') {
     P.fill(s.x - 22, h, s.z - 16, s.x + 22, h, s.z + 16, B.SAND);
     for (let k = 0; k < 5; k++) { const ax = s.x - 14 + k * 6, az = s.z - 10 + (k % 2) * 8; P.fill(ax, h, az, ax + 3, h, az + 2, B.WATER); }
@@ -335,4 +338,10 @@ function dunEntrance(s, P, h) {
     panel(P, ['ÉGOUTS'], F(s.x), F(h) + 8, F(s.z - 3), 'x', B.SIGN, B.TRIM, true); P.ffill(F(s.x), F(h) + 2, F(s.z - 3), F(s.x), F(h) + 7, F(s.z - 3), B.IRON);
   }
 }
-function busSign(P, x, z, h, txt) { const fx = F(x), fz = F(z), y = F(h) + 2; P.ffill(fx, y, fz, fx, y + 6, fz, B.IRON); panel(P, [txt], fx, y + 14, fz - 1, 'x', B.BLUE, B.TRIM, true); }
+function busSign(P, x, z, h, txt) {
+  const fx = F(x), fz = F(z), y = F(h) + 2, half = Math.floor((textW(txt) + 2) / 2) + 3; // hors du panneau
+  // poteaux de chaque côté — pas au centre (sinon le fer traverse les lettres)
+  P.ffill(fx - half, y, fz, fx - half, y + 10, fz, B.IRON);
+  P.ffill(fx + half, y, fz, fx + half, y + 10, fz, B.IRON);
+  panel(P, [txt], fx, y + 14, fz - 1, 'x', B.BLUE, B.TRIM, true);
+}
