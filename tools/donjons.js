@@ -38,7 +38,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     o.coffre = c ? await ev(([k, c0, c]) => ({ pris: !!__game.S.taken[k], gain: __game.S.cash - c0, c, st: __game.G.state, P: [__game.G.P.x, __game.G.P.y, __game.G.P.z].map(v => +v.toFixed(1)), hp: __game.G.P.hp }), [c.key, cash0, c]) : 'aucun';
     // piège : on se tient dessus pendant un cycle
     o.piege = await ev(async fy => { const g = __game, G = g.G, P = G.P, t = [...G.traps.values()].filter(t => Math.abs(t.y - fy) < 1)[0]; if (!t) return 'aucun';
-      P.hp = 100; P.iT = 0; P.x = t.x; P.z = t.z; P.y = t.y + 0.05; P.vx = P.vz = P.vy = 0; const h0 = P.hp; for (let k = 0; k < 40 && P.hp === h0; k++) { P.x = t.x; P.z = t.z; await new Promise(r => setTimeout(r, 100)); } return { kind: t.kind, hpPerdu: h0 - P.hp }; }, s.fy);
+      P.hp = 100; P.iT = 0; P.x = t.x; P.z = t.z; P.y = t.y + 0.05; P.vx = P.vz = P.vy = 0; const h0 = P.hp, t0 = G.t; for (let k = 0; k < 400 && P.hp === h0 && G.t - t0 < 3.5; k++) { P.x = t.x; P.z = t.z; await new Promise(r => setTimeout(r, 100)); } return { kind: t.kind, hpPerdu: h0 - P.hp }; }, s.fy);
     await ev(() => { const P = __game.G.P; P.hp = 1e5; });
     // salle du boss
     const b = await ev(k => { const r = __game.dunPlan(__game.gen.reg.places[k]).bossRoom; return { x: r.x + 0.5, z: r.z + 0.5 }; }, key);
