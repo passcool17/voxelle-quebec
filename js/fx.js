@@ -3,13 +3,17 @@
 import * as THREE from 'three';
 export class Ambiance {
   constructor(scene, mobile) {
-    const mk = (n, size, blend, cols) => { const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), g = new THREE.BufferGeometry();
+    // point lumineux rond et doux pour les lucioles (texture canvas 32 px)
+    const cv = document.createElement('canvas'); cv.width = cv.height = 32; const cx = cv.getContext('2d'), gr = cx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = gr; cx.fillRect(0, 0, 32, 32);
+    const glow = new THREE.CanvasTexture(cv);
+    const mk = (n, size, blend, cols, map) => { const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), g = new THREE.BufferGeometry();
       for (let i = 0; i < n; i++) { pos.set([(Math.random() - 0.5) * 36, Math.random() * 8, (Math.random() - 0.5) * 36], i * 3); const c = new THREE.Color(cols[(Math.random() * cols.length) | 0]); col.set([c.r, c.g, c.b], i * 3); }
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-      const m = new THREE.PointsMaterial({ size, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: blend, sizeAttenuation: true });
+      const m = new THREE.PointsMaterial({ size, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, blending: blend, sizeAttenuation: true, map: map || null, fog: !map });
       const p = new THREE.Points(g, m); p.frustumCulled = false; p.visible = false; scene.add(p); return { p, m, A: pos, ph: Float32Array.from({ length: n }, () => Math.random() * 6.28) }; };
-    this.fly = mk(mobile ? 30 : 60, 0.22, THREE.AdditiveBlending, [0xd8ff6a, 0xfff07a, 0xb8ff8a]);
-    this.leaf = mk(mobile ? 40 : 90, 0.2, THREE.NormalBlending, [0xd8481e, 0xe8902a, 0xf2c12e, 0xb02a14]);
+    this.fly = mk(mobile ? 30 : 60, 0.3, THREE.AdditiveBlending, [0xd8ff6a, 0xfff07a, 0xb8ff8a], glow);
+    this.leaf = mk(mobile ? 40 : 90, 0.14, THREE.NormalBlending, [0xd8481e, 0xe8902a, 0xf2c12e, 0xb02a14]);
     this.flyA = 0; this.leafA = 0;
   }
   // night 0..1, forest : feuillus/conifères autour, maple : érablière (feuilles rouges)
