@@ -113,20 +113,24 @@ label.chk { justify-content: flex-start; } input[type=checkbox] { width: 24px; h
 .tb { position: absolute; pointer-events: auto; font-family: inherit; color: #fff; font-size: calc(var(--u) * .95); background: rgba(31,63,138,.65); border: 3px solid #fff; border-radius: 50%; width: 15vh; height: 15vh; text-shadow: inherit; padding: 0; }
 .tb:active, .tb.on { background: rgba(200,40,46,.8); }
 .tb.sm { position: static; border-radius: 10px; width: auto; height: auto; min-height: 7vh; padding: 0 12px; font-size: calc(var(--u) * .85); }
-#tAtk { right: 4vw; bottom: 8vh; width: 19vh; height: 19vh; background: rgba(200,40,46,.6); }
-#tJump { right: calc(4vw + 21vh); bottom: 4vh; }
-#tRoll { right: calc(4vw + 22vh); bottom: calc(4vh + 17vh); width: 12vh; height: 12vh; }
+/* grappe de droite (en vh à partir du coin) : aucun bouton ne chevauche un autre ; FRAPPE et ROULE agrandis */
+#tAtk { right: 4vw; bottom: 6vh; width: 22vh; height: 22vh; background: rgba(200,40,46,.6); }
+#tJump { right: calc(4vw + 24vh); bottom: 2vh; }
+#tRoll { right: calc(4vw + 25vh); bottom: 19vh; width: 14vh; height: 14vh; }
 #bossbox .bar { position: relative; }
 #bossbox .bar i { position: absolute; top: 0; bottom: 0; width: 3px; background: #0c1420; }
 #bossname small { color: #ffd23a; }
-#tBrk { right: calc(4vw + 1vh); bottom: calc(8vh + 21vh); width: 13vh; height: 13vh; }
-#tPlace { right: calc(4vw + 16vh); bottom: calc(8vh + 19vh); width: 13vh; height: 13vh; }
-#tTalk { right: calc(4vw + 33vh); bottom: calc(8vh + 15vh); width: 15vh; height: 15vh; background: rgba(40,140,60,.75); }
-#tEat { position: absolute; right: calc(4vw + 39vh); bottom: 4vh; }
-#tSwap { position: absolute; right: calc(4vw + 39vh); bottom: calc(4vh + 9vh); }
+#tBrk { right: 4vw; bottom: 31vh; width: 13vh; height: 13vh; }
+#tPlace { right: calc(4vw + 15vh); bottom: 35vh; width: 12vh; height: 12vh; }
+#tTalk { right: calc(4vw + 41vh); bottom: 20vh; width: 15vh; height: 15vh; background: rgba(40,140,60,.75); }
+#tEat { position: absolute; right: calc(4vw + 41vh); bottom: 2vh; }
+#tSwap { position: absolute; right: calc(4vw + 41vh); bottom: 10vh; }
 #tTop { position: absolute; left: 50%; top: 1.4vh; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: auto; }
 body.touch #cross { display: block; } body.touch #hotbar { bottom: auto; top: calc(1.4vh + 9vh); }
-body.touch #weapon { display: none; } body.touch #tracker { top: calc(2vh + var(--u) * 10.2); font-size: calc(var(--u) * .8); width: 26vw; }
+body.touch #weapon { display: none; }
+/* tactile : le suivi passe à gauche, sous les barres (la droite est aux boutons) */
+body.touch #tracker { position: static; margin-top: 8px; font-size: calc(var(--u) * .8); width: auto; text-align: left; }
+body.touch #tracker .q { border-right: 0; border-left: 4px solid var(--gold); } body.touch #tracker .q.ready { border-color: var(--green); } body.touch #tracker .q.tuto { border-color: #9ae0ff; }
 body.touch #prompt { bottom: auto; top: 30%; }
 /* tactile : les stats s'arrêtent avant la rangée de boutons du haut (SAC … plein écran), même avec une encoche */
 body.touch #stats { width: min(36vw, 360px, calc(50% - 190px)); } body.touch #stats .row { flex-wrap: wrap; column-gap: .5em; }
@@ -173,3 +177,12 @@ body.touch #stats { width: min(36vw, 360px, calc(50% - 190px)); } body.touch #st
 #tFs.tb.sm { min-width: 7vh; padding: 0 8px; font-size: calc(var(--u) * 1.05); }
 .fsb.on { background: rgba(200,40,46,.7); }
 #fshint { position: fixed; left: 50%; bottom: calc(4vh + var(--sa-b)); transform: translateX(-50%); z-index: 30; max-width: 80vw; text-align: center; background: rgba(10,20,36,.94); border: 3px solid var(--gold); padding: 8px 16px; font-size: var(--u); color: #fff; pointer-events: none; }
+/* premiers pas (carte du suivi) et repère d'objectif */
+#tracker .q.tuto { border-color: #9ae0ff; background: rgba(12,40,70,.75); position: relative; } #tracker .q.tuto b { color: #9ae0ff; }
+#tracker .q small { display: block; color: #9ab; font-size: .8em; }
+#tracker .tskip { pointer-events: auto; float: right; margin: -2px -4px 0 6px; font-family: inherit; font-size: 1.1em; line-height: 1; color: #fff; background: rgba(31,63,138,.8); border: 2px solid #fff; border-radius: 8px; width: 1.9em; height: 1.9em; padding: 0; }
+#wp { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; display: none; filter: drop-shadow(2px 0 0 #0c1420) drop-shadow(-2px 0 0 #0c1420) drop-shadow(0 2px 0 #0c1420) drop-shadow(0 -2px 0 #0c1420); }
+#wp i { position: absolute; left: -9px; top: -24px; width: 18px; height: 18px; background: var(--gold); transform-origin: 9px 9px; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+#wp.off i { left: -12px; top: -12px; width: 24px; height: 24px; transform-origin: 12px 12px; clip-path: polygon(100% 50%, 0 0, 25% 50%, 0 100%); }
+#wp span { position: absolute; left: 0; top: 0; transform: translate(-50%, 2px); white-space: nowrap; font-size: calc(var(--u) * .85); color: var(--gold); }
+#wp.off span { transform: translate(-50%, 14px); }

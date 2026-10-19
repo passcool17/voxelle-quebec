@@ -193,3 +193,15 @@ Object.assign(QUESTS, {
     done: 'Le Comité est dissous! Pas de procès-verbal, pas de prolongation. La 175 est libre, pis toute la province respire. Tiens : le Casque doré du Grand Plan. Y l’avait commandé pour lui-même. En trois exemplaires.' },
 });
 export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches', 'raton', 'orignal'], 3: ['raton', 'mouches', 'bureau'], 4: ['plow', 'mouches'], 0: ['trou', 'raton'], 5: ['bureau'] };
+// objectifs concrets affichés dans le suivi (quoi faire, où) ; foe = ennemi qui porte l'objet à ramasser
+const OBJ = {
+  cones: 'Démolis des cônes-golems au chantier, au nord des remparts', permis: 'Bats des bureaucrates zombies (campagne, surtout la nuit) : l’un d’eux a le formulaire',
+  sirop: 'Ramasse les chaudières au pied des érables, autour de la cabane', poutine: 'Bats des ratons autour du village, surtout le soir',
+  pate: 'Ramasse les cannes de blé d’Inde aux travaux de la 175', nouvelles: 'Va chercher la gazette chez Gaston, à la Vieille-Ville',
+  supreme: 'Bats le Cône Suprême au Grand Chantier, au nord-est', souffleuses: 'Bats des souffleuses à neige (campagne et collines, surtout la nuit)',
+  goelands: 'Bats des goélands au-dessus du port de Chicoutimi', comite: 'Déloge le Comité au chantier de la 175',
+  accordeon: 'Trouve l’accordéon sur les battures, à l’ouest de Montmagny', oies: 'Ramasse des plumes sur les battures', pinceaux: 'Ramasse les pinceaux autour du Belvédère',
+  casiers: 'Ramasse les casiers sur la grève de Percé', nids: 'Bats des nids-de-poule dans les rues autour de la place', piste: 'Bats des cônes-golems dans les rues de Montréal',
+};
+for (const k in OBJ) QUESTS[k].obj = OBJ[k];
+QUESTS.permis.foe = 'bureau';

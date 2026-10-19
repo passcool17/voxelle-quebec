@@ -20,7 +20,7 @@ const $ = id => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const isTouch = Q.has('touch') || (matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window);
 const mobile = isTouch || Q.has('mobile') || /Android|iPhone|iPad/.test(navigator.userAgent);
-if (isTouch) document.body.classList.add('touch');
+if (isTouch) { document.body.classList.add('touch'); $('stats').appendChild($('tracker')); } // tactile : le suivi sous les barres, à gauche
 // v2 : monde en voxels fins (0,5 m) ; les sauvegardes v1 sont reprises sans les blocs modifiés
 const SEED = 20261018, SAVE_KEY = 'voxelle-quebec-v2', OLD_SAVE_KEY = 'voxelle-quebec-v1', OPT_KEY = 'voxelle-quebec-opts';
 const DAY_LEN = 600;
@@ -55,7 +55,7 @@ function addBlob(g, r) { const b = new THREE.Mesh(blobGeo, blobMat); b.scale.set
 const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
-    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
+    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, tuto: 0, dunSeen: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0, crafted: 0, mined: 0 }, glider: true };
 }
 let S = null; // sauvegarde active
 function loadSave() {
@@ -66,9 +66,10 @@ function loadSave() {
 // anciennes sauvegardes : on complète les champs ajoutés depuis (sans rien perdre)
 function normSave(s) {
   const f = freshSave();
-  for (const k of ['blocks', 'inv', 'equip', 'stats', 'q', 'taken', 'edits', 'dun']) if (!s[k] || typeof s[k] !== 'object') s[k] = f[k];
+  for (const k of ['blocks', 'inv', 'equip', 'stats', 'q', 'taken', 'edits', 'dun', 'dunSeen']) if (!s[k] || typeof s[k] !== 'object') s[k] = f[k];
   for (const k in f.stats) if (s.stats[k] == null) s.stats[k] = 0;
   s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0; if (!s.tal || typeof s.tal !== 'object') s.tal = {};
+  if (typeof s.tuto !== 'number') s.tuto = -1; // vieille partie : pas de premiers pas forcés (Pause → Revoir)
   return s;
 }
 function writeSave() {
@@ -88,6 +89,10 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
+// téléphone : changement d'appli, écran verrouillé, onglet caché → pause, sauvegarde, son coupé
+function toBackground() { keys.clear(); if (G.state === 'play') openPause(); if (S && G.P && G.state !== 'title' && G.state !== 'loading') writeSave(); if (audio.ctx && audio.ctx.state === 'running') audio.ctx.suspend().catch(() => {}); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) toBackground(); else if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume().catch(() => {}); });
+addEventListener('pagehide', toBackground);
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('mousedown', e => {
   audio.init();
@@ -404,13 +409,25 @@ function addItem(id, n = 1, r = 0) {
 const labelsEl = $('labels');
 function makeLabel(cls, html) { const d = document.createElement('div'); d.className = 'lb ' + cls; d.innerHTML = html; labelsEl.appendChild(d); return d; }
 const projV = new THREE.Vector3();
+const lblQ = []; let hudRects = [], hudRectT = -9;
 function placeLabel(el, x, y, z, maxD = 34) {
   const d = Math.hypot(x - camera.position.x, z - camera.position.z);
   projV.set(x, y, z).project(camera);
   if (projV.z > 1 || d > maxD || !sameFloor(y) || Math.abs(projV.x) > 1.2 || Math.abs(projV.y) > 1.2) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
-  el.style.display = '';
-  const sx = (projV.x * 0.5 + 0.5) * innerWidth, sy = (-projV.y * 0.5 + 0.5) * innerHeight;
-  el.style.transform = `translate(${sx | 0}px,${sy | 0}px) translate(-50%,-100%)`;
+  lblQ.push({ el, d, sx: (projV.x * 0.5 + 0.5) * innerWidth, sy: (-projV.y * 0.5 + 0.5) * innerHeight });
+}
+function flushLabels() {
+  if (G.t - hudRectT > 1) { hudRectT = G.t; hudRects = ['stats', 'mapbox', 'tracker', 'tTop', 'hotbar', 'bossbox'].map(id => $(id)).filter(e => e && e.offsetParent !== null).map(e => e.getBoundingClientRect()); }
+  lblQ.sort((a, b) => a.d - b.d); const done = [];
+  for (const L of lblQ) {
+    const el = L.el, w = el._w || (el.style.display === 'none' ? 90 : (el._w = Math.max(40, (el.querySelector('.nm') || el).offsetWidth))), h = 32;
+    const x0 = L.sx - w / 2, x1 = L.sx + w / 2, y0 = L.sy - h, y1 = L.sy;
+    const hide = hudRects.some(r => x1 > r.left && x0 < r.right && y1 > r.top && y0 < r.bottom) || done.some(o => x1 > o[0] && x0 < o[1] && y1 > o[2] && y0 < o[3]);
+    if (hide) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
+    done.push([x0, x1, y0, y1]); if (el.style.display === 'none') el.style.display = '';
+    el.style.transform = `translate(${L.sx | 0}px,${L.sy | 0}px) translate(-50%,-100%)`;
+  }
+  lblQ.length = 0;
 }
 // sous terre, une étiquette (ou un texte flottant) d'un autre étage que le joueur est derrière le roc : on la cache
 function sameFloor(y) { return !G.dun || (y > G.dun.fy - 1 && y < G.dun.fy + 8); }
@@ -695,7 +712,8 @@ function dunUpdate(dt) {
   }
   if (cur) { const e = dunPlan(cur).ent; if (Math.abs(P.x - e.x) < e.hr + 0.6 && Math.abs(P.z - e.z) < e.hr + 0.6 && Math.hypot(P.x - (e.x - e.hr + 0.5), P.z - (e.z - e.hr + 0.5)) < 2.6) door = { s: cur, down: false }; }
   G.door = G.drive ? null : door;
-  if (cur !== G.dun) { G.dun = cur; G.dunSpawned = new Set(); if (cur) banner(DUN[cur.kind].name.toUpperCase(), REGIONS[cur.key][1]); }
+  if (cur !== G.dun) { G.dun = cur; G.dunSpawned = new Set(); G.dirtyQ = true; miniT = 0; if (cur) banner(DUN[cur.kind].name.toUpperCase(), REGIONS[cur.key][1]); }
+  if (cur) { const m = dunRoomAt(cur, P.x, P.z), bit = m ? 1 << (m.i + 4 * m.j) : 0; if (bit && !(S.dunSeen[cur.key] & bit)) { S.dunSeen[cur.key] = (S.dunSeen[cur.key] || 0) | bit; miniT = 0; } }
   // ennemis des salles : apparaissent quand on approche (une fois par visite)
   if (cur) dunPlan(cur).foes.forEach((f, k) => { if (!G.dunSpawned.has(k) && Math.hypot(P.x - f.x, P.z - f.z) < 20) { G.dunSpawned.add(k); spawnEnemy(f.type, f.x, f.z, { y: cur.fy, lvl: DUN[cur.kind].lvl - 1 + ((Math.random() * 3) | 0) }); } });
   sky.under += ((cur ? 1 : 0) - sky.under) * Math.min(1, dt * 3);
@@ -940,21 +958,50 @@ function reward(r) {
   gainXP(r.xp || 0); audio.fx('quest');
   return `<span class="rw">Récompense : ${r.cash || 0} piasses · ${r.xp} XP${r.item ? ' · ' + ITEMS[r.item].name : ''}${r.give ? ' · ' + Object.entries(r.give).map(([k, v]) => v + ' × ' + ITEMS[k].name).join(', ') : ''}</span>`;
 }
-function questTargetPos(id) {
-  const q = QUESTS[id], s = S.q[id];
-  if (q.home) { const R = gen.reg.places, p = s && s.st === 'ready' ? R[q.home] : R[q.at || q.home]; return p ? { x: p.x, z: p.z } : null; }
-  const NP = gen.nord.places, gp = { gaston: gen.cell(0, 0), lapaperasse: gen.cell(0, 0), pepere: gen.cell(1, 0), ginette: gen.cell(-1, 0), cuisiniere: NP.etape, saguenayen: NP.port }[q.giver];
-  if (s && s.st === 'active' && q.type === 'talk' && q.to === 'pepere') { const c = gen.cell(1, 0); return { x: c.x, z: c.z }; }
-  if (s && s.st === 'active' && id === 'comite') return { x: NP.travaux.x, z: NP.travaux.z };
-  if (s && s.st === 'active' && id === 'goelands') return { x: NP.port.x, z: NP.port.z };
-  if (s && s.st === 'ready') return { x: gp.x, z: gp.z };
-  if (id === 'pate') return { x: NP.travaux.x, z: NP.travaux.z };
-  if (id === 'nouvelles') { const c = gen.cell(0, 0); return { x: c.x, z: c.z }; }
-  if (q.where) { const c = gen.cell(...q.where); return { x: c.x, z: c.z }; }
-  if (id === 'sirop') { const c = gen.cell(1, 0); return { x: c.x, z: c.z }; }
-  if (id === 'poutine') { const c = gen.cell(-1, 0); return { x: c.x, z: c.z }; }
-  return null;
+// où aller : le PNJ lui-même s'il est chargé, sinon sa place ; pour une quête en cours, la cible vivante la plus proche
+function npcPos(role, near) { let best = null, bd = 150; for (const [, n] of G.npcs) if (n.role === role) { const d = near ? Math.hypot(n.x - near.x, n.z - near.z) : 0; if (d < bd) { bd = d; best = { x: n.x, z: n.z, y: n.y + 2.4 }; } } return best; }
+function giverPos(role, q) {
+  const NP = gen.nord.places, c = { gaston: [0, 0], lapaperasse: [0, 0], pepere: [1, 0], ginette: [-1, 0] }[role];
+  const p = q && q.home ? gen.reg.places[q.home] : c ? gen.cell(...c) : { cuisiniere: NP.etape, saguenayen: NP.port }[role];
+  return p ? npcPos(role, p) || { x: p.x, z: p.z } : null;
 }
+function questTargetPos(id) {
+  const q = QUESTS[id], s = S.q[id], P = G.P, NP = gen.nord.places;
+  if (!s || s.st === 'ready') return giverPos(q.giver, q);
+  if (q.type === 'talk') return giverPos(q.to);
+  if (id === 'nouvelles') return giverPos('gaston');
+  // cible vivante proche : ennemi à battre (ou qui porte l'objet), objet à ramasser
+  const foe = q.foe || (q.type === 'kill' && q.target), near = (x, z) => Math.hypot(x - P.x, z - P.z);
+  let best = null, bd = 70;
+  if (foe) for (const e of G.enemies) if (!e.dead && e.type === foe && near(e.x, e.z) < bd) { bd = near(e.x, e.z); best = { x: e.x, z: e.z, y: e.y + e.T.h + 0.6 }; }
+  if (q.item) for (const p of G.pickups) if (p.kind === q.item && near(p.x, p.z) < bd) { bd = near(p.x, p.z); best = { x: p.x, z: p.z, y: p.y + 1 }; }
+  if (best) return best;
+  if (q.home) { const p = gen.reg.places[q.at || q.home]; return p ? { x: p.x, z: p.z } : null; }
+  if (q.where) { const c = gen.cell(...q.where); return { x: c.x, z: c.z }; }
+  const Z = { sirop: () => gen.cell(1, 0), poutine: () => gen.cell(-1, 0), permis: () => gen.cell(-1, 0), souffleuses: () => gen.cell(2, -1), pate: () => NP.travaux, comite: () => NP.travaux, goelands: () => NP.port }[id];
+  const c = Z && Z(); return c ? { x: c.x, z: c.z } : null;
+}
+// ---------- premiers pas (tutoriel du premier lancement) ----------
+// S.tuto : étape en cours (0…), -1 = fini ou passé. Chaque étape avance quand l'action est faite.
+const K = (kb, pad, touch) => isTouch ? touch : input.gp ? pad : kb;
+const TUTO = [
+  { t: 'Bouge', d: () => K('WASD (ou ZQSD) pour marcher, la souris pour regarder', 'Stick gauche pour marcher, stick droit pour regarder', 'Pouce gauche pour marcher, glisse à droite pour regarder'), done: b => Math.hypot(G.P.x - b.x, G.P.z - b.z) > 5 },
+  { t: 'Parle à Gaston', d: () => 'Le crieur public, avec le <span class="gold">!</span> jaune : approche et ' + K('appuie sur E', 'appuie sur B', 'touche PARLE'), done: () => !!S.q.cones, pos: () => giverPos('gaston') },
+  { t: 'Démolis un cône', d: () => 'Au chantier, au nord : ' + K('clic gauche', 'RT', 'FRAPPE') + ' pour frapper, 3 coups de suite = coup final', done: b => S.stats.kills > b.kills, pos: () => S.q.cones && S.q.cones.st === 'active' ? questTargetPos('cones') : null },
+  { t: 'Fais une roulade', d: () => 'Pour esquiver les coups : ' + K('C', 'L3', 'ROULE'), done: () => G.P.rollT > 0 },
+  { t: 'Mine un bloc', d: () => 'Vise un bloc et ' + K('appuie sur F (garde pour enchaîner)', 'garde RB', 'garde CASSE'), done: b => S.stats.blocks > b.blocks },
+  { t: 'Fabrique des planches', d: () => K('Ouvre l’atelier (K)', 'Ouvre le sac (Select) → ATELIER', 'Touche ATELIER') + ', choisis Planches, puis FABRIQUER', done: b => S.stats.crafted > b.crafted },
+  { t: 'Ouvre ton journal', d: () => 'Toutes tes quêtes et le récit : ' + K('J', 'croix ▲', 'QUÊTES'), done: () => G.tutoJ },
+];
+function tutoBase() { G.tb = { x: G.P.x, z: G.P.z, kills: S.stats.kills, blocks: S.stats.blocks, crafted: S.stats.crafted }; G.tutoJ = false; }
+function tutoUpdate() {
+  if (!(S.tuto >= 0)) return; if (!G.tb) tutoBase();
+  const st = TUTO[S.tuto]; if (!st || !st.done(G.tb)) return;
+  S.tuto++; audio.fx('quest'); G.dirtyQ = true; tutoBase();
+  if (S.tuto >= TUTO.length) { S.tuto = -1; banner('PREMIERS PAS TERMINÉS', 'Le reste, c’est à toi de le découvrir!'); } else toast('✔ ' + st.t);
+  writeSave();
+}
+function tutoSet(on) { S.tuto = on ? 0 : -1; G.tb = null; G.dirtyQ = true; }
 // ---------- dialogues ----------
 function openDialog(n) {
   G.state = 'dialog'; unlock(); G.dlgNpc = n; audio.fx('ui'); show('dialog'); renderDialog(n);
@@ -1037,7 +1084,7 @@ function hudUpdate(dt) {
   if (rk) G.regSeen[rk] = G.t;
   $('where').textContent = place; $('clock').textContent = sky.clock() + (sky.snow > 0.4 ? ' · neige' : sky.rain > 0.4 ? ' · pluie' : '');
   if (G.dirtyHot) { G.dirtyHot = false; renderHot(); }
-  if (G.dirtyQ || !G.trackT || G.t - G.trackT > 1) { G.dirtyQ = false; G.trackT = G.t; renderTracker(); }
+  if (G.dirtyQ || !G.trackT || G.t - G.trackT > 0.5) { G.dirtyQ = false; G.trackT = G.t; renderTracker(); }
 }
 function renderHot() {
   const list = hotList(); if (S.hot >= list.length) S.hot = Math.max(0, list.length - 1);
@@ -1046,13 +1093,45 @@ function renderHot() {
   if (!list.length) hb.innerHTML = '<div class="s zero"><img src="' + blockIcon(B.DIRT) + '"><i>0</i></div>';
   const w = S.equip.arme || { id: 'baton' }; $('weapon').innerHTML = `<img src="${itemIcon(w.id)}"><div>${ITEMS[w.id].name}<small>${isTouch ? '' : 'Q : changer · R : manger'}</small></div>`;
 }
+// suivi : toujours la prochaine action concrète (premiers pas, donjon, quêtes, prochain chapitre, quoi faire ensuite)
+function objectives() {
+  const out = [], nm = r => NPCS[r].name;
+  if (S.tuto >= 0 && TUTO[S.tuto]) { const st = TUTO[S.tuto]; out.push({ cls: 'tuto', t: 'Premiers pas ' + (S.tuto + 1) + '/' + TUTO.length + ' · ' + st.t, d: st.d(), pos: st.pos && st.pos(), skip: true }); }
+  if (G.dun) { const p = dunPlan(G.dun), done = S.dun[G.dun.key], m = done ? p.ent : p.bossRoom;
+    out.push({ t: DUN[G.dun.kind].name, d: done ? 'Nettoyée! Remonte par l’échelle (' + K('E', 'B', 'MONTE') + ')' : 'Trouve le boss, dans la salle du fond', pos: done ? { x: m.x - m.hr + 0.5, z: m.z - m.hr + 0.5, y: G.dun.fy + 1.5 } : { x: m.x + 0.5, z: m.z + 0.5, y: G.dun.fy + 2 } }); }
+  const ids = Object.keys(S.q).filter(id => S.q[id].st !== 'done').sort((a, b) => (QUESTS[a].chap ? 0 : 1) - (QUESTS[b].chap ? 0 : 1));
+  for (const id of ids) { const q = QUESTS[id]; out.push({ cls: S.q[id].st === 'ready' ? 'ready' : '', t: (q.chap ? 'Ch. ' + q.chap + ' · ' : '') + q.title, d: objTxt(id), pos: questTargetPos(id) }); }
+  const mains = Object.entries(QUESTS).filter(([, q]) => q.chap).sort((a, b) => a[1].chap - b[1].chap);
+  if (!ids.some(id => QUESTS[id].chap)) { const nx = mains.find(([id]) => questAvailable(id)); if (nx) out.push({ t: 'Ch. ' + nx[1].chap + ' · ' + nx[1].title, d: 'Va voir ' + nm(nx[1].giver), pos: giverPos(nx[1].giver, nx[1]) }); }
+  const c = S.contract; if (c) out.push({ cls: c.st === 'ready' ? 'ready' : '', t: 'Contrat du village', d: c.st === 'ready' ? 'Retourne voir l’aubergiste' : 'Bats : ' + ENEMIES[c.target].name + ' ' + c.prog + ' / ' + c.n });
+  if (!out.some(o => !o.skip)) { // plus rien en cours : une suggestion concrète
+    const side = Object.entries(QUESTS).find(([id, q]) => !q.chap && questAvailable(id)), dun = gen.reg.structs.find(s => s.type === 'donjon' && !S.dun[s.key]);
+    if (side) out.push({ t: 'Quête : ' + side[1].title, d: 'Va voir ' + nm(side[1].giver), pos: giverPos(side[1].giver, side[1]) });
+    else if (dun) out.push({ t: DUN[dun.kind].name, d: 'Nettoie le donjon de ' + REGIONS[dun.key][0] + ' (autocar Orignal Express)', pos: { x: dun.x + 0.5, z: dun.z + 0.5 } });
+    else { const pv = gen.cell(-1, 0); out.push({ t: 'Contrats de village', d: 'Un aubergiste a toujours de l’ouvrage pour toi', pos: npcPos('aubergiste', G.P) || { x: pv.x, z: pv.z } }); }
+  }
+  return out;
+}
 function renderTracker() {
-  const out = [];
-  const ids = Object.keys(S.q).sort((a, b) => (QUESTS[a].chap ? 0 : 1) - (QUESTS[b].chap ? 0 : 1));
-  for (const id of ids) { const s = S.q[id], q = QUESTS[id]; if (s.st === 'done') continue; out.push(`<div class="q ${s.st === 'ready' ? 'ready' : ''}"><b>${q.chap ? 'Ch. ' + q.chap + ' · ' : ''}${q.title}</b>${objTxt(id)}</div>`); }
-  const c = S.contract; if (c) out.push(`<div class="q ${c.st === 'ready' ? 'ready' : ''}"><b>Contrat du village</b>${c.st === 'ready' ? 'Retourne voir l’aubergiste' : ENEMIES[c.target].name + ' : ' + c.prog + ' / ' + c.n}</div>`);
-  if (!out.length) out.push('<div class="q"><b>Explore!</b>Cherche les <span class="gold">!</span> au-dessus des gens.</div>');
-  $('tracker').innerHTML = out.slice(0, 3).join('');
+  const list = objectives().slice(0, isTouch ? 2 : 3);
+  $('tracker').innerHTML = list.map(o => `<div class="q ${o.cls || ''}">${o.skip ? (isTouch ? '<button class="tskip" aria-label="Passer les premiers pas">✕</button>' : '') : ''}<b>${o.t}</b>${o.d}${o.skip && !isTouch ? '<small>Pause : passer</small>' : ''}</div>`).join('');
+  const w = list.find(o => o.pos); G.wpPos = w ? w.pos : null;
+}
+$('tracker').addEventListener('pointerdown', e => { if (e.target.closest('.tskip')) { e.stopPropagation(); tutoSet(false); toast('Premiers pas passés (Pause → Revoir)'); } });
+// repère à l'écran vers l'objectif : losange au-dessus de la cible, ou flèche au bord de l'écran, avec la distance
+const wpEl = $('wp');
+function wpUpdate() {
+  const p = G.wpPos, P = G.P; if (!p || G.state !== 'play') { wpEl.style.display = 'none'; return; }
+  const d = Math.hypot(p.x - P.x, p.z - P.z); if (d < 1.5) { wpEl.style.display = 'none'; return; }
+  const y = p.y != null ? p.y : Math.max(SEA, gen.heightAt(p.x, p.z)) + 2.5;
+  tmpV.set(p.x, y, p.z).applyMatrix4(camera.matrixWorldInverse); const behind = tmpV.z > 0;
+  tmpV.set(p.x, y, p.z).project(camera); let x = tmpV.x, yy = tmpV.y; if (behind) { x = -x; yy = -yy; }
+  const MX = 0.82, MY = 0.62, on = !behind && Math.abs(x) < MX && Math.abs(yy) < MY;
+  if (!on) { const k = Math.max(Math.abs(x) / MX, Math.abs(yy) / MY, 1e-6); x /= k; yy /= k; if (behind && Math.abs(yy) < 0.2) yy = -MY; }
+  wpEl.style.display = 'block'; wpEl.classList.toggle('off', !on);
+  wpEl.style.transform = `translate(${((x * 0.5 + 0.5) * innerWidth) | 0}px,${((-yy * 0.5 + 0.5) * innerHeight) | 0}px)`;
+  wpEl.firstChild.style.transform = on ? '' : `rotate(${Math.atan2(-yy, x)}rad)`;
+  const t = d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km'; if (wpEl.lastChild.textContent !== t) wpEl.lastChild.textContent = t;
 }
 // mini-carte
 const mini = $('mini'), mctx = mini.getContext('2d'), mimg = mctx.createImageData(160, 160);
@@ -1081,11 +1160,36 @@ function drawMarkers(ctx, cx, cz, scale, W, round) {
   // joueur
   const px = (P.x - cx) * scale + W / 2, pz = (P.z - cz) * scale + W / 2; ctx.save(); ctx.translate(px, pz); ctx.rotate(-G.camYaw); ctx.fillStyle = '#0c1420'; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(7, 7); ctx.lineTo(-7, 7); ctx.fill(); ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4.5, 5); ctx.lineTo(-4.5, 5); ctx.fill(); ctx.restore();
 }
+// mini-carte de surface : copiée tronçon par tronçon (une recherche par tronçon, pas par pixel)
+const mini32 = new Uint32Array(mimg.data.buffer);
 function miniUpdate(dt) {
   miniT -= dt; if (miniT > 0) return; miniT = 0.25;
+  if (G.dun) return drawDunMini();
   const P = G.P, d = mimg.data, ox = Math.floor(P.x) - 80, oz = Math.floor(P.z) - 80;
-  for (let j = 0; j < 160; j++) for (let i = 0; i < 160; i++) { const c = topColor(ox + i, oz + j), k = (i + j * 160) * 4; if (c) { d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; } else { d[k] = 22; d[k + 1] = 34; d[k + 2] = 50; } d[k + 3] = 255; }
+  mini32.fill(0xff322216); // fond (22, 34, 50) hors des tronçons chargés
+  for (let cz = Math.floor(oz / CS); cz <= Math.floor((oz + 159) / CS); cz++) for (let cx = Math.floor(ox / CS); cx <= Math.floor((ox + 159) / CS); cx++) {
+    const c = world.chunks.get(cx + ',' + cz); if (!c || !c.top) continue; const t = c.top;
+    const x0 = Math.max(ox, cx * CS), x1 = Math.min(ox + 160, cx * CS + CS), z0 = Math.max(oz, cz * CS), z1 = Math.min(oz + 160, cz * CS + CS);
+    for (let z = z0; z < z1; z++) { let i = ((x0 - cx * CS) + (z - cz * CS) * CS) * 3, k = ((x0 - ox) + (z - oz) * 160) * 4; for (let x = x0; x < x1; x++, i += 3, k += 4) { d[k] = t[i]; d[k + 1] = t[i + 1]; d[k + 2] = t[i + 2]; } }
+  }
   mctx.putImageData(mimg, 0, 0); drawMarkers(mctx, P.x, P.z, 1, 160, true);
+}
+// sous terre : plan des salles visitées autour du joueur (couloirs vers les salles voisines), échelle, boss (au bord s'il est loin), joueur
+function drawDunMini() {
+  const s = G.dun, p = dunPlan(s), seen = S.dunSeen[s.key] || 0, P = G.P, c = mctx, W = 160, sc = 3.2;
+  const X = x => (x - P.x) * sc + W / 2, Z = z => (z - P.z) * sc + W / 2;
+  const isSeen = m => seen & (1 << (m.i + 4 * m.j)), room = (i, j) => p.rooms[i + 4 * j];
+  c.fillStyle = '#0c1420'; c.fillRect(0, 0, W, W);
+  c.strokeStyle = '#6a5a44'; c.lineWidth = sc * 2; c.lineCap = 'square';
+  for (const [i, j, a, b] of p.links) if (isSeen(room(i, j)) || isSeen(room(a, b))) { c.beginPath(); c.moveTo(X(p.cx(i, j) + 0.5), Z(p.cz(i, j) + 0.5)); c.lineTo(X(p.cx(a, b) + 0.5), Z(p.cz(a, b) + 0.5)); c.stroke(); }
+  for (const m of p.rooms) if (isSeen(m)) { c.fillStyle = m.boss ? '#7a2a2a' : '#a08a66'; c.fillRect(X(m.x - m.hr), Z(m.z - m.hr), (m.hr * 2 + 1) * sc, (m.hr * 2 + 1) * sc); }
+    else if (p.links.some(([i, j, a, b]) => (i === m.i && j === m.j && isSeen(room(a, b))) || (a === m.i && b === m.j && isSeen(room(i, j))))) { c.strokeStyle = '#a08a66'; c.lineWidth = 2; c.strokeRect(X(m.x - m.hr), Z(m.z - m.hr), (m.hr * 2 + 1) * sc, (m.hr * 2 + 1) * sc); }
+  const e = p.ent, lx = X(e.x - e.hr + 0.5), lz = Z(e.z - e.hr + 0.5); // échelle : montants et barreaux dorés
+  c.fillStyle = '#0c1420'; c.fillRect(lx - 7, lz - 9, 14, 18); c.fillStyle = '#ffd23a'; c.fillRect(lx - 6, lz - 8, 3, 16); c.fillRect(lx + 3, lz - 8, 3, 16); for (let k = -6; k <= 6; k += 4) c.fillRect(lx - 4, lz + k, 8, 2);
+  for (const f of G.enemies) if (!f.dead && Math.abs(f.y - s.fy) < 3) { c.fillStyle = '#ff4a4a'; c.fillRect(X(f.x) - 2.5, Z(f.z) - 2.5, 5, 5); }
+  if (!S.dun[s.key]) { const b = p.bossRoom; let bx = X(b.x + 0.5) - W / 2, bz = Z(b.z + 0.5) - W / 2; const l = Math.hypot(bx, bz); if (l > W / 2 - 12) { bx *= (W / 2 - 12) / l; bz *= (W / 2 - 12) / l; }
+    c.save(); c.translate(bx + W / 2, bz + W / 2); c.rotate(Math.PI / 4); c.fillStyle = '#0c1420'; c.fillRect(-8, -8, 16, 16); c.fillStyle = '#ff4a4a'; c.fillRect(-6, -6, 12, 12); c.restore(); }
+  c.save(); c.translate(W / 2, W / 2); c.rotate(-G.camYaw); c.fillStyle = '#0c1420'; c.beginPath(); c.moveTo(0, -9); c.lineTo(7, 7); c.lineTo(-7, 7); c.fill(); c.fillStyle = '#ffd23a'; c.beginPath(); c.moveTo(0, -6); c.lineTo(4.5, 5); c.lineTo(-4.5, 5); c.fill(); c.restore();
 }
 function drawBigMap() {
   const cv = $('bigmap'), ctx = cv.getContext('2d'), W = 480, P = G.P, sc = [1.5, 0.45, 0.16][G.mapZ], stp = sc < 1 ? 4 : 1, img = ctx.createImageData(W, W), d = img.data;
@@ -1115,7 +1219,7 @@ function renderInv() {
   const s = $('iSell'); if (s) s.onclick = () => { S.cash += sellPrice(sel); if (sel.n > 1) sel.n--; else { S.inv.splice(invSel, 1); invSel = null; } audio.fx('coin'); renderInv(); };
 }
 function sellPrice(it) { return Math.round((ITEMS[it.id].price || 40) * 0.3 * RARITY[it.r || 0].m); }
-function objTxt(id) { const q = QUESTS[id], s = S.q[id]; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
+function objTxt(id) { const q = QUESTS[id], s = S.q[id]; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.obj || (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name)) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
 // journal : récit principal par chapitres (fait / en cours / à venir), quêtes secondaires, contrats
 function renderQuests() {
   const main = Object.entries(QUESTS).filter(([, q]) => q.chap).sort((a, b) => a[1].chap - b[1].chap), side = Object.entries(QUESTS).filter(([, q]) => !q.chap);
@@ -1141,7 +1245,7 @@ function renderTalents() {
   for (const b of TALENTS) {
     h += `<div class="tbr"><h2 style="color:${b.col}">${b.name}<small>${b.sub} · ${spentIn(S, b.key)} pt</small></h2>`;
     for (const t of b.list) { const r = (S.tal || {})[t.id] || 0, ok = canLearn(S, t.id), locked = spentIn(S, b.key) < t.req;
-      h += `<div class="tal${ok ? ' can' : ''}${locked ? ' locked' : ''}${r ? ' has' : ''}" data-t="${t.id}"><b>${t.name}</b> <span class="pips">${'◆'.repeat(r)}${'◇'.repeat(t.max - r)}</span><br><small>${locked ? 'Débloqué avec ' + t.req + ' points dans la branche' : t.txt(Math.max(1, r))}</small></div>`; }
+      h += `<div class="tal${ok ? ' can' : ''}${locked ? ' locked' : ''}${r ? ' has' : ''}" data-t="${t.id}"><b>${t.name}</b> <span class="pips">${'◆'.repeat(r)}${'◇'.repeat(t.max - r)}</span><br><small>${locked ? 'Débloqué avec ' + t.req + ' point' + (t.req > 1 ? 's' : '') + ' dans la branche' : t.txt(Math.max(1, r))}</small></div>`; }
     h += '</div>';
   }
   h += `</div><div class="row2"><button class="btn sm" id="tReset">RÉINITIALISER (${resetCost()} $)</button></div>`;
@@ -1181,9 +1285,9 @@ function craft(id) {
   S.stats.crafted++; audio.fx('craft'); toast('Fabriqué : ' + r.name + ((r.out.n || 1) > 1 ? ' ×' + r.out.n : '')); G.dirtyHot = true; questEvent('craft', id);
   return true;
 }
-function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'craft') renderCraft(); if (id === 'talents') renderTalents(); if (id === 'inv') renderInv(); if (id === 'quests') renderQuests(); if (id === 'map') drawBigMap(); }
+function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'craft') renderCraft(); if (id === 'talents') renderTalents(); if (id === 'inv') renderInv(); if (id === 'quests') { renderQuests(); G.tutoJ = true; tutoUpdate(); } if (id === 'map') drawBigMap(); }
 function closePanels() { for (const id of ['inv', 'quests', 'map', 'dialog', 'craft', 'talents']) hide(id); if (['inv', 'quests', 'map', 'dialog', 'craft', 'talents'].includes(G.state)) G.state = 'play'; G.dirtyHot = true; }
-function openPause() { if (G.state !== 'play') return; G.state = 'pause'; unlock(); show('pause'); }
+function openPause() { if (G.state !== 'play') return; G.state = 'pause'; unlock(); show('pause'); $('bTuto').textContent = S.tuto >= 0 ? 'PASSER LES PREMIERS PAS' : 'REVOIR LES PREMIERS PAS'; }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { audio.fx('ui'); const sc = b.closest('.screen'); sc.classList.add('hidden'); if (sc.id === 'help' || sc.id === 'opts') { if (G.prevScreen) show(G.prevScreen); } else closePanels(); });
 // options
 function bindOpts() {
@@ -1247,7 +1351,7 @@ function startGame(fresh) {
   if (fresh && old && Object.keys(old.edits || {}).length) makeWorld({}); else if (!fresh && old && G.worldEdits !== 'save') makeWorld(S.edits);
   G.worldEdits = 'save';
   clearEntities(); if (G.P) scene.remove(G.P.model.g);
-  G.P = makePlayer(); sky.t = S.time; hide('title'); show('loading'); G.state = 'loading'; G.loadT = 0;
+  G.P = makePlayer(); G.tb = null; G.wpPos = null; sky.t = S.time; hide('title'); show('loading'); G.state = 'loading'; G.loadT = 0;
   if (fresh) writeSave();
 }
 function waterUpdate() {
@@ -1334,7 +1438,8 @@ function frame(now) {
     const col = gen.column(Math.floor(P.x), Math.floor(P.z));
     sky.update(dt, camera.position, G.t, world.view * CS, col.biome === BIOME.COLLINES ? 0.85 : 0);
     amb.update(dt, P, G.t, 1 - sky.dayF, col.biome === BIOME.BOREALE || col.biome === BIOME.ERABLIERE || col.biome === BIOME.CAMPAGNE, col.biome === BIOME.ERABLIERE, Math.max(sky.rain, sky.snow));
-    if (st === 'play') { hudUpdate(dt); miniUpdate(dt); }
+    if (st === 'play') { tutoUpdate(); hudUpdate(dt); miniUpdate(dt); flushLabels(); }
+    wpUpdate();
   }
   pressed.clear();
   waterUpdate();
@@ -1384,6 +1489,7 @@ $('bOpts').onclick = () => { G.prevScreen = 'title'; hide('title'); show('opts')
 $('bResume').onclick = () => resume();
 $('bSave').onclick = () => { if (writeSave()) toast('Partie sauvegardée'); };
 $('bPOpts').onclick = () => { G.prevScreen = 'pause'; hide('pause'); show('opts'); };
+$('bTuto').onclick = () => { tutoSet(!(S.tuto >= 0)); resume(); if (S.tuto >= 0) banner('PREMIERS PAS', TUTO[0].t); };
 $('bPHelp').onclick = () => { G.prevScreen = 'pause'; hide('pause'); show('help'); };
 $('bQuit').onclick = () => { writeSave(); hide('pause'); hide('hud'); hide('touch'); touchSet = false; clearEntities(); scene.remove(G.P.model.g); G.state = 'title'; show('title'); $('bCont').classList.remove('hidden'); };
 $('bRespawn').onclick = () => respawn();
@@ -1393,5 +1499,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;
