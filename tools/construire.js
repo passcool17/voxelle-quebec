@@ -72,8 +72,9 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     const x = t.x + t.n[0], y = t.y + t.n[1], z = t.z + t.n[2], n0 = S.blocks[g.B.TORCH]; g.input.rmbP = true; await new Promise(r => setTimeout(r, 400)); return { b: g.world.get(x, y, z) === g.B.TORCH, moins1: S.blocks[g.B.TORCH] === n0 - 1, pos: [x, y, z] }; });
     if (res.flambeauPose && res.flambeauPose.pos) break; await aim(); await p.waitForTimeout(800); }
   // sauvegarde, puis rechargement comme une ancienne sauvegarde (sans les champs ajoutés)
-  const snap = await ev(() => { const g = __game; g.writeSave(); const s = JSON.parse(localStorage.getItem('voxelle-quebec-v2')); delete s.stats.crafted; delete s.stats.mined; localStorage.setItem('voxelle-quebec-v2', JSON.stringify(s)); return { bench: g.S.blocks[g.B.BENCH] || 0, torch: g.S.blocks[g.B.TORCH], outils: g.S.inv.filter(i => g.ITEMS[i.id].slot === 'outil').length, edits: Object.keys(g.S.edits).length }; });
-  await p.reload(); await p.waitForTimeout(3000); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+  const snap = await ev(() => { const g = __game; g.writeSave(); return { bench: g.S.blocks[g.B.BENCH] || 0, torch: g.S.blocks[g.B.TORCH], outils: g.S.inv.filter(i => g.ITEMS[i.id].slot === 'outil').length, edits: Object.keys(g.S.edits).length }; });
+  // le jeu sauvegarde au pagehide : on vieillit la sauvegarde après le rechargement
+  await p.reload(); await p.waitForTimeout(3000); await ev(() => { const s = JSON.parse(localStorage.getItem('voxelle-quebec-v2')); delete s.stats.crafted; delete s.stats.mined; localStorage.setItem('voxelle-quebec-v2', JSON.stringify(s)); }); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   const fp = res.flambeauPose.pos;
   await p.waitForFunction(fp => __game.world.loadedAround(fp[0], fp[2], 1), fp, { timeout: 120000 });
   res.recharge = await ev(([snap, fp]) => { const g = __game; return { torch: g.S.blocks[g.B.TORCH] === snap.torch, outils: g.S.inv.filter(i => g.ITEMS[i.id].slot === 'outil').length === snap.outils, flambeauMonde: g.world.get(fp[0], fp[1], fp[2]) === g.B.TORCH, crafted: g.S.stats.crafted === 0 }; }, [snap, fp]);

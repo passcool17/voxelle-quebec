@@ -48,8 +48,8 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   const snap = await ev(() => { const g = __game; g.writeSave(); return { tal: JSON.stringify(g.S.tal), lvl: g.S.lvl }; });
   await p.reload(); await p.waitForTimeout(3000); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   res.recharge = await ev(snap => { const g = __game; return { tal: JSON.stringify(g.S.tal) === snap.tal, chapeau: g.G.P.model.c.hatType === 'casque', veste: !!g.G.P.model.c.vest, mine: g.G.mineBonus === 0.25 }; }, snap);
-  await ev(() => { const s = JSON.parse(localStorage.getItem('voxelle-quebec-v2')); delete s.tal; s.lvl = 4; localStorage.setItem('voxelle-quebec-v2', JSON.stringify(s)); });
-  await p.reload(); await p.waitForTimeout(3000); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+  // le jeu sauvegarde au pagehide : on vieillit la sauvegarde après le rechargement
+  await p.reload(); await p.waitForTimeout(3000); await ev(() => { const s = JSON.parse(localStorage.getItem('voxelle-quebec-v2')); delete s.tal; s.lvl = 4; localStorage.setItem('voxelle-quebec-v2', JSON.stringify(s)); }); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   res.vieille = await ev(() => ({ pts: __game.talentPts(), tal: __game.S.tal }));
   console.log(JSON.stringify(res));
   // tactile : SAC → TALENTS
