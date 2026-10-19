@@ -13,12 +13,12 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   await p.waitForTimeout(3000);
   await p.click('#bNew'); await p.click('#bPersoGo'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   await ev(() => { const g = __game; g.S.cash = 2000; g.G.P.hp = 1e6; g.G.weatherT = 1e9; });
-  const arrive = async () => { await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 }); await p.waitForFunction(() => __game.world.loadedAround(__game.G.P.x, __game.G.P.z, 1), null, { timeout: 120000 }); await p.waitForTimeout(1500); };
+  const arrive = async () => { try { await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 }); } catch (e) { console.log(JSON.stringify(res), await ev(() => [__game.G.state, __game.G.P.x, __game.G.P.z, document.getElementById('dtext').textContent])); throw e; } await p.waitForFunction(() => __game.world.loadedAround(__game.G.P.x, __game.G.P.z, 1), null, { timeout: 120000 }); await p.waitForTimeout(1500); };
   const npc = role => ev(r => { for (const [, n] of __game.G.npcs) if (n.role === r) return { name: n.name, d: +Math.hypot(n.x - __game.G.P.x, n.z - __game.G.P.z).toFixed(1) }; return null; }, role);
   const talk = (role, btn) => ev(([r, btn]) => { const g = __game; let n = null; for (const [, q] of g.G.npcs) if (q.role === r) n = q; if (!n) return { err: 'pas de ' + r };
     g.openDialog(n); const t = document.getElementById('dtext').textContent, bs = [...document.querySelectorAll('#dbtns .btn')]; const labels = bs.map(b => b.textContent);
     if (btn) { const b = bs.find(b => b.textContent.includes(btn)); if (b) b.click(); else return { err: 'bouton ' + btn, labels }; } else g.closeDialog(); return { t: t.slice(0, 90), labels }; }, [role, btn]);
-  const goto = (x, z) => ev(([x, z]) => { const P = __game.G.P; P.x = x; P.z = z; P.y = __game.gen.heightAt(x, z) + 2; P.vx = P.vz = P.vy = 0; }, [x, z]);
+  const goto = (x, z) => ev(([x, z]) => { if (__game.G.state === 'dialog') __game.closeDialog(); const P = __game.G.P; P.x = x; P.z = z; P.y = __game.gen.heightAt(x, z) + 2; P.vx = P.vz = P.vy = 0; }, [x, z]);
   const collectAll = async kind => { const pts = await ev(k => { const R = __game.gen.reg.structs; return R.flatMap(s => []).concat(__game.pickups.filter(p => p.kind === k).map(p => [p.x, p.z])); }, kind);
     for (const [x, z] of pts) { await ev(([x, z]) => { const P = __game.G.P; P.x = x; P.z = z; P.y = __game.gen.heightAt(x, z) + 0.6; P.vx = P.vz = P.vy = 0; }, [x, z]); await p.waitForTimeout(500); } return pts.length; };
   const qst = id => ev(id => __game.S.q[id] && __game.S.q[id].st, id);
@@ -40,7 +40,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   // 2) autocar vers Montréal
   res.busListe = (await talk('chauffeur')).labels;
   await talk('chauffeur', 'MONTRÉAL'); await arrive();
-  res.montreal = { region: await ev(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z)), contremaitre: await npc('contremaitre'), cycliste: await npc('cycliste'), cones: await ev(() => { const w = __game.world, P = __game.G.P, B = __game.B; let c = 0; for (let x = -30; x < 30; x += 0.5) for (let z = -30; z < 30; z += 0.5) for (let y = 30; y < 34; y += 0.5) if (w.get(P.x + x, y, P.z + z) === B.CONE) c++; return c; }) };
+  res.montreal = { region: await ev(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z)), contremaitre: await npc('contremaitre'), cycliste: await npc('cycliste'), cones: await ev(() => { const w = __game.world, P = __game.G.P, B = __game.B; let c = 0; for (let x = -30; x < 30; x += 0.5) for (let z = -30; z < 30; z += 0.5) for (let y = 33; y < 40; y += 0.5) if (w.get(P.x + x, y, P.z + z) === B.CONE) c++; return c; }) };
   await ev(() => { const G = __game.G; G.camYaw = 0.8; G.camPitch = 0.35; G.camDist = 12; }); await p.waitForTimeout(1500); await p.screenshot({ path: SH + PFX + '-montreal.png' });
   res.nidsOffre = await talk('contremaitre', 'ACCEPTER'); await killN('trou', 5); await p.waitForTimeout(600); res.nids = await qst('nids');
   await talk('contremaitre', 'MERCI'); res.nidsFini = await qst('nids');
@@ -58,6 +58,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   await ev(([x, z]) => { const G = __game.G, P = G.P; G.camYaw = Math.atan2(P.x - x, P.z - z); G.camPitch = 0.1; G.camDist = 6; __game.sky.t = 0.3; }, rk); await p.waitForTimeout(2000);
   await p.screenshot({ path: SH + PFX + '-rocher-perce.png' });
   res.retourQuai = (await talk('capitaine')).labels;
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); });
   await ev(() => __game.writeSave());
   console.log(JSON.stringify(res, null, 1));
   // tactile : reprendre à Percé
