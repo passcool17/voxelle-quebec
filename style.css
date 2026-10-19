@@ -137,3 +137,8 @@ body.touch #prompt { bottom: auto; top: 30%; }
 .pnote { text-align: center !important; color: #dde; font-size: calc(var(--u) * .9); }
 #perso .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 #labels .lb .say { display: none; background: rgba(248,250,255,.94); color: #0c1420; text-shadow: none; border: 3px solid #0c1420; border-radius: 10px; padding: 2px 10px; margin: 0 auto 4px; max-width: 300px; white-space: normal; width: max-content; font-size: calc(var(--u) * .8); line-height: 1.1; }
+
+#qbody h2 { color: var(--gold); margin: .6em 0 .3em; font-size: 1.3em; } #qbody h2 small { color: #cfe8ff; font-size: .7em; }
+#qbody .qitem .ic { display: inline-block; width: 1.3em; color: var(--gold); } #qbody .qitem.done .ic { color: var(--green); } #qbody .qitem.locked { opacity: .55; }
+#qbody .qbar { height: 8px; background: #2a3448; border: 2px solid #0c1420; margin: 4px 0; max-width: 360px; } #qbody .qbar div { height: 100%; background: var(--gold); } #qbody .qbar.big { max-width: none; height: 12px; } #qbody .qbar.big div { background: var(--green); }
+#dtext .chap { color: #9ae0ff; font-size: .85em; letter-spacing: .08em; }

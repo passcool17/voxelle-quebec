@@ -175,19 +175,20 @@ export function glider() {
 // ---------- ennemis ----------
 export function enemyModel(type) {
   const g = new THREE.Group(), P = {}; let kind = type;
-  if (type === 'cone' || type === 'supreme') {
-    const s = type === 'supreme' ? 2.4 : 1;
+  if (type === 'cone' || type === 'supreme' || type === 'comite') {
+    const s = type === 'cone' ? 1 : 2.4, cm = type === 'comite', C1 = cm ? 0x5a6a8a : 0xff7a1a, C2 = cm ? 0x4a5a78 : 0xf47014;
     const body = pivot(g, 0, 0, 0); P.body = body;
     box(body, 0.92, 0.1, 0.92, 0x1e1e1e, 0, 0.05, 0); box(body, 0.8, 0.04, 0.8, 0x2c2c2c, 0, 0.12, 0);
     for (const [x, z] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) box(body, 0.14, 0.06, 0.14, 0x141414, x, 0.03, z);
     // cône effilé en 14 tranches, bandes réfléchissantes
     for (let i = 0; i < 14; i++) { const t = i / 13, w = 0.74 - t * 0.56, y = 0.18 + i * 0.115, band = i === 4 || i === 5 || i === 9;
-      box(body, w, 0.12, w, band ? 0xf4f4f0 : (i % 2 ? 0xff7a1a : 0xf47014), 0, y, 0); }
+      box(body, w, 0.12, w, band ? 0xf4f4f0 : (i % 2 ? C1 : C2), 0, y, 0); }
     box(body, 0.16, 0.06, 0.16, 0xff8a2a, 0, 1.82, 0);
     // visage fâché
     for (const sx of [-1, 1]) { box(body, 0.09, 0.08, 0.02, 0xfff4d0, sx * 0.12, 1.0, -0.245); box(body, 0.045, 0.06, 0.02, 0x111111, sx * 0.11, 0.99, -0.255); box(body, 0.12, 0.025, 0.02, 0x2a1a10, sx * 0.12, 1.07 - sx * -0.0, -0.25).rotation.z = sx * 0.35; }
     box(body, 0.22, 0.035, 0.02, 0x2a1a10, 0, 0.82, -0.29); box(body, 0.05, 0.03, 0.02, 0xf4f4f0, -0.06, 0.8, -0.3); box(body, 0.05, 0.03, 0.02, 0xf4f4f0, 0.06, 0.8, -0.3);
-    for (const [k, sx] of [['armL', -1], ['armR', 1]]) { const A = P[k] = pivot(body, sx * 0.42, 0.72, 0); box(A, 0.16, 0.44, 0.16, 0xff7a1a, 0, -0.22, 0); box(A, 0.17, 0.06, 0.17, 0xf4f4f0, 0, -0.14, 0); box(A, 0.2, 0.14, 0.2, 0x1e1e1e, 0, -0.48, 0); }
+    if (cm) { box(body, 0.08, 0.34, 0.02, 0xc02020, 0, 0.6, -0.3); box(body, 0.12, 0.06, 0.02, 0x901818, 0, 0.78, -0.29); for (const [x, z] of [[-0.12, 0], [0.12, 0], [0, 0.1]]) { box(body, 0.12, 0.1, 0.12, 0xff7a1a, x, 1.9, z); box(body, 0.07, 0.1, 0.07, 0xf47014, x, 1.99, z); box(body, 0.03, 0.03, 0.02, 0x111111, x - 0.02, 1.92, z - 0.065); box(body, 0.03, 0.03, 0.02, 0x111111, x + 0.02, 1.92, z - 0.065); } }
+    for (const [k, sx] of [['armL', -1], ['armR', 1]]) { const A = P[k] = pivot(body, sx * 0.42, 0.72, 0); box(A, 0.16, 0.44, 0.16, C1, 0, -0.22, 0); if (cm && sx > 0) { box(A, 0.36, 0.26, 0.1, 0x4a2e1a, 0, -0.68, -0.08); box(A, 0.12, 0.04, 0.04, 0x2a1a0e, 0, -0.53, -0.08); } box(A, 0.17, 0.06, 0.17, 0xf4f4f0, 0, -0.14, 0); box(A, 0.2, 0.14, 0.2, 0x1e1e1e, 0, -0.48, 0); }
     if (type === 'supreme') { box(body, 0.34, 0.08, 0.34, 0xe8c040, 0, 1.88, 0); for (const [x, z] of [[-0.13, -0.13], [0.13, -0.13], [-0.13, 0.13], [0.13, 0.13], [0, -0.15], [0, 0.15]]) box(body, 0.06, 0.14, 0.06, 0xe8c040, x, 1.98, z); box(body, 0.06, 0.06, 0.02, 0xff2020, 0, 1.88, -0.18, true); box(body, 0.05, 0.05, 0.02, 0x30a0ff, -0.1, 1.88, -0.175, true); box(body, 0.05, 0.05, 0.02, 0x30ff80, 0.1, 1.88, -0.175, true); }
     g.scale.setScalar(s); kind = 'cone';
   } else if (type === 'bureau') {
@@ -275,7 +276,7 @@ export function animEnemy(e, t, dt) {
   const M = e.model, P = M.P;
   if (M.kind === 'human') return animHuman(M.m, t, e.moving ? 0.7 : 0, e.atkAnim, !e.ground, false);
   const mv = e.moving ? 1 : 0, s = Math.sin(t * 9);
-  if (e.type === 'cone' || e.type === 'supreme') { P.body.position.y = Math.abs(s) * 0.08 * mv; P.body.rotation.z = s * 0.06 * mv; P.armL.rotation.x = s * 0.8 * mv; P.armR.rotation.x = -s * 0.8 * mv; if (e.atkAnim > 0) { P.armL.rotation.x = P.armR.rotation.x = FWD * 2.2 * Math.sin(e.atkAnim * Math.PI); } }
+  if (e.type === 'cone' || e.type === 'supreme' || e.type === 'comite') { P.body.position.y = Math.abs(s) * 0.08 * mv; P.body.rotation.z = s * 0.06 * mv; P.armL.rotation.x = s * 0.8 * mv; P.armR.rotation.x = -s * 0.8 * mv; if (e.atkAnim > 0) { P.armL.rotation.x = P.armR.rotation.x = FWD * 2.2 * Math.sin(e.atkAnim * Math.PI); } }
   else if (e.type === 'plow') { P.light.visible = Math.sin(t * 14) > -0.2; P.light.rotation.y = t * 8; P.body.position.y = Math.sin(t * 30) * 0.02 * mv; P.blade.position.y = 0.55 + (e.state === 'wind' ? Math.sin(t * 20) * 0.08 : 0); }
   else if (e.type === 'raton') { P.body.position.y = Math.abs(s) * 0.1 * mv; P.tail.rotation.y = Math.sin(t * 6) * 0.4; P.head.rotation.x = e.atkAnim > 0 ? 0.4 : 0; P.poutine.visible = !e.stole; }
   else if (e.type === 'orignal') { const k = Math.min(1.6, Math.hypot(e.vx, e.vz) / 3); P.legs.forEach((L, i) => { L.rotation.x = Math.sin(t * 7 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k; }); P.head.rotation.x = e.charge && !e.charge.wind ? 0.5 : e.atkAnim > 0 ? 0.6 * Math.sin(e.atkAnim * Math.PI) : 0; P.body.rotation.x = e.charge && e.charge.wind ? Math.sin(t * 30) * 0.03 : 0; }

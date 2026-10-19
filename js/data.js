@@ -21,6 +21,8 @@ export const ITEMS = {
   gazette: { name: 'Gazette des remparts', slot: 'quete', desc: 'Les nouvelles de Québec, imprimées à matin (ou l’an passé).' },
   pate: { name: 'Pâté chinois', slot: 'conso', heal: 60, desc: 'Steak, blé d’Inde, patates. Rend 60 PV.', price: 24 },
   bleuets: { name: 'Casseau de bleuets', slot: 'conso', heal: 15, stam: 1, desc: 'Des bleuets du Lac, gros comme des billes. Rend 15 PV et l’énergie.', price: 10 },
+  memo: { name: 'Mémo collant', slot: 'quete', desc: 'Écrit à l’encre de sirop d’érable. Ça sent la 2e coulée.' },
+  casque_or: { name: 'Casque doré du Grand Plan', slot: 'tete', def: 9, spd: 0.05, desc: 'Le Comité l’avait commandé pour lui-même. En trois exemplaires.' },
   tarte: { name: 'Tarte aux bleuets', slot: 'conso', heal: 70, buff: 15, desc: 'Rend 70 PV et donne de la vitesse. Tache les dents.', price: 30 },
 };
 export const SHOPS = { etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone'] };
@@ -37,6 +39,7 @@ export const ENEMIES = {
   orignal: { name: 'Orignal de mauvaise humeur', hp: 120, dmg: 15, spd: 4.0, range: 2.4, cd: 2.6, xp: 70, cash: [6, 14], aggro: 17, hw: 0.8, h: 2.6, charge: true },
   souffleuse: { name: 'Souffleuse à neige enragée', hp: 70, dmg: 11, spd: 2.2, range: 15, cd: 3.0, xp: 48, cash: [5, 12], aggro: 21, hw: 0.6, h: 1.2, lob: true },
   goeland: { name: 'Goéland voleur de frites', hp: 26, dmg: 6, spd: 7, range: 1.4, cd: 2.6, xp: 28, cash: [2, 6], aggro: 22, hw: 0.45, h: 0.7, fly: true, dive: true },
+  comite: { name: 'Le Comité du Grand Plan', hp: 1100, dmg: 24, spd: 3.2, range: 3.6, cd: 1.5, xp: 1200, cash: [250, 320], aggro: 28, hw: 1.0, h: 3.8, boss: true },
   supreme: { name: 'Le Cône Suprême', hp: 650, dmg: 20, spd: 3.0, range: 3.6, cd: 1.6, xp: 600, cash: [120, 160], aggro: 26, hw: 1.0, h: 3.8, boss: true },
 };
 export const NPCS = {
@@ -83,10 +86,10 @@ export const CHATTER = [
 ];
 // Quêtes du récit (les contrats des villages sont générés)
 export const QUESTS = {
-  cones: { giver: 'gaston', title: 'L’invasion des cônes', type: 'kill', target: 'cone', n: 6, where: [0, -1], reward: { cash: 60, xp: 160, item: 'lanceur' },
+  cones: { chap: 1, giver: 'gaston', title: 'L’invasion des cônes', type: 'kill', target: 'cone', n: 6, where: [0, -1], reward: { cash: 60, xp: 160, item: 'lanceur' },
     intro: 'Oyez, oyez! Des cônes orange ont pris vie au chantier au nord des remparts. Ils bloquent le chemin des Laurentides! Va en démolir six, pis reviens me voir.',
     wait: 'Le chantier est au nord, passe par la porte Nord. Six cônes, pas un de moins!', done: 'Six cônes au recyclage! Tiens, prends ce lance-balles de neige. Ça va te servir.' },
-  permis: { giver: 'lapaperasse', requires: ['cones'], title: 'Le formulaire B-52', type: 'collect', item: 'permis', n: 1, reward: { cash: 80, xp: 200, item: 'tuque_patrimoine' },
+  permis: { chap: 2, giver: 'lapaperasse', requires: ['cones'], title: 'Le formulaire B-52', type: 'collect', item: 'permis', n: 1, reward: { cash: 80, xp: 200, item: 'tuque_patrimoine' },
     intro: 'Un bureaucrate zombie est parti avec le formulaire B-52, en trois copies. Sans lui, personne peut bâtir. Les zombies traînent la nuit, mais il y en a le jour aussi, dans la campagne.',
     wait: 'Le formulaire B-52 : en trois copies, agrafé en haut à gauche. Un bureaucrate zombie l’a sur lui.', done: 'Parfait, tout est en règle! Voici une tuque du patrimoine, approuvée par le comité.' },
   sirop: { giver: 'pepere', title: 'Le sirop de Pépère', type: 'collect', item: 'chaudiere', n: 5, reward: { cash: 50, xp: 150, item: 'mitaines', give: { sirop: 3 } },
@@ -101,8 +104,27 @@ export const QUESTS = {
   nouvelles: { giver: 'saguenayen', title: 'Des nouvelles de Québec', type: 'collect', item: 'gazette', n: 1, reward: { cash: 120, xp: 300, give: { bleuets: 4, tarte: 1 } },
     intro: 'Salut l’étranger! Ça fait trois semaines qu’on a pas eu de nouvelles de Québec. Le tramway, y’é-tu fini? Le pont, y tient-tu encore? Va voir Gaston, le crieur de la Vieille-Ville, pis rapporte-moi sa gazette. Je te paye en bleuets!',
     wait: 'Gaston, le crieur, est sur la place de la Vieille-Ville. Prends l’autocar si t’as pas envie de rouler.', done: '« Tramway : les travaux avancent. Pont : il tient. Cônes : en hausse. » Rien de neuf, d’abord! Tiens, des bleuets pis une tarte. Des vrais, gros comme des billes.' },
-  supreme: { giver: 'gaston', requires: ['cones', 'permis'], title: 'Le Grand Chantier', type: 'kill', target: 'supreme', n: 1, where: [2, -1], reward: { cash: 300, xp: 650, item: 'baton_or' },
+  supreme: { chap: 4, giver: 'gaston', requires: ['cones', 'permis'], title: 'Le Grand Chantier', type: 'kill', target: 'supreme', n: 1, where: [2, -1], reward: { cash: 300, xp: 650, item: 'baton_or' },
     intro: 'Mauvaise nouvelle : le Cône Suprême dirige un grand chantier dans les hauteurs, au nord-est. Si on l’arrête pas, il va mettre des cônes jusque dans le fleuve!',
     wait: 'Le Grand Chantier est au nord-est, dans les hauteurs. Prends des poutines.', done: 'Tu as vaincu le Cône Suprême! Les rues sont libres. Voici le Bâton doré du Carnaval.' },
 };
+// Récit principal, suite : le Comité du Grand Plan (personnages et organisation fictifs)
+Object.assign(QUESTS, {
+  memo: { chap: 3, giver: 'lapaperasse', requires: ['permis'], title: 'Le mémo à l’encre de sirop', type: 'talk', to: 'pepere', n: 1, give: 'memo', reward: { cash: 60, xp: 220, give: { sirop: 2 } },
+    intro: 'Attends donc… Agrafé derrière ton formulaire B-52, y’avait ça : un mémo collant, écrit à l’encre de sirop d’érable. Je comprends rien, c’est même pas en trois copies! Pépère Tremblay, à la cabane à sucre, lit le sirop comme d’autres lisent le journal. Va lui montrer.',
+    wait: 'Le mémo, c’est Pépère Tremblay qui peut le lire. Sa cabane est à l’est de la Vieille-Ville.',
+    done: 'Hum… (il goûte le mémo) Érable de 2e coulée, pas pire. Ça dit : « Au Comité du Grand Plan : prolonger tous les chantiers jusqu’à l’an 3000. Les souffleuses s’occupent du sud, les goélands du Saguenay. Réunion finale au chantier de la 175. » Mon jeune, y’a un comité derrière les cônes! Retourne voir Mme Lapaperasse.' },
+  souffleuses: { chap: 5, giver: 'lapaperasse', requires: ['memo'], title: 'Les mottes du Comité', type: 'kill', target: 'souffleuse', n: 4, reward: { cash: 110, xp: 320, item: 'mitaines_doublees' },
+    intro: 'Un comité qui se cache derrière les cônes? Sans formulaire? Inacceptable! Les souffleuses à neige enragées transportent ses ordres. Arrête-en quatre dans la campagne pis les collines, pis rapporte-moi leur paperasse.',
+    wait: 'Les souffleuses rôdent dans la campagne et les collines, surtout la nuit. Attention aux mottes : roule (C) hors des cercles rouges!',
+    done: 'Quatre souffleuses, quatre ordres de prolongation. Je les ai tamponnés « REFUSÉ ». Ça fait du bien! Tiens, des mitaines doublées, pour tes prochaines bordées.' },
+  goelands: { chap: 6, giver: 'saguenayen', requires: ['memo'], title: 'Les espions à plumes', type: 'kill', target: 'goeland', n: 5, reward: { cash: 120, xp: 340, give: { bleuets: 3, tarte: 2 } },
+    intro: 'Des goélands espions? Ça m’étonne pas pantoute. Y volent mes frites ET mes secrets. Le Comité s’en sert pour passer ses messages entre Québec pis le Royaume. Abats-en cinq, pis les messages vont arrêter de voler.',
+    wait: 'Les goélands tournent au-dessus du port pis des rives. Frappe-les quand y piquent, ou sors ton lance-balles.',
+    done: 'Cinq goélands de moins, pis mes frites sont sauves! Un des messages dit : « Réunion finale. Rolande, à L’Étape, nous garde la table du fond. » Va la voir!' },
+  comite: { chap: 7, giver: 'cuisiniere', requires: ['supreme', 'souffleuses', 'goelands'], title: 'Le Comité du Grand Plan', type: 'kill', target: 'comite', n: 1, reward: { cash: 500, xp: 1400, item: 'casque_or' },
+    intro: 'Le Comité? Y squattent ma table du fond chaque mardi pis y commandent juste de l’eau chaude! Leur « Grand Plan », c’est de laisser les cônes sur la 175 jusqu’à la fin des temps. Y tiennent leur réunion finale au chantier, au sud. Va les déloger. Je te garde une pointe de tarte.',
+    wait: 'Le Comité tient sa réunion au chantier de la 175, au sud de L’Étape. Saute par-dessus les ondes, roule hors des charges.',
+    done: 'Le Comité est dissous! Pas de procès-verbal, pas de prolongation. La 175 est libre, pis toute la province respire. Tiens : le Casque doré du Grand Plan. Y l’avait commandé pour lui-même. En trois exemplaires.' },
+});
 export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches', 'raton', 'orignal'], 3: ['raton', 'mouches', 'bureau'], 4: ['plow', 'mouches'], 0: ['trou', 'raton'], 5: ['bureau'] };

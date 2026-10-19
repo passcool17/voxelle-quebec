@@ -410,9 +410,10 @@ function spawnEnemy(type, x, z, opt = {}) {
   if (T.fly) e.y += T.dive ? 6 : 0.8;
   G.enemies.push(e); return e;
 }
-const FOE_COL = { cone: 0xff7a1a, supreme: 0xff7a1a, bureau: 0xf8f8f0, plow: 0xf28a1a, raton: 0x8d8a84, mouches: 0x202020, trou: 0x4a4c50, orignal: 0x4a3020, souffleuse: 0xd83a1a, goeland: 0xf2f2f2 };
-const PHASES = ['', 'Inspection de chantier', 'Zone de travaux élargie', 'Heures supplémentaires'];
-function bossTitle(e) { $('bossname').innerHTML = e.T.name + ' (niv. ' + e.lvl + ') <small>· phase ' + e.phase + ' : ' + PHASES[e.phase] + '</small>'; }
+const FOE_COL = { comite: 0x5a6a8a, cone: 0xff7a1a, supreme: 0xff7a1a, bureau: 0xf8f8f0, plow: 0xf28a1a, raton: 0x8d8a84, mouches: 0x202020, trou: 0x4a4c50, orignal: 0x4a3020, souffleuse: 0xd83a1a, goeland: 0xf2f2f2 };
+const PHASES_BY = { supreme: ['', 'Inspection de chantier', 'Zone de travaux élargie', 'Heures supplémentaires'], comite: ['', 'Réunion de démarrage', 'Comité élargi', 'Prolongation des travaux'] };
+let PHASES = PHASES_BY.supreme;
+function bossTitle(e) { PHASES = PHASES_BY[e.type] || PHASES_BY.supreme; $('bossname').innerHTML = e.T.name + ' (niv. ' + e.lvl + ') <small>· phase ' + e.phase + ' : ' + PHASES[e.phase] + '</small>'; }
 function damageEnemy(e, dmg, nx, nz, kb, o = {}) {
   const crit = Math.random() < 0.12, d = Math.round(dmg * (0.88 + Math.random() * 0.24) * (crit ? 1.7 : 1));
   e.hp -= d; e.hurtT = 0.15; e.flashT = 0.09; if (G.dbg.log) G.dbg.log.push(e.type + ":" + d); e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
@@ -439,13 +440,13 @@ function killEnemy(e) {
   if (Math.random() < (e.T.boss ? 1 : 0.06)) dropGear(e);
   if (e.type === 'raton' && e.stole) dropPickup('piasse', e.x, e.y + 0.6, e.z, { val: e.stole });
   if (e.type === 'bureau' && S.q.permis && S.q.permis.st === 'active' && !G.pickups.some(p => p.kind === 'permis')) { S.bureauKills++; if (S.bureauKills >= 3 || Math.random() < 0.25) { dropPickup('permis', e.x, e.y + 0.6, e.z, {}); toast('Le bureaucrate a échappé un formulaire!'); } }
-  if (e.T.boss) { S.bossDead = true; $('bossbox').classList.add('hidden'); G.boss = null; banner('LE CÔNE SUPRÊME EST VAINCU!', 'Les rues sont libres… pour l’instant.'); }
+  if (e.T.boss) { if (e.type === 'comite') { S.comiteDead = true; banner('LE COMITÉ EST DISSOUS!', 'Retourne voir Rolande, à L’Étape'); } else { S.bossDead = true; banner('LE CÔNE SUPRÊME EST VAINCU!', 'Les rues sont libres… pour l’instant.'); } $('bossbox').classList.add('hidden'); G.boss = null; }
   questEvent('kill', e.type);
   if (e.camp) { const c = G.camps.get(e.camp); if (c) { c.alive--; if (c.alive <= 0) { c.cleared = G.t; toast('Chantier nettoyé!'); } } }
 }
 function dropGear(e) {
   const pool = ['tuque', 'mitaines', 'bottes', 'manteau', 'mitaines_doublees', 'pelle', 'baton_carbone', 'lanceur', 'pelle_alu'];
-  const id = e.T.boss ? 'manteau' : pool[(Math.random() * pool.length) | 0];
+  const id = e.T.boss ? (e.type === 'comite' ? 'baton_carbone' : 'manteau') : pool[(Math.random() * pool.length) | 0];
   const r = e.T.boss ? 2 : Math.random() < 0.2 ? 2 : Math.random() < 0.5 ? 1 : 0;
   dropPickup('gear', e.x, e.y + 0.6, e.z, { id, r });
 }
@@ -497,7 +498,7 @@ function enemiesUpdate(dt) {
           e.cd = T.cd; e.atkAnim = 0.01;
           setTimeout(() => { if (!e.dead && Math.hypot(P.x - e.x, P.z - e.z) < reach + 0.8) { hurtPlayer(e.dmg, e, T.name); if (e.type === 'raton' && !e.stole && S.cash > 0) { const s = Math.min(S.cash, 3 + (Math.random() * 6 | 0)); S.cash -= s; e.stole = s; toast('Le raton t’a volé ' + s + ' piasses! Rattrape-le!'); } if (e.type === 'trou') audio.fx('chomp'); } }, 220);
         }
-        if (T.boss && e.cd <= 0.05 && Math.random() < dt * 0.3 && G.enemies.length < 14) { spawnEnemy('cone', e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, { camp: e.camp }); const c = G.camps.get(e.camp); if (c) c.alive++; toast('Le Cône Suprême appelle des renforts!'); }
+        if (T.boss && e.cd <= 0.05 && Math.random() < dt * 0.3 && G.enemies.length < 14) { spawnEnemy('cone', e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, { camp: e.camp }); const c = G.camps.get(e.camp); if (c) c.alive++; toast(T.name + (e.type === 'comite' ? ' convoque des cônes en sous-comité!' : ' appelle des renforts!')); }
       }
     }
     e.moving = Math.hypot(tvx, tvz) > 0.3;
@@ -564,6 +565,11 @@ function spawner(dt) {
       }
     }
   }
+  // le Comité du Grand Plan tient sa réunion au chantier de la 175 (quête « comite »)
+  const TW = gen.nord.places.travaux;
+  if (S.q.comite && S.q.comite.st === 'active' && !S.comiteDead && !G.boss && Math.hypot(TW.x - P.x, TW.z - P.z) < 70 && world.loadedAround(TW.x, TW.z, 1)) {
+    const k = 'comite'; G.camps.set(k, { alive: 4, cleared: 0 }); spawnEnemy('comite', TW.x, TW.z + 3, { camp: k, lvl: 6 }); for (let i = 0; i < 3; i++) spawnEnemy('cone', TW.x + (i - 1) * 4, TW.z + 8, { camp: k, lvl: 5 });
+    banner('LE COMITÉ DU GRAND PLAN', 'La réunion est ouverte. Ordre du jour : toi.'); }
   // camps de chantier
   for (const s of gen.allStructs(P.x - 100, P.z - 100, P.x + 100, P.z + 100)) {
     if (s.type !== 'chantier' && s.type !== 'grand' && s.type !== 'travaux') continue;
@@ -780,6 +786,7 @@ function gainXP(n) {
   S.xp += n; floatTxt(G.P.x, G.P.y + 2.4, G.P.z, '+' + n + ' XP', '#9ae0ff');
   while (S.xp >= xpNext(S.lvl)) { S.xp -= xpNext(S.lvl); S.lvl++; const st = stats(); G.P.hp = st.hpMax; audio.fx('level'); banner('NIVEAU ' + S.lvl + '!', 'PV max ' + st.hpMax + ' · dégâts +10 %'); burst(G.P.x, G.P.y + 1, G.P.z, 0xffd23a, 20, 6); }
 }
+function rewardTxt(r) { return (r.cash || 0) + ' piasses · ' + r.xp + ' XP' + (r.item ? ' · ' + ITEMS[r.item].name : '') + (r.give ? ' · ' + Object.entries(r.give).map(([k, v]) => v + ' × ' + ITEMS[k].name).join(', ') : ''); }
 function reward(r) {
   S.cash += r.cash || 0; if (r.item) addItem(r.item, 1, 0); if (r.give) for (const k in r.give) addItem(k, r.give[k]);
   gainXP(r.xp || 0); audio.fx('quest');
@@ -788,6 +795,9 @@ function reward(r) {
 function questTargetPos(id) {
   const q = QUESTS[id], s = S.q[id];
   const NP = gen.nord.places, gp = { gaston: gen.cell(0, 0), lapaperasse: gen.cell(0, 0), pepere: gen.cell(1, 0), ginette: gen.cell(-1, 0), cuisiniere: NP.etape, saguenayen: NP.port }[q.giver];
+  if (s && s.st === 'active' && q.type === 'talk' && q.to === 'pepere') { const c = gen.cell(1, 0); return { x: c.x, z: c.z }; }
+  if (s && s.st === 'active' && id === 'comite') return { x: NP.travaux.x, z: NP.travaux.z };
+  if (s && s.st === 'active' && id === 'goelands') return { x: NP.port.x, z: NP.port.z };
   if (s && s.st === 'ready') return { x: gp.x, z: gp.z };
   if (id === 'pate') return { x: NP.travaux.x, z: NP.travaux.z };
   if (id === 'nouvelles') { const c = gen.cell(0, 0); return { x: c.x, z: c.z }; }
@@ -807,10 +817,13 @@ function renderDialog(n, extra) {
   const qs = questsOf(n.role);
   const ready = qs.find(([id]) => S.q[id] && S.q[id].st === 'ready'), avail = qs.find(([id]) => questAvailable(id)), active = qs.find(([id]) => S.q[id] && S.q[id].st === 'active');
   let pre = '';
+  const talkQ = !extra && Object.entries(S.q).find(([id, st]) => st.st === 'active' && QUESTS[id].type === 'talk' && QUESTS[id].to === n.role);
+  if (talkQ) { const [id, st] = talkQ, q = QUESTS[id]; st.st = 'done'; st.n = 1; if (q.give) S.inv = S.inv.filter(i => i.id !== q.give); audio.fx('quest'); banner('CHAPITRE ' + q.chap + ' TERMINÉ', q.title); G.dirtyQ = true; $('dtext').innerHTML = ''; }
   if (n.role === 'gaston' && !extra && S.q.nouvelles && S.q.nouvelles.st === 'active') { addItem('gazette'); questEvent('collect', 'gazette'); pre = 'Des nouvelles pour le Saguenay? Tiens, la <b class="gold">Gazette des remparts</b>, encore chaude. Dis-leur que le pont tient!<br><br>'; }
   if (extra) txt = extra;
+  else if (talkQ) { const q = QUESTS[talkQ[0]]; txt = q.done + reward(q.reward); add('MERCI!', () => renderDialog(n)); }
   else if (ready) { const [id, q] = ready; S.q[id].st = 'done'; txt = q.done + reward(q.reward); if (id === 'permis') S.inv = S.inv.filter(i => i.id !== 'permis'); if (id === 'nouvelles') S.inv = S.inv.filter(i => i.id !== 'gazette'); G.dirtyQ = true; add('MERCI!', () => renderDialog(n)); }
-  else if (avail) { const [id, q] = avail; txt = '<b class="gold">' + q.title + '</b><br>' + q.intro; add('ACCEPTER', () => { S.q[id] = { st: 'active', n: 0 }; audio.fx('accept'); toast('Nouvelle quête : ' + q.title); G.dirtyQ = true; writeSave(); closeDialog(); }, true); add('PLUS TARD', close); }
+  else if (avail) { const [id, q] = avail; txt = (q.chap ? '<span class="chap">Récit · chapitre ' + q.chap + '</span><br>' : '') + '<b class="gold">' + q.title + '</b><br>' + q.intro + '<br><span class="rw">Récompense : ' + rewardTxt(q.reward) + '</span>'; add('ACCEPTER', () => { S.q[id] = { st: 'active', n: 0 }; if (q.give) addItem(q.give); audio.fx('accept'); toast((q.chap ? 'Chapitre ' + q.chap + ' : ' : 'Nouvelle quête : ') + q.title); G.dirtyQ = true; writeSave(); closeDialog(); }, true); add('PLUS TARD', close); }
   else if (active) { const [id, q] = active; txt = q.wait + '<br><span class="gold">Progrès : ' + Math.min(S.q[id].n, q.n) + ' / ' + q.n + '</span>'; }
   else if (n.role === 'aubergiste') {
     const key = n.s.i + ',' + n.s.j, c = S.contract;
@@ -882,7 +895,8 @@ function renderHot() {
 }
 function renderTracker() {
   const out = [];
-  for (const id in S.q) { const s = S.q[id], q = QUESTS[id]; if (s.st === 'done') continue; out.push(`<div class="q ${s.st === 'ready' ? 'ready' : ''}"><b>${q.title}</b>${s.st === 'ready' ? 'Retourne voir ' + NPCS[q.giver].name.split(',')[0] : (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n}</div>`); }
+  const ids = Object.keys(S.q).sort((a, b) => (QUESTS[a].chap ? 0 : 1) - (QUESTS[b].chap ? 0 : 1));
+  for (const id of ids) { const s = S.q[id], q = QUESTS[id]; if (s.st === 'done') continue; out.push(`<div class="q ${s.st === 'ready' ? 'ready' : ''}"><b>${q.chap ? 'Ch. ' + q.chap + ' · ' : ''}${q.title}</b>${objTxt(id)}</div>`); }
   const c = S.contract; if (c) out.push(`<div class="q ${c.st === 'ready' ? 'ready' : ''}"><b>Contrat du village</b>${c.st === 'ready' ? 'Retourne voir l’aubergiste' : ENEMIES[c.target].name + ' : ' + c.prog + ' / ' + c.n}</div>`);
   if (!out.length) out.push('<div class="q"><b>Explore!</b>Cherche les <span class="gold">!</span> au-dessus des gens.</div>');
   $('tracker').innerHTML = out.slice(0, 3).join('');
@@ -946,14 +960,23 @@ function renderInv() {
   const s = $('iSell'); if (s) s.onclick = () => { S.cash += sellPrice(sel); S.inv.splice(invSel, 1); invSel = null; audio.fx('coin'); renderInv(); };
 }
 function sellPrice(it) { return Math.round((ITEMS[it.id].price || 40) * 0.3 * RARITY[it.r || 0].m); }
+function objTxt(id) { const q = QUESTS[id], s = S.q[id]; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
+// journal : récit principal par chapitres (fait / en cours / à venir), quêtes secondaires, contrats
 function renderQuests() {
-  let h = '';
-  const list = Object.entries(S.q).sort((a, b) => (a[1].st === 'done') - (b[1].st === 'done'));
-  for (const [id, s] of list) { const q = QUESTS[id]; h += `<div class="qitem ${s.st}"><b>${q.title}</b> — ${NPCS[q.giver].name}<br>${s.st === 'done' ? 'Terminée.' : s.st === 'ready' ? 'Objectif atteint : retourne voir ' + NPCS[q.giver].name + '.' : q.wait + ' (' + Math.min(s.n, q.n) + ' / ' + q.n + ')'}</div>`; }
-  if (S.contract) h += `<div class="qitem ${S.contract.st}"><b>Contrat du village</b><br>${ENEMIES[S.contract.target].name} : ${S.contract.prog} / ${S.contract.n}</div>`;
-  const avail = Object.keys(QUESTS).filter(questAvailable).length;
-  if (!h) h = '<p>Aucune quête pour l’instant. Parle à Gaston, le crieur public, sur la place de la Vieille-Ville.</p>';
-  h += `<p class="gold">${avail} quête(s) à découvrir · ${S.contractsDone} contrat(s) de village rempli(s)</p>`;
+  const main = Object.entries(QUESTS).filter(([, q]) => q.chap).sort((a, b) => a[1].chap - b[1].chap), side = Object.entries(QUESTS).filter(([, q]) => !q.chap);
+  const stOf = id => S.q[id] ? S.q[id].st : questAvailable(id) ? 'avail' : 'locked';
+  const ICON = { done: '✔', active: '●', ready: '★', avail: '!', locked: '·' };
+  const row = (id, q) => { const st = stOf(id); const giver = NPCS[q.giver].name;
+    if (st === 'locked') return `<div class="qitem locked"><b>${q.chap ? 'Chapitre ' + q.chap + ' · ' : ''}???</b><br>Débloqué après : ${(q.requires || []).map(r => QUESTS[r].title).join(', ')}</div>`;
+    const prog = S.q[id] && st === 'active' && q.n > 1 ? `<div class="qbar"><div style="width:${Math.min(100, S.q[id].n / q.n * 100)}%"></div></div>` : '';
+    const what = st === 'done' ? 'Terminée.' : st === 'avail' ? 'À prendre auprès de ' + giver + '.' : st === 'ready' ? 'Objectif atteint : retourne voir ' + giver + '.' : q.wait + ' — ' + objTxt(id);
+    return `<div class="qitem ${st}"><span class="ic">${ICON[st]}</span><b>${q.chap ? 'Chapitre ' + q.chap + ' · ' : ''}${q.title}</b> — ${giver}<br>${what}${prog}${st !== 'done' ? '<br><small class="rw">Récompense : ' + rewardTxt(q.reward) + '</small>' : ''}</div>`; };
+  const doneN = main.filter(([id]) => stOf(id) === 'done').length;
+  let h = `<h2>Le Grand Plan des cônes <small>${doneN} / ${main.length} chapitres</small></h2><div class="qbar big"><div style="width:${doneN / main.length * 100}%"></div></div>` + main.map(([id, q]) => row(id, q)).join('');
+  const sideSeen = side.filter(([id]) => stOf(id) !== 'locked');
+  h += '<h2>Quêtes secondaires</h2>' + (sideSeen.map(([id, q]) => row(id, q)).join('') || '<p>Aucune pour l’instant.</p>');
+  if (S.contract) h += `<h2>Contrat du village</h2><div class="qitem ${S.contract.st}"><b>Contrat du village</b><br>${ENEMIES[S.contract.target].name} : ${S.contract.prog} / ${S.contract.n}</div>`;
+  h += `<p class="gold">${S.contractsDone} contrat(s) de village rempli(s)</p>`;
   $('qbody').innerHTML = h;
 }
 function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'inv') renderInv(); if (id === 'quests') renderQuests(); if (id === 'map') drawBigMap(); }
@@ -1154,5 +1177,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
+const API = { renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
 window.__game = API;
