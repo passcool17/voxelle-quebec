@@ -41,7 +41,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   console.log('bazou', JSON.stringify(drv), 'parcouru', Math.round(z0 - drv.z));
   res.drive_dist = z0 - drv.z > 120; res.drive_road = drv.off < 7;
   res.r175_banner = (await region()) === 'r175';
-  await ev(() => { window.__bot = null; }); await ev(brain); await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(300); res.drive_out = !(await ev(() => __game.G.drive));
+  await ev(() => { window.__bot = null; }); await ev(brain); await ev(() => __game.pressed.add('KeyE')); await p.waitForFunction(() => !__game.G.drive, null, { timeout: 15000 }).catch(() => {}); res.drive_out = !(await ev(() => __game.G.drive));
   // 2. autocar vers L'Étape
   await tp(W.stops[0].ax, W.stops[0].az); res.bus_dlg = await talk('chauffeur'); res.bus_btn = await btn('L’ÉTAPE'); await waitPlay(); await p.waitForTimeout(2500);
   res.etape_region = await region(); res.etape_banner = await ev(() => document.getElementById('banner').textContent);
