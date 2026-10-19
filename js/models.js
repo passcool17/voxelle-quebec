@@ -350,6 +350,8 @@ export function pickupModel(kind) {
   else if (kind === 'ble') { box(g, 0.3, 0.4, 0.3, 0xc9ced6, 0, 0, 0); box(g, 0.31, 0.24, 0.31, 0xf2d03a, 0, 0, 0, true); box(g, 0.12, 0.12, 0.315, 0x2c8a3a, 0, 0, 0); }
   else if (kind === 'poutine') { box(g, 0.36, 0.18, 0.3, 0xf2f2f2, 0, 0, 0); box(g, 0.32, 0.1, 0.26, 0xe8b84a, 0, 0.12, 0, true); }
   else if (kind === 'coffre' || kind === 'coffre_or') { const gold = kind === 'coffre_or'; box(g, 0.8, 0.5, 0.56, gold ? 0x8a5a1a : 0x7a5228, 0, -0.1, 0); box(g, 0.84, 0.18, 0.6, gold ? 0xa86a1e : 0x8b6a3e, 0, 0.22, 0); box(g, 0.86, 0.08, 0.1, gold ? 0xffd34a : 0x6a6a6e, 0, 0.05, 0.27, gold); box(g, 0.14, 0.16, 0.06, 0xffd34a, 0, 0.05, 0.31, true); }
+  else if (kind === 'plume') { box(g, 0.08, 0.5, 0.12, 0xf2f6fb, 0, 0, 0, true); box(g, 0.04, 0.12, 0.04, 0x2a2a2a, 0, -0.28, 0); }
+  else if (kind === 'accordeon') { box(g, 0.55, 0.36, 0.28, 0xc8282e, 0, 0, 0); box(g, 0.2, 0.32, 0.32, 0x1a1a1a, -0.32, 0, 0); box(g, 0.2, 0.32, 0.32, 0x1a1a1a, 0.32, 0, 0); box(g, 0.5, 0.28, 0.22, 0xe8d8c0, 0, 0, 0, true); }
   else if (kind === 'pinceau') { box(g, 0.06, 0.06, 0.5, 0xb98b52, 0, 0, 0); box(g, 0.08, 0.08, 0.08, 0xc9ced6, 0, 0, -0.28); box(g, 0.08, 0.08, 0.12, 0x2e7fd8, 0, 0, -0.38, true); }
   else if (kind === 'casier') { box(g, 0.6, 0.4, 0.44, 0x8b6a3e, 0, 0, 0); box(g, 0.5, 0.3, 0.46, 0x2a3a3a, 0, 0, 0, true); box(g, 0.62, 0.06, 0.46, 0xc8282e, 0, 0.21, 0); }
   else { box(g, 0.4, 0.4, 0.4, 0x9a6adf, 0, 0, 0, true); box(g, 0.46, 0.08, 0.46, 0xf2c12e, 0, 0.1, 0); }

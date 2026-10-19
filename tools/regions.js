@@ -46,9 +46,34 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   await talk('contremaitre', 'MERCI'); res.nidsFini = await qst('nids');
   res.pisteOffre = await talk('cycliste', 'ACCEPTER'); await killN('cone', 8); await p.waitForTimeout(600); await talk('cycliste', 'MERCI'); res.pisteFini = await qst('piste');
   res.ennemisMtl = await ev(() => { const g = __game; g.G.spawnT = 0; return g.gen.reg.level(g.G.P.x, g.G.P.z); });
-  // 3) quai de la Vieille-Ville, traversier vers Percé
-  await ev(() => __game.travel('quai')); await arrive();
+  // 3) Montmagny : autocar, puis battures + quête de l'accordéon
+  await ev(() => __game.travel('montmagny')); await arrive();
+  res.montmagny = { region: await ev(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z)), accordeoniste: await npc('accordeoniste'), oiseleur: await npc('oiseleur'), commercant: await npc('commercant') };
+  await ev(() => { const G = __game.G; G.camYaw = 2.2; G.camPitch = 0.28; G.camDist = 10; __game.sky.t = 0.4; }); await p.waitForTimeout(1800);
+  await p.screenshot({ path: SH + 'apres-montmagny-ville.png' });
+  res.accordeonOffre = await talk('accordeoniste', 'ACCEPTER'); res.accordeonActif = await qst('accordeon');
+  res.boutiqueMM = await ev(() => __game.SHOPS.montmagny.length);
+  const bt = await place('battures'); await goto(bt[0], bt[1]); await arrive();
+  res.accordeonVu = await collectAll('accordeon'); res.plumesVues = await collectAll('plume');
+  await ev(() => { const G = __game.G, P = G.P; G.camYaw = 3.4; G.camPitch = 0.2; G.camDist = 9; __game.sky.t = 0.38;
+    // forcer une volée d'oies pour la capture
+    G.flockT = 0; }); await p.waitForTimeout(2500);
+  await p.screenshot({ path: SH + 'apres-montmagny-oies.png' });
+  const mm = await place('mm'); await goto(mm[0], mm[1]); await arrive();
+  res.accordeonFini = (await talk('accordeoniste', 'MERCI'), await qst('accordeon'));
+  // marina / traversier
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); const s = __game.gen.reg.places.mm, P = __game.G.P; P.x = s.x - 6; P.z = s.z - 18; P.y = __game.gen.heightAt(P.x, P.z) + 2; }); await arrive();
+  res.marina = await npc('matelot'); res.ferryMM = (await talk('matelot')).labels;
+  await ev(() => { const G = __game.G; G.camYaw = 0.2; G.camPitch = 0.15; G.camDist = 11; }); await p.waitForTimeout(1800);
+  await p.screenshot({ path: SH + 'apres-montmagny-quai.png' });
+  // carte : ouvrir la grande carte
+  await p.keyboard.press('KeyM'); await p.waitForTimeout(900);
+  await p.screenshot({ path: SH + 'apres-montmagny-carte.png' });
+  await p.keyboard.press('KeyM'); await p.waitForTimeout(400);
+  // 4) quai de la Vieille-Ville, traversier (escale Montmagny sur la liste) puis Percé
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); __game.travel('quai'); }); await arrive();
   res.matelot = await npc('matelot'); res.traversier = (await talk('matelot')).labels;
+  res.escaleMM = res.traversier.some(l => /MONTMAGNY/.test(l));
   const cash0 = await ev(() => __game.S.cash); await talk('matelot', 'PERCÉ'); await arrive();
   res.billet = cash0 - await ev(() => __game.S.cash);
   res.perce = { region: await ev(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z)), capitaine: await npc('capitaine'), gardienne: await npc('gardienne') };
@@ -71,7 +96,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   await m.screenshot({ path: SH + PFX + '-mobile.png' });
   const mob = await m.evaluate(() => ({ region: __game.gen.nord.region(__game.G.P.x, __game.G.P.z), touch: !document.getElementById('touch').classList.contains('hidden') }));
   console.log('mobile', JSON.stringify(mob), 'erreurs', merr.length);
-  const ok = res.pinceauxFini === 'done' && res.nidsFini === 'done' && res.pisteFini === 'done' && res.casiersFini === 'done' && res.charlevoix.region && res.montreal.region && res.perce.region && res.billet > 0 && res.montreal.cones > 0 && mob.region && !errs.length && !merr.length;
+  const ok = res.pinceauxFini === 'done' && res.nidsFini === 'done' && res.pisteFini === 'done' && res.casiersFini === 'done' && res.accordeonFini === 'done' && res.montmagny.region && res.montmagny.accordeoniste && res.escaleMM && res.charlevoix.region && res.montreal.region && res.perce.region && res.billet > 0 && res.montreal.cones > 0 && mob.region && !errs.length && !merr.length;
   for (const e of errs.concat(merr)) console.log('ERR', e);
   console.log(ok ? 'REGIONS OK' : 'REGIONS ÉCHEC'); await browser.close(); srv.close(); process.exit(ok ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });

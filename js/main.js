@@ -623,6 +623,7 @@ function spawner(dt) {
         let pool;
         const rr = col.reg && gen.nord.region(x, z);
         if (rr) pool = rr === 'charlevoix' || rr === 'belvcharl' || rr === 'baie' ? (night ? ['raton', 'bureau', 'orignal'] : ['raton', 'mouches', 'orignal', 'goeland', 'souffleuse'])
+          : rr === 'montmagny' || rr === 'mm' || rr === 'battures' || rr === 'ile' ? (night ? ['raton', 'bureau', 'goeland'] : ['goeland', 'goeland', 'raton', 'mouches', 'souffleuse'])
           : rr === 'gaspesie' || rr === 'perce' || rr === 'phare' || rr === 'rocher' ? (night ? ['raton', 'bureau', 'goeland'] : ['goeland', 'goeland', 'goeland', 'raton', 'orignal'])
           : (night ? ['cone', 'trou', 'bureau', 'raton'] : ['cone', 'cone', 'trou', 'trou', 'bureau', 'goeland']);
         else if (col.nord) { const nr = gen.nord.region(x, z); pool = nr === 'saguenay' || nr === 'fjord' || nr === 'kenogami' || nr === 'chicoutimi' ? (night ? ['raton', 'bureau', 'mouches', 'souffleuse'] : ['mouches', 'raton', 'orignal', 'goeland', 'goeland']) : night ? ['orignal', 'bureau', 'mouches', 'raton'] : ['mouches', 'mouches', 'orignal', 'orignal', 'raton']; if (col.rd < 10) pool.push('trou', 'cone'); }
@@ -703,14 +704,14 @@ function dunUpdate(dt) {
   }
 }
 // musique et ambiance selon le lieu (fondus enchaînés dans audio.js)
-const REG_THEME = { charlevoix: 'charlevoix', baie: 'charlevoix', belvcharl: 'charlevoix', gaspesie: 'gaspesie', perce: 'gaspesie', rocher: 'gaspesie', phare: 'gaspesie', montreal: 'montreal', mtl: 'montreal', egout: 'montreal', mine: 'charlevoix' };
+const REG_THEME = { charlevoix: 'charlevoix', baie: 'charlevoix', belvcharl: 'charlevoix', montmagny: 'montmagny', mm: 'montmagny', battures: 'montmagny', ile: 'montmagny', gaspesie: 'gaspesie', perce: 'gaspesie', rocher: 'gaspesie', phare: 'gaspesie', montreal: 'montreal', mtl: 'montreal', egout: 'montreal', mine: 'charlevoix' };
 function soundScape() {
   const P = G.P, col = gen.column(Math.floor(P.x), Math.floor(P.z)), rk = gen.nord.region(P.x, P.z), day = sky.dayF;
-  let th = G.dun ? G.dun.kind : REG_THEME[rk] || (col.reg === 'montreal' ? 'montreal' : col.reg === 'charlevoix' ? 'charlevoix' : col.reg === 'gaspesie' ? 'gaspesie' : P.z < -480 ? 'boreal' : 'village');
+  let th = G.dun ? G.dun.kind : REG_THEME[rk] || (col.reg === 'montreal' ? 'montreal' : col.reg === 'charlevoix' ? 'charlevoix' : col.reg === 'montmagny' ? 'montmagny' : col.reg === 'gaspesie' ? 'gaspesie' : P.z < -480 ? 'boreal' : 'village');
   audio.setTheme(th); G.theme = th;
   const city = !G.dun && (th === 'montreal' || col.biome === BIOME.VILLE) ? (th === 'montreal' ? 1 : 0.35) : 0;
-  const wd = col.W != null && col.d != null ? Math.max(0, 1 - Math.max(0, col.d - col.W) / 45) : 0, alt = Math.max(0, (P.y - SEA - 20) / 40);
-  audio.setAmbience(G.dun ? { wind: 0, water: G.dun.kind === 'egout' ? 0.5 : 0, birds: 0, city: 0, cave: 1 } : { wind: Math.min(1, 0.25 + alt + sky.snow * 0.5 + sky.rain * 0.3), water: Math.min(1, wd + sky.rain * 0.4), birds: city > 0.5 || sky.rain > 0.4 || sky.snow > 0.4 ? 0 : day * (col.biome === BIOME.ERABLIERE || col.biome === BIOME.BOREALE || col.biome === BIOME.CAMPAGNE ? 1 : 0.4), city, cave: 0 });
+  const mm = !G.dun && th === 'montmagny', wd = col.W != null && col.d != null ? Math.max(0, 1 - Math.max(0, col.d - col.W) / 45) : 0, alt = Math.max(0, (P.y - SEA - 20) / 40);
+  audio.setAmbience(G.dun ? { wind: 0, water: G.dun.kind === 'egout' ? 0.5 : 0, birds: 0, city: 0, cave: 1, geese: 0 } : { wind: Math.min(1, 0.25 + alt + sky.snow * 0.5 + sky.rain * 0.3), water: Math.min(1, wd + sky.rain * 0.4 + (mm ? 0.35 : 0)), birds: city > 0.5 || mm || sky.rain > 0.4 || sky.snow > 0.4 ? 0 : day * (col.biome === BIOME.ERABLIERE || col.biome === BIOME.BOREALE || col.biome === BIOME.CAMPAGNE ? 1 : 0.4), city, cave: 0, geese: mm ? (day > 0.35 ? 1 : 0.35) : 0 });
 }
 function openChest(p) {
   const gold = p.kind === 'coffre_or', s = G.dun, lv = s ? DUN[s.kind].lvl : 3; S.taken[p.key] = 1; S.stats.chests = (S.stats.chests || 0) + 1;
@@ -730,7 +731,7 @@ function npcsUpdate(dt) {
     m.npcs.forEach((n, k) => {
       const key = s.i + ',' + s.j + ':' + k; if (G.npcs.has(key)) return;
       const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g); addBlob(model.g, 0.42);
-      const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.reg ? 'Aubergiste de ' + s.name : s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? ({ etape: 'Comptoir de L’Étape', charlevoix: 'Boutique du terroir', perce: 'Poissonnerie de Percé', montreal: 'Dépanneur ouvert 24 h (sauf travaux)' }[n.shop] || (s.nord ? 'Dépanneur du Royaume' : 'Dépanneur')) : NPCS[n.role].name;
+      const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.reg ? 'Aubergiste de ' + s.name : s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? ({ etape: 'Comptoir de L’Étape', charlevoix: 'Boutique du terroir', perce: 'Poissonnerie de Percé', montreal: 'Dépanneur ouvert 24 h (sauf travaux)', montmagny: 'Épicerie de l’Oie blanche' }[n.shop] || (s.nord ? 'Dépanneur du Royaume' : 'Dépanneur')) : NPCS[n.role].name;
       const npc = { key, role: n.role, stop: n.stop, shop: n.shop, s, x: n.x, z: n.z, y: world.ground(n.x, n.z), vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, home: { x: n.x, z: n.z }, model, name: nm, t: Math.random() * 9, yaw: Math.random() * 6, wander: Math.random() * 6, walkT: 0, chat: ROLE_CHAT[n.role] ? ROLE_CHAT[n.role][(s.seed + k) % ROLE_CHAT[n.role].length] : CHATTER[(s.seed + k * 7) % CHATTER.length] };
       if (n.role === 'villageois') { npc.act = ['marche', 'marche', 'pelle', 'jase', 'hockey'][(s.seed + k * 13) % 5]; if (npc.act === 'pelle') setWeapon(model, 'pelle'); if (npc.act === 'hockey') setWeapon(model, 'baton'); }
       npc.label = makeLabel('npc', `<div class="say"></div><div class="mk"></div><div class="nm">${nm}</div>`); npc.mkEl = npc.label.querySelector('.mk'); npc.sayEl = npc.label.querySelector('.say');
@@ -789,10 +790,15 @@ function crittersUpdate(dt) {
     const a = Math.random() * 6.28, r = 14 + Math.random() * 16, x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
     if (world.loadedAround(x, z, 0)) { const col = gen.column(Math.floor(x), Math.floor(z)), y = world.ground(x, z), wet = world.get(x, y - 0.25, z) === B.WATER;
       const town = col.st && col.w > 0.35 && ['ville', 'village', 'chicoutimi', 'etape', 'cabane'].includes(col.st.type), nE = G.critters.filter(c => c.kind === 'ecureuil').length, nC = G.critters.filter(c => c.kind === 'chat').length;
-      if (!wet && Math.abs(y - P.y) < 8) { if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && col.biome !== BIOME.RIVE && nE < (mobile ? 3 : 5)) critterSpawn('ecureuil', x, z); } } }
+      const nO = G.critters.filter(c => c.kind === 'oie').length, mm = col.reg === 'montmagny';
+      if (!wet && Math.abs(y - P.y) < 8) {
+        if (mm && nO < (mobile ? 4 : 8) && (col.biome === BIOME.RIVE || Math.random() < 0.65)) critterSpawn('oie', x, z);
+        else if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && !mm && col.biome !== BIOME.RIVE && nE < (mobile ? 3 : 5)) critterSpawn('ecureuil', x, z);
+      } } }
   // volée d'oies en V, le jour
   G.flockT -= dt;
-  if (!G.flock && G.flockT <= 0 && sky.dayF > 0.5) { G.flockT = 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + 28 + Math.random() * 10, birds = [];
+  const nearMM = gen.nord.region(P.x, P.z) === 'montmagny' || gen.nord.region(P.x, P.z) === 'mm' || gen.nord.region(P.x, P.z) === 'battures';
+  if (!G.flock && G.flockT <= 0 && sky.dayF > 0.35) { G.flockT = nearMM ? 12 + Math.random() * 18 : 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + 28 + Math.random() * 10, birds = [];
     for (let i = 0; i < 9; i++) { const M = critterModel('oie'), row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; scene.add(M.g); birds.push({ M, ox: -dz * side * row * 2.2 - dx * row * 2.4, oz: dx * side * row * 2.2 - dz * row * 2.4, ph: Math.random() * 6 }); }
     G.flock = { x: P.x - dx * 160, z: P.z - dz * 160, y, dx, dz, birds, t: 0, honk: 0 }; }
   if (G.flock) { const F = G.flock; F.t += dt; F.x += F.dx * 10 * dt; F.z += F.dz * 10 * dt; F.honk -= dt;
@@ -804,11 +810,12 @@ function crittersUpdate(dt) {
     if (!world.loadedAround(c.x, c.z, 0)) continue;
     c.t += dt; let sp = 0;
     if (c.kind === 'ecureuil') { if (d < 5) { c.yaw = Math.atan2(-dx, -dz); sp = 6; c.pause = 0.8; } else if (c.pause > 0) { c.pause -= dt; } else { c.hopT -= dt; sp = 3.2; if (c.hopT <= 0) { c.hopT = 0.4 + Math.random() * 0.8; c.yaw += (Math.random() - 0.5) * 2.5; if (Math.random() < 0.3) c.pause = 1 + Math.random() * 2; } } }
+    else if (c.kind === 'oie') { if (d < 3.5) { c.yaw = Math.atan2(-dx, -dz); sp = 2.8; if (!(c.honked > G.t)) { c.honked = G.t + 4 + Math.random() * 5; audio.fx('honk', 0.35); } } else if (c.pause > 0) c.pause -= dt; else { sp = 1.4; c.hopT -= dt; if (c.hopT <= 0) { c.hopT = 0.6 + Math.random(); c.yaw += (Math.random() - 0.5) * 1.2; } } }
     else { if (d < 2.4 && !(c.meow > G.t)) { c.meow = G.t + 8; audio.fx('miaou', 0.6); floatTxt(c.x, c.y + 0.8, c.z, 'miaou', '#ffd23a'); } if (c.pause > 0) c.pause -= dt; else { sp = 1.1; c.hopT -= dt; if (c.hopT <= 0) { c.hopT = 1 + Math.random() * 2; c.yaw += (Math.random() - 0.5) * 2; if (Math.random() < 0.4) c.pause = 2 + Math.random() * 4; } } }
     const nx = c.x - Math.sin(c.yaw) * sp * dt, nz = c.z - Math.cos(c.yaw) * sp * dt, ny = world.ground(nx, nz, c.y + 1);
     if (Math.abs(ny - c.y) < 0.6 && world.get(nx, ny - 0.25, nz) !== B.WATER) { c.x = nx; c.z = nz; c.y = ny; } else c.yaw += 2;
     const hop = c.kind === 'ecureuil' && sp > 0 ? Math.abs(Math.sin(c.t * 14)) * 0.12 : 0;
-    c.M.g.position.set(c.x, c.y + hop, c.z); c.M.g.rotation.y = c.yaw; c.M.P.tail.rotation.x = c.kind === 'chat' ? Math.sin(c.t * 2) * 0.2 : -0.2 + Math.sin(c.t * 8) * 0.15; c.M.P.body.rotation.x = c.kind === 'ecureuil' && sp === 0 ? -0.5 : 0; }
+    c.M.g.position.set(c.x, c.y + hop, c.z); c.M.g.rotation.y = c.yaw; if (c.M.P.tail) c.M.P.tail.rotation.x = c.kind === 'chat' ? Math.sin(c.t * 2) * 0.2 : -0.2 + Math.sin(c.t * 8) * 0.15; if (c.kind === 'oie' && c.M.P.wL) { const f = Math.sin(c.t * 6) * (sp > 0 ? 0.35 : 0.08); c.M.P.wL.rotation.z = f; c.M.P.wR.rotation.z = -f; } c.M.P.body.rotation.x = c.kind === 'ecureuil' && sp === 0 ? -0.5 : 0; }
 }
 function questsOf(role) { return Object.entries(QUESTS).filter(([id, q]) => q.giver === role); }
 function questAvailable(id) { const q = QUESTS[id]; if (S.q[id]) return false; return !(q.requires || []).some(r => !S.q[r] || S.q[r].st !== 'done'); }
@@ -904,7 +911,7 @@ function pickupsUpdate(dt) {
 function collect(p) {
   if (p.kind === 'piasse') { S.cash += p.val || 1; audio.fx('coin'); floatTxt(p.x, p.y + 0.6, p.z, '+' + (p.val || 1) + ' $', '#8dff6a'); }
   else if (p.kind === 'poutine') { addItem('poutine'); audio.fx('coin'); toast('Poutine ramassée!'); }
-  else if (p.kind === 'chaudiere' || p.kind === 'ble' || p.kind === 'pinceau' || p.kind === 'casier') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
+  else if (p.kind === 'chaudiere' || p.kind === 'ble' || p.kind === 'pinceau' || p.kind === 'casier' || p.kind === 'plume' || p.kind === 'accordeon') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
   else if (p.kind === 'coffre' || p.kind === 'coffre_or') openChest(p);
   else if (p.kind === 'permis') { audio.fx('quest'); questEvent('collect', 'permis'); }
   else if (p.kind === 'gear') { addItem(p.id, 1, p.r); audio.fx('coin'); toast(ITEMS[p.id].name + ' (' + RARITY[p.r].n + ') ajouté au sac'); }
@@ -976,8 +983,8 @@ function renderDialog(n, extra) {
   else if (n.role === 'commercant') { txt = 'Bienvenue au dépanneur! On a de tout, ou presque.'; add('MAGASINER', () => openShop(n), true); }
   else if (n.role === 'chauffeur' || n.role === 'matelot' || (n.role === 'capitaine' && n.stop)) {
     const ferry = n.role !== 'chauffeur';
-    txt = ferry ? (n.role === 'capitaine' ? n.chat + '<br><br>' : '') + '<b class="gold">Traversier du Fleuve</b> : Quai de la Vieille-Ville ↔ Percé, en Gaspésie. ' + FARE * 2 + ' piasses. Ton bazou voyage dans la cale.'
-      : 'Autocars <b class="gold">Orignal Express</b> : Vieille-Ville, Réserve, L’Étape, Chicoutimi, Baie-Saint-Paul, Montréal. ' + FARE + ' piasses le billet. Ton bazou voyage sur le toit, gratis.';
+    txt = ferry ? (n.role === 'capitaine' ? n.chat + '<br><br>' : '') + '<b class="gold">Traversier du Fleuve</b> : Quai de la Vieille-Ville ↔ Montmagny ↔ Percé. ' + FARE * 2 + ' piasses. Ton bazou voyage dans la cale.'
+      : 'Autocars <b class="gold">Orignal Express</b> : Vieille-Ville, Réserve, L’Étape, Chicoutimi, Baie-Saint-Paul, Montmagny, Montréal. ' + FARE + ' piasses le billet. Ton bazou voyage sur le toit, gratis.';
     const fare = ferry ? FARE * 2 : FARE;
     for (const st of gen.nord.stops) if (st.key !== n.stop && !!st.mode === ferry) add(st.label + ' · ' + fare + ' $', () => { if (S.cash < fare) { audio.fx('deny'); toast('Pas assez de piasses pour le billet!'); return; } S.cash -= fare; closeDialog(); travel(st.key); }, true);
   }
@@ -1054,7 +1061,7 @@ function drawMarkers(ctx, cx, cz, scale, W, round) {
     if (round) { ctx.save(); ctx.beginPath(); ctx.arc(W / 2, W / 2, W / 2 - 2, 0, 6.283); ctx.clip(); }
     for (const [lw, c] of [[scale > 0.9 ? 5 : 4, '#0c1420'], [scale > 0.9 ? 2.5 : 2, '#e8e2c8']]) { ctx.lineWidth = lw; ctx.strokeStyle = c; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
     if (round) ctx.restore(); }
-  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff', donjon: '#c04aff', baie: '#5ab8ff', belvc: '#9ae0ff', perce: '#5ab8ff', rocher: '#c8a888', phare: '#ff4a3a', mtl: '#ff7a1a', quai: '#9ae0ff' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
+  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff', donjon: '#c04aff', mm: '#e8e8f0', batt: '#f2f6fb', ile: '#9ae0ff', baie: '#5ab8ff', belvc: '#9ae0ff', perce: '#5ab8ff', rocher: '#c8a888', phare: '#ff4a3a', mtl: '#ff7a1a', quai: '#9ae0ff' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
   // noms des lieux
   ctx.textAlign = 'center'; ctx.lineJoin = 'round';
   for (const L of gen.nord.labels) { const px = (L.x - cx) * scale + W / 2, pz = (L.z - cz) * scale + W / 2, t = round && L.sh ? L.sh : L.n;

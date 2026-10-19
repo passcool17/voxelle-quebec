@@ -7,12 +7,12 @@ const PROG = [[0, 4, 7], [5, 9, 12], [7, 11, 14], [0, 4, 7], [9, 12, 16], [5, 9,
 // Thèmes par lieu : chacun a sa propre piste (gain) ; on passe de l'un à l'autre en fondu enchaîné.
 const THEMES = {
   title: { bpm: 104 }, village: { bpm: 104 }, nuit: { bpm: 72 },
-  charlevoix: { bpm: 84 }, gaspesie: { bpm: 96 }, montreal: { bpm: 108 }, boreal: { bpm: 76 },
+  charlevoix: { bpm: 84 }, montmagny: { bpm: 112 }, gaspesie: { bpm: 96 }, montreal: { bpm: 108 }, boreal: { bpm: 76 },
   mine: { bpm: 66 }, egout: { bpm: 70 }, combat: { bpm: 132 },
 };
 const hashr = (a, b) => { const h = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return h - Math.floor(h); };
 export class Audio {
-  constructor() { this.ctx = null; this.mode = 'title'; this.theme = 'title'; this.vol = 0.7; this.mvol = 0.6; this.svol = 0.8; this.step = 0; this.next = 0; this.seed = 7; this.combat = 0; this.boss = 0; this.layers = {}; this.ambT = { wind: 0, water: 0, birds: 0, city: 0, cave: 0 }; this.fade = 2.5; }
+  constructor() { this.ctx = null; this.mode = 'title'; this.theme = 'title'; this.vol = 0.7; this.mvol = 0.6; this.svol = 0.8; this.step = 0; this.next = 0; this.seed = 7; this.combat = 0; this.boss = 0; this.layers = {}; this.ambT = { wind: 0, water: 0, birds: 0, city: 0, cave: 0, geese: 0 }; this.fade = 2.5; }
   init(ctx) {
     if (this.ctx) { if (this.ctx.state !== 'running' && this.ctx.resume) this.ctx.resume().catch(() => {}); return; }
     if (ctx) this.ctx = ctx;
@@ -60,7 +60,7 @@ export class Audio {
     const c = this.ctx; if (!c || (c.state !== 'running' && !this.offline)) return;
     const now = c.currentTime;
     // thème de fond : le thème voulu (nuit remplace le village) ; le combat se superpose
-    let base = this.mode === 'title' ? 'title' : this.theme; if (this.mode === 'night' && (base === 'village' || base === 'charlevoix' || base === 'gaspesie' || base === 'boreal')) base = 'nuit';
+    let base = this.mode === 'title' ? 'title' : this.theme; if (this.mode === 'night' && (base === 'village' || base === 'charlevoix' || base === 'montmagny' || base === 'gaspesie' || base === 'boreal')) base = 'nuit';
     const cmb = this.mode === 'title' ? 0 : Math.max(this.combat, this.boss);
     for (const k in this.layers) { const L = this.layers[k], tg = k === 'combat' ? (cmb > 0.5 ? 1 : 0) : k === base ? (cmb > 0.5 ? 0.25 : 1) : 0;
       if (Math.abs(tg - L.v) > 0.001) { L.v = tg; L.g.gain.cancelScheduledValues(now); L.g.gain.setValueAtTime(L.g.gain.value, now); L.g.gain.linearRampToValueAtTime(tg, now + this.fade); L.until = now + this.fade; }
@@ -80,6 +80,7 @@ export class Audio {
     if (A.birds > 0.05 && r < 0.18 * A.birds) this.chirp(t, A.birds);
     if (A.cave > 0.05 && Math.random() < 0.22 * A.cave) this.drip(t, A.cave);
     if (A.city > 0.05) { if (Math.random() < 0.012 * A.city) this.carHorn(t, A.city); if (Math.random() < 0.008 * A.city) this.jackhammer(t, A.city); }
+    if (A.geese > 0.05 && Math.random() < 0.22 * A.geese) this.fx('honk', 0.35 + Math.random() * 0.35);
     if (A.water > 0.05 && Math.random() < 0.05 * A.water) { const fl = this.nz(t, 2.2, 0.06 * A.water, 'lowpass', 500, this.amb); fl.frequency.setValueAtTime(300, t); fl.frequency.linearRampToValueAtTime(900, t + 1); fl.frequency.linearRampToValueAtTime(250, t + 2.2); }
   }
   chirp(t, v) { const c = this.ctx, n = 2 + ((Math.random() * 4) | 0), f0 = 2400 + Math.random() * 2400, pan = c.createStereoPanner ? c.createStereoPanner() : null; const g = c.createGain(); if (pan) { pan.pan.value = Math.random() * 1.6 - 0.8; g.connect(pan); pan.connect(this.amb); } else g.connect(this.amb);
@@ -119,6 +120,15 @@ export class Audio {
     if (s === 0) { this.bass(mtof(root - 12 + P[0]), t, sp * 10, 0.13); for (const n of P) this.pad(mtof(root + n), t, sp * 12, 0.03); }
     if (s % 2 === 0) { const k = s / 2, n = [P[0], P[1], P[2], P[1] + 12, P[2], P[1]][k]; this.piano(mtof(root + 12 + n), t, sp * 5, 0.06); }
     const ph = Math.floor(st / (B3 * 2)) % 4; if (s % 4 === 0) { const r = hashr(st % (B3 * 2), ph); if (r < 0.7) this.flute(mtof(root + 24 + [0, 2, 4, 7, 9, 12][(r * 6) | 0] + (bar % 4 === 3 ? 2 : 0)), t, sp * 4, 0.045); }
+  }
+  // Montmagny : reel d'accordéon (diatonique), pieds qui tapent, un peu de piano
+  montmagny(st, t, sp) {
+    const bar = Math.floor(st / 16) % 8, s = st % 16, P = [[0, 4, 7], [0, 4, 7], [5, 9, 12], [7, 11, 14], [0, 4, 7], [9, 12, 16], [5, 9, 12], [7, 11, 14]][bar], root = 55;
+    if (s === 0) { this.bass(mtof(root - 12 + P[0]), t, sp * 6, 0.14); for (const n of P) this.accord(mtof(root + n), t, sp * 3.5, 0.035); }
+    if (s % 4 === 0) this.kick(t, s === 0 ? 0.26 : 0.14); if (s % 2 === 1) this.clack(t, 0.09);
+    if (s % 2 === 0) { const r = hashr((st % 32) / 2 + 1, Math.floor(st / 32) % 4); if (r < 0.85 || s % 8 === 0) {
+      const deg = [0, 2, 4, 5, 7, 9, 11, 12][(r * 8) | 0]; this.concertina(mtof(root + 12 + (s % 8 === 0 ? P[(r * 3) | 0] : deg)), t, sp * (s % 8 === 0 ? 2.8 : 1.5), 0.055); } }
+    if (s === 8) this.piano(mtof(root + 24 + P[1]), t, sp * 4, 0.04);
   }
   // Gaspésie : complainte de marin en ré dorien, accordéon en bourdon, concertina, vagues dans la caisse
   gaspesie(st, t, sp) {

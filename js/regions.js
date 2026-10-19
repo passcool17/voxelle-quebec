@@ -18,8 +18,12 @@ Object.assign(REGIONS, {
   quai: ['Quai de la Vieille-Ville', 'Traversier pour la Gaspésie'],
   mine: ['Mine abandonnée', 'Charlevoix · fermée depuis 1952 · rouverte par les ratons'],
   egout: ['Égouts de Montréal', 'Accès interdit (sauf aventuriers pis ratons)'],
+  montmagny: ['Montmagny', 'Capitale de l’oie blanche · accordéon · battures'],
+  mm: ['Montmagny', 'Vieille-Ville · marina · Festival de l’Oie blanche'],
+  battures: ['Battures de Montmagny', 'Des milliers d’oies. Pis une odeur… caractéristique.'],
+  ile: ['Île aux Grues', 'Vue depuis le quai · Grosse-Île au loin'],
 });
-export const CH = { x0: 980, x1: 1620, bsp: 1290 }, GA = { x0: 2250, x1: 3060, perce: 2640 }, MT = { x0: -1720, x1: -1080, c: -1400 };
+export const CH = { x0: 980, x1: 1620, bsp: 1290 }, GA = { x0: 2250, x1: 3060, perce: 2640 }, MT = { x0: -1720, x1: -1080, c: -1400 }, MM = { x0: 1680, x1: 2180, town: 1880 };
 const LOT = 26, ST = 6; // Montréal : îlots de 26 m dont 6 m de rue
 
 export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
@@ -56,6 +60,14 @@ export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
       const inl = north - W, hm = SEA + 0.5 + 4.5 * smooth(0, 6, inl);
       return { h: h + (hm - h) * w, nb: w > 0.5 ? 1 : -1, dens: w > 0.3 ? 0 : 1, reg: 'montreal', city: w > 0.5 && mtlIn(x, z) };
     }
+    // Montmagny : rive sud entre Québec et la Gaspésie — battures plates, petite ville, collines douces
+    if (x > MM.x0 && x < MM.x1 && north < 0) {
+      const w = wBox(x, MM.x0, MM.x1, 80) * (1 - smooth(280, 360, -north)); if (w <= 0) return null;
+      const inl = -north - W;
+      const flat = SEA + 1.2 + 1.8 * smooth(0, 10, inl) + 4 * smooth(20, 90, inl) + 3 * N.fbm(x * 0.01, z * 0.01, 2);
+      const batt = inl < 14 && Math.abs(x - MM.town) < 90;
+      return { h: inl < -2 ? h : h + (flat - h) * w, nb: w > 0.5 ? (batt || inl < 8 ? 0 : 2) : -1, dens: batt ? 0.15 : 0.85, reg: 'montmagny' };
+    }
     return null;
   }
   // ---------- lieux ----------
@@ -68,6 +80,10 @@ export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
   { const x = GA.perce - 82, z = Math.round(zsS(x) + 9); add({ type: 'phare', key: 'phare', name: 'Phare', x, z, h: Math.floor(gaspH(x, z, z - zsS(x))), R: 5, R2: 9, BR: 8, safe: true }); }
   { const x = MT.c, z = Math.round(zsN(x) - 12 - 2 * LOT - LOT / 2); add({ type: 'mtl', key: 'mtl', name: 'Place des Cônes', x: Math.floor(x / LOT) * LOT + ST + 10, z: Math.floor(z / LOT) * LOT + ST + 10, h: SEA + 5, R: 9, R2: 14, BR: 14, safe: true }); }
   { const x = VX + 18, z = Math.round(zsN(x) - 4); add({ type: 'quai', key: 'quai', name: 'Quai', x, z, h: SEA + 2, R: 3, R2: 7, BR: 18, safe: true }); }
+  // Montmagny : ville, battures (oies), île aux Grues au large
+  add({ type: 'mm', key: 'mm', name: 'Montmagny', x: MM.town, z: Math.round(zsS(MM.town) + 28), h: SEA + 3, R: 24, R2: 40, BR: 30, safe: true });
+  { const x = MM.town - 40, z = Math.round(zsS(x) + 6); add({ type: 'batt', key: 'battures', name: 'Battures', x, z, h: SEA + 1, R: 18, R2: 28, BR: 22, safe: true }); }
+  { const x = MM.town + 30, z = Math.round(zsS(x) - 55); add({ type: 'ile', key: 'ile', name: 'Île aux Grues', x, z, h: SEA + 2, R: 8, R2: 14, BR: 16 }); }
   // donjons : la mine (Charlevoix, dans la montagne) et les égouts (Montréal, sous la Place des Cônes)
   { const x = CH.bsp + 60, z = Math.round(zsN(x) - 120), h = Math.floor(charH(x, z, zsN(x) - z)); let lo = h;
     for (let i = -6; i <= 40; i += 4) for (let j = -40; j <= 6; j += 4) lo = Math.min(lo, charH(x + i, z + j, zsN(x + i) - z - j));
@@ -77,13 +93,16 @@ export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
   const stops = [
     { key: 'charlevoix', label: 'BAIE-SAINT-PAUL', ax: P.baie.x - 14.5, az: P.baie.z + 8.5, car: [P.baie.x - 20, P.baie.z + 8, 0] },
     { key: 'montreal', label: 'MONTRÉAL', ax: P.mtl.x + 0.5, az: P.mtl.z + 13.5, car: [P.mtl.x + 3, P.mtl.z + 16, Math.PI / 2] },
+    { key: 'montmagny', label: 'MONTMAGNY', ax: P.mm.x - 10.5, az: P.mm.z + 8.5, car: [P.mm.x - 16, P.mm.z + 6, 0] },
     { key: 'quai', label: 'QUAI DE LA VIEILLE-VILLE', ax: P.quai.x - 2.5, az: P.quai.z - 2.5, car: [P.quai.x - 8, P.quai.z - 6, 0], mode: 'ferry' },
+    { key: 'mmferry', label: 'MONTMAGNY (MARINA)', ax: P.mm.x - 6.5, az: P.mm.z - 16.5, car: [P.mm.x - 12, P.mm.z - 4, 0], mode: 'ferry' },
     { key: 'perce', label: 'PERCÉ', ax: P.perce.x - 8.5, az: P.perce.z - 12.5, car: [P.perce.x - 14, P.perce.z - 4, 0], mode: 'ferry' },
   ];
   function region(x, z) {
     for (const s of structs) if (Math.hypot(x - s.x, z - s.z) < Math.max(s.R, 6) + 10) return s.key;
     const rz = riverZ(x), W = riverW(x), north = rz - z;
     if (x > CH.x0 + 40 && x < CH.x1 - 40 && north > W - 30 && north < 480) return 'charlevoix';
+    if (x > MM.x0 + 40 && x < MM.x1 - 40 && north < -W + 40 && north > -340) return 'montmagny';
     if (x > GA.x0 + 40 && x < GA.x1 - 40 && north < -W + 40 && north > -460) return 'gaspesie';
     if (x > GA.x0 + 40 && x < GA.x1 - 40 && Math.abs(north) < W) return 'rocher';
     if (x > MT.x0 + 30 && x < MT.x1 - 30 && north > W - 30 && north < 330) return 'montreal';
@@ -91,11 +110,12 @@ export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
   }
   const labels = [
     { n: 'Charlevoix', x: CH.bsp - 60, z: zsN(CH.bsp) - 260, big: true }, { n: 'Baie-Saint-Paul', m: 1, x: P.baie.x, z: P.baie.z }, { n: 'Belvédère', m: 1, x: P.belvcharl.x, z: P.belvcharl.z },
+    { n: 'Montmagny', x: MM.town, z: zsS(MM.town) + 160, big: true }, { n: 'Montmagny', m: 1, x: P.mm.x, z: P.mm.z }, { n: 'Battures', m: 1, x: P.battures.x, z: P.battures.z }, { n: 'Île aux Grues', m: 1, x: P.ile.x, z: P.ile.z },
     { n: 'Gaspésie', x: GA.perce, z: zsS(GA.perce) + 220, big: true }, { n: 'Percé', m: 1, x: P.perce.x, z: P.perce.z }, { n: 'Rocher Percé', m: 1, x: P.rocher.x, z: P.rocher.z }, { n: 'Phare', x: P.phare.x, z: P.phare.z },
     { n: 'Montréal', x: MT.c, z: zsN(MT.c) - 200, big: true }, { n: 'Place des Cônes', sh: 'Place', m: 1, x: P.mtl.x, z: P.mtl.z }, { n: 'Quai', m: 1, x: P.quai.x, z: P.quai.z },
   ];
   // niveau des ennemis par région
-  const level = (x, z) => { const r = region(x, z); if (!r) return 0; if (x > CH.x0 - 60 && x < CH.x1 + 60) return 3 + (hash2(x | 0, z | 0, 5) < 0.3 ? 1 : 0); if (x > GA.x0 - 60) return 5; if (x < MT.x1 + 60) return 4 + (hash2(x | 0, z | 0, 6) < 0.4 ? 1 : 0); return 0; };
+  const level = (x, z) => { const r = region(x, z); if (!r) return 0; if (x > CH.x0 - 60 && x < CH.x1 + 60) return 3 + (hash2(x | 0, z | 0, 5) < 0.3 ? 1 : 0); if (x > MM.x0 - 40 && x < MM.x1 + 40) return 4; if (x > GA.x0 - 60) return 5; if (x < MT.x1 + 60) return 4 + (hash2(x | 0, z | 0, 6) < 0.4 ? 1 : 0); return 0; };
   // un lot de Montréal : rue / ruelle / type d'îlot
   const lotType = (i, j) => { const h = hash2(i, j, seed + 4401); return h < 0.52 ? 'plex' : h < 0.7 ? 'chantier' : h < 0.85 ? 'parc' : 'stat'; };
   return { dunPlan, terrain, structs, places: P, stops, region, labels, level, zsN, zsS, mtlIn, lotType, LOT, ST };
@@ -206,6 +226,21 @@ export function regLayout(s, m, r) {
   else if (s.type === 'mtl') {
     m.npcs.push({ role: 'contremaitre', x: s.x - 6.5, z: s.z + 7.5 }, { role: 'cycliste', x: s.x + 7.5, z: s.z + 7.5 }, { role: 'chauffeur', x: s.x - 2.5, z: s.z + 14.5, stop: 'montreal' }, { role: 'commercant', x: s.x + 7.5, z: s.z - 7.5, shop: 'montreal' });
     for (let k = 0; k < 6; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 22, z: s.z + (r() - 0.5) * 22 });
+  } else if (s.type === 'mm') {
+    m.npcs.push(
+      { role: 'accordeoniste', x: s.x + 2.5, z: s.z + 3.5 },
+      { role: 'oiseleur', x: s.x - 8.5, z: s.z - 10.5 },
+      { role: 'commercant', x: s.x + 8.5, z: s.z - 4.5, shop: 'montmagny' },
+      { role: 'chauffeur', x: s.x - 12.5, z: s.z + 9.5, stop: 'montmagny' },
+      { role: 'matelot', x: s.x - 5.5, z: s.z - 15.5, stop: 'mmferry' },
+      { role: 'aubergiste', x: s.x - 2.5, z: s.z + 6.5 });
+    for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 28, z: s.z + (r() - 0.5) * 20 });
+  } else if (s.type === 'batt') {
+    m.npcs.push({ role: 'oiseleur', x: s.x + 2.5, z: s.z + 4.5 });
+    for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.2, d = 8 + k * 3; m.items.push({ kind: 'plume', x: s.x + Math.cos(a) * d + 0.5, z: s.z + Math.sin(a) * d + 0.5 }); }
+    m.items.push({ kind: 'accordeon', x: s.x - 14.5, z: s.z + 11.5 });
+  } else if (s.type === 'ile') {
+    m.npcs.push({ role: 'villageois', x: s.x + 1.5, z: s.z + 1.5 });
   } else if (s.type === 'donjon') { dunLayout(s, m); if (s.kind === 'mine') m.npcs.push({ role: 'villageois', x: s.x - 4.5, z: s.z + 4.5 }); }
   else if (s.type === 'quai') m.npcs.push({ role: 'matelot', x: s.x + 1.5, z: s.z - 1.5, stop: 'quai' });
 }
@@ -246,6 +281,36 @@ export function regBuild(s, P, H) {
     for (let y = 0; y < 14; y++) P.fill(s.x - 1, h + 1 + y, s.z - 1, s.x + 1, h + 1 + y, s.z + 1, y % 4 < 2 ? B.WHITE : B.REDROOF);
     P.fill(s.x - 1, h + 15, s.z - 1, s.x + 1, h + 16, s.z + 1, B.LAMP); P.fill(s.x - 2, h + 17, s.z - 2, s.x + 2, h + 17, s.z + 2, B.REDROOF); P.fill(s.x - 1, h + 18, s.z - 1, s.x + 1, h + 18, s.z + 1, B.REDROOF);
     H.house(P, s.x + 3, s.z - 2, 5, 4, h, B.WHITE, B.REDROOF, 'e', 3);
+  } else if (s.type === 'mm') {
+    // Montmagny : vieille-ville, église, salle de l'accordéon, marina
+    P.fill(s.x - 18, h, s.z - 4, s.x + 18, h, s.z + 4, B.COBBLE); P.fill(s.x - 3, h, s.z - 20, s.x + 3, h, s.z + 14, B.COBBLE);
+    const cols = [B.WHITE, B.BRICK, B.YELLOW, B.BLUE, B.COPPER, B.REDROOF];
+    [[-16, -12], [-6, -14], [6, -12], [14, -10], [-16, 6], [8, 8], [16, 4]].forEach(([dx, dz], k) => H.house(P, s.x + dx - 3, s.z + dz, 6, 5, h, cols[k % 6] === B.YELLOW ? B.PLANK : cols[k % 6], k % 2 ? B.TIN : B.SHINGLE, dz < 0 ? 's' : 'n', 3));
+    H.church(P, s.x - 3, s.z + 12, h);
+    P.fill(s.x + 6, h + 1, s.z - 2, s.x + 14, h + 5, s.z + 4, B.PLANK); P.fill(s.x + 7, h + 1, s.z - 1, s.x + 13, h + 4, s.z + 3, 0); P.fill(s.x + 6, h + 6, s.z - 2, s.x + 14, h + 6, s.z + 4, B.REDROOF);
+    panel(P, ['ACCORDÉON'], F(s.x + 10), F(h + 5) + 4, F(s.z + 5), 'x', B.SIGN, B.TRIM, true);
+    const qz0 = s.z - 12, qz1 = s.z - 30; P.fill(s.x - 8, SEA + 1, qz1, s.x - 4, SEA + 1, qz0, B.PLANK);
+    for (let z = qz1; z <= qz0; z += 4) { P.fill(s.x - 8, SEA - 3, z, s.x - 8, SEA, z, B.LOG); P.fill(s.x - 4, SEA - 3, z, s.x - 4, SEA, z, B.LOG); }
+    P.fill(s.x - 8, SEA + 2, qz1, s.x - 4, SEA + 10, qz0, 0);
+    const fx = s.x - 1, fz = qz1 + 5; P.fill(fx, SEA - 1, fz - 5, fx + 4, SEA + 1, fz + 5, B.WHITE); P.fill(fx, SEA + 1, fz - 5, fx + 4, SEA + 1, fz + 5, B.BLUE);
+    H.lampPost(P, s.x - 11, s.z + 8, h); busSign(P, s.x - 12, s.z + 9, h, 'MONTMAGNY'); busSign(P, s.x - 8, s.z - 14, h, 'TRAVERSIER');
+    panel(P, ['MONTMAGNY', 'CAPITALE DE L\'OIE BLANCHE'], F(s.x), F(h + 6) + 2, F(s.z + 18), 'x', B.SIGN, B.TRIM, true);
+  } else if (s.type === 'batt') {
+    P.fill(s.x - 20, h, s.z - 14, s.x + 20, h, s.z + 14, B.SAND);
+    for (let k = 0; k < 7; k++) { const ax = s.x - 16 + k * 5, az = s.z - 8 + (k % 3) * 6; P.fill(ax, h, az, ax + 2, h, az + 2, B.WATER); }
+    for (let k = 0; k < 28; k++) {
+      const a = k * 2.3 + 0.4, d = 4 + (k % 7) * 2.2, gx = Math.round(s.x + Math.cos(a) * d), gz = Math.round(s.z + Math.sin(a) * d);
+      P.set(gx, h + 1, gz, B.WHITE); P.set(gx, h + 2, gz, B.WHITE); if (k % 3 === 0) P.set(gx, h + 3, gz, B.STONE);
+    }
+    panel(P, ['BATTURES', 'OIES BLANCHES'], F(s.x), F(h + 2) + 8, F(s.z + 16), 'x', B.SIGN, B.TRIM, true);
+  } else if (s.type === 'ile') {
+    for (let dx = -7; dx <= 7; dx++) for (let dz = -5; dz <= 5; dz++) {
+      const rr = Math.hypot(dx / 7, dz / 5); if (rr > 1) continue;
+      const hh = Math.round((1 - rr * rr) * 5);
+      P.fill(s.x + dx, SEA - 2, s.z + dz, s.x + dx, SEA + hh, s.z + dz, rr > 0.7 ? B.SAND : B.STONE);
+    }
+    H.house(P, s.x - 2, s.z - 1, 5, 4, SEA + 4, B.WHITE, B.REDROOF, 's', 3);
+    panel(P, ['ÎLE AUX GRUES'], F(s.x), F(SEA + 8) + 4, F(s.z + 6), 'x', B.SIGN, B.TRIM, true);
   } else if (s.type === 'donjon') { dunBuild(s, P); dunEntrance(s, P, h); }
   else if (s.type === 'quai') {
     P.fill(s.x - 3, SEA + 1, s.z - 2, s.x + 3, SEA + 1, s.z + 16, B.PLANK); for (let z = s.z; z <= s.z + 16; z += 4) { P.fill(s.x - 3, SEA - 3, z, s.x - 3, SEA, z, B.LOG); P.fill(s.x + 3, SEA - 3, z, s.x + 3, SEA, z, B.LOG); }

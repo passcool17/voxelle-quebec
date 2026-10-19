@@ -29,6 +29,10 @@ export const ITEMS = {
   dossard: { name: 'Dossard de signaleur', slot: 'corps', def: 4, spd: 0.03, desc: 'Orange et réfléchissant. Les cônes te prennent pour un des leurs.', price: 80 },
   epaulettes: { name: 'Épaulettes de hockey', slot: 'corps', def: 10, spd: -0.03, desc: 'Plus large que le cadre de porte. Pas mal plus large.', price: 180 },
   gants_travail: { name: 'Gants de travail', slot: 'mains', def: 4, desc: 'En cuir, pour les écharpes de bois et les poignées de main fermes.', price: 55 },
+  // Montmagny
+  plume: { name: 'Plume d’oie blanche', slot: 'quete', desc: 'Légère. Un peu poisseuse. Preuve que t’as foulé les battures.' },
+  accordeon: { name: 'Accordéon diatonique', slot: 'quete', desc: 'Encore accordé… miraculeusement. Sent le fleuve.' },
+  tourtiere_oie: { name: 'Tourtière à l’oie', slot: 'conso', heal: 55, stam: 1, desc: 'Spécialité de Montmagny. Rend 55 PV et l’énergie.', price: 18 },
   // nouvelles régions
   pinceau: { name: 'Pinceau de Jeanne', slot: 'quete', desc: 'Encore plein de bleu fleuve. Un goéland l’a échappé.' },
   casier: { name: 'Casier à homard', slot: 'quete', desc: 'En bois et en filet. Sent la mer, beaucoup.' },
@@ -47,7 +51,7 @@ export const ITEMS = {
   tire: { name: 'Tire sur la neige', slot: 'conso', heal: 30, buff: 10, desc: 'Sirop bouillant sur la neige, roulé sur un bâton. Rend 30 PV et donne de la vitesse.', price: 14 },
   tarte: { name: 'Tarte aux bleuets', slot: 'conso', heal: 70, buff: 15, desc: 'Rend 70 PV et donne de la vitesse. Tache les dents.', price: 30 },
 };
-export const SHOPS = { charlevoix: ['fromage', 'tarte', 'sirop', 'tourtiere', 'raquettes', 'pic_fer', 'hache'], perce: ['guedille', 'poutine', 'bleuets', 'manteau', 'bottes', 'casque_hockey'], montreal: ['bagel', 'poutine', 'casque_chantier', 'dossard', 'grattoir', 'gants_travail', 'epaulettes'], etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau', 'dossard'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone', 'epaulettes'] };
+export const SHOPS = { montmagny: ['tourtiere_oie', 'poutine', 'sirop', 'tarte', 'raquettes', 'manteau'], charlevoix: ['fromage', 'tarte', 'sirop', 'tourtiere', 'raquettes', 'pic_fer', 'hache'], perce: ['guedille', 'poutine', 'bleuets', 'manteau', 'bottes', 'casque_hockey'], montreal: ['bagel', 'poutine', 'casque_chantier', 'dossard', 'grattoir', 'gants_travail', 'epaulettes'], etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau', 'dossard'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone', 'epaulettes'] };
 export const RARITY = [{ n: 'commun', c: '#e8e8e8', m: 1 }, { n: 'rare', c: '#5ab8ff', m: 1.25 }, { n: 'épique', c: '#d07aff', m: 1.55 }, { n: 'légendaire', c: '#ffa83a', m: 1.9 }];
 export const SHOP = ['poutine', 'sirop', 'tourtiere', 'bottes', 'mitaines_doublees', 'manteau', 'baton_carbone', 'pelle_alu', 'casque_hockey', 'gants_travail', 'pic_bois'];
 
@@ -81,6 +85,8 @@ export const NPCS = {
   pecheur: { name: 'Ti-Mé, pêcheur', look: { coat: 0xc02020, hat: 0x2c5a34, beard: 0x8a8a8a, hair: 0x8a8a8a } },
   saguenayen: { name: 'Gilles, du port de Chicoutimi', look: { coat: 0x1f3f8a, hat: 0xf2c12e, beard: 0x5a3a22, pom: 0x1f3f8a } },
   chauffeur: { name: 'Chauffeur d’autocar', look: { coat: 0x2e5fa8, hatType: 'kepi', hat: 0x2e5fa8, sash: false, mitt: 0xf0c8a0 } },
+  accordeoniste: { name: 'Ti-Jos, accordéoniste de Montmagny', quest: true, look: { coat: 0x2c5a34, hatType: 'kepi', hat: 0x1a1a1a, beard: 0x5a3a22, hair: 0x5a3a22, sash: false, mitt: 0xf0c8a0 } },
+  oiseleur: { name: 'Ghislaine, guide des oies blanches', look: { coat: 0xe8e8f0, hat: 0xf2f2f2, hatBand: 0xc8282e, pom: 0xc8282e, hair: 0xb8b8c0, sash: false, mitt: 0xf0c8a0 } },
   peintre: { name: 'Jeanne, peintre de Baie-Saint-Paul', quest: true, look: { coat: 0x8a3a6a, hatType: 'bun', hair: 0x2a1e18, sash: false, apron: 0xe8d8c0, mitt: 0xf0c8a0 } },
   capitaine: { name: 'Capitaine Ti-Louis, traversier de Percé', quest: true, look: { coat: 0x1f3f8a, hatType: 'kepi', hat: 0xf2f2f2, beard: 0xd8d8d8, hair: 0xd8d8d8, sash: false } },
   matelot: { name: 'Matelot Bouchard, traversier', look: { coat: 0x1f3f8a, hatType: 'kepi', hat: 0xf2f2f2, sash: false, mitt: 0xf0c8a0 } },
@@ -90,6 +96,8 @@ export const NPCS = {
   guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
 };
 export const ROLE_CHAT = {
+  accordeoniste: ['Un bon reel, ça part les pieds tout seuls. Même les oies tapent du pied.', 'Le Carrefour mondial? Y’a plus d’accordéons que de voitures, certains week-ends.'],
+  oiseleur: ['Montmagny, capitale de l’oie blanche! Des dizaines de milliers chaque automne. Pis chaque printemps. Pis… souvent en juin aussi.', 'Compte-les pas toutes. Y’en a qui reviennent pour le Festival.'],
   peintre: ['Le fleuve change de bleu aux cinq minutes. Moi, je change de pinceau aux cinq minutes.', 'Les côtes de Charlevoix sont tellement à pic que mon chevalet roule tout seul.'],
   capitaine: ['Le traversier part quand il est prêt. Pis il est prêt quand j’ai fini mon café.', 'Le Rocher? Y’a un trou dedans depuis des siècles. Pas mal comme les routes à Montréal.'],
   matelot: ['Traversier pour Percé! Prends ta tuque, ça vente sur le pont.', 'On part à l’heure. L’heure de qui, ça c’est une autre question.'],
@@ -146,6 +154,12 @@ export const QUESTS = {
 };
 // Nouvelles régions : une quête (ou deux) par région
 Object.assign(QUESTS, {
+  accordeon: { giver: 'accordeoniste', home: 'mm', at: 'battures', title: 'L’accordéon envolé', type: 'collect', item: 'accordeon', n: 1, reward: { cash: 150, xp: 400, give: { tourtiere_oie: 2, tire: 2 } },
+    intro: 'Mon accordéon diatonique s’est envolé! Une oie l’a pris pour un cousin bruyant et l’a déposé sur les battures, ouest de la ville. Ramène-le avant le prochain reel, sinon le Festival tombe à plat.',
+    wait: 'Les battures sont à l’ouest, au bord de l’eau. Cherche parmi les oies… et les plumes.', done: 'Mon bébé! Il est même encore accordé. Tiens, de la tourtière à l’oie — la vraie, pas celle du dépanneur de la 132.' },
+  oies: { giver: 'oiseleur', home: 'mm', at: 'battures', title: 'Le recensement des oies', type: 'collect', item: 'plume', n: 5, reward: { cash: 120, xp: 320, give: { tourtiere_oie: 1 } },
+    intro: 'Le Festival veut un recensement. Moi, je compte avec des plumes : ramasse-m’en cinq sur les battures. C’est scientifique, à peu près.',
+    wait: 'Les plumes jonchent le sable, autour des flaques. Attention où tu mets les bottes.', done: 'Cinq plumes! Je vais écrire « environ 40 000 oies » sur le formulaire. Piasses? Des piasses!' },
   pinceaux: { giver: 'peintre', home: 'baie', at: 'belvcharl', title: 'Les pinceaux envolés', type: 'collect', item: 'pinceau', n: 4, reward: { cash: 140, xp: 380, give: { fromage: 2, tire: 2 } },
     intro: 'Un goéland m’a volé tout mon coffre de pinceaux! Il les a échappés un par un en montant au Belvédère, en haut de la côte. Rapporte-m’en quatre, pis je te peins un portrait. Avec ta tuque, promis.',
     wait: 'Le Belvédère est en haut de la côte, au nord-ouest du village. Les pinceaux sont éparpillés autour.', done: 'Mes pinceaux! Pis regarde ce bleu… Tiens, du fromage d’ici pis de la tire. Ton portrait va être prêt dans six à huit ans.' },
