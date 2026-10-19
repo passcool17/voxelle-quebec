@@ -44,13 +44,14 @@ const shade = (c, f) => { const r = Math.min(255, (c >> 16 & 255) * f), g = Math
 
 // ---------- humains ----------
 export function human(o = {}) {
-  const c = Object.assign({ skin: 0xf0c8a0, coat: 0x2e5fa8, pants: 0x2b2f3a, boots: 0x5a3a22, hat: 0xc8282e, hatBand: 0xf2f2f2, pom: 0xf2f2f2, mitt: 0xc8282e, sash: true, hair: 0x5a3a22, beard: null, glasses: false, apron: null, hatType: 'tuque', scale: 1, zombie: false, queue: false, cils: false, parka: false }, o);
+  const c = Object.assign({ skin: 0xf0c8a0, coat: 0x2e5fa8, pants: 0x2b2f3a, boots: 0x5a3a22, hat: 0xc8282e, hatBand: 0xf2f2f2, pom: 0xf2f2f2, mitt: 0xc8282e, sash: true, hair: 0x5a3a22, beard: null, glasses: false, apron: null, hatType: 'tuque', scale: 1, zombie: false, queue: false, cils: false, parka: false, casque: 0xf2c12e, vest: null, pads: null, raquettes: false }, o);
   const g = new THREE.Group(), body = pivot(g, 0, 0, 0), P = {};
   for (const [k, sx] of [['legL', -0.15], ['legR', 0.15]]) {
     const L = P[k] = pivot(body, sx, 0.8, 0);
     box(L, 0.24, 0.62, 0.26, c.pants, 0, -0.33, 0); box(L, 0.25, 0.04, 0.27, shade(c.pants, 0.75), 0, -0.12, 0);
     box(L, 0.26, 0.2, 0.34, c.boots, 0, -0.7, 0.03); box(L, 0.28, 0.05, 0.37, 0x1c1814, 0, -0.785, 0.03); box(L, 0.28, 0.06, 0.29, c.zombie ? 0x222222 : 0xe8e0d0, 0, -0.58, 0.01);
     box(L, 0.06, 0.02, 0.02, 0xd8c8a0, 0, -0.66, -0.14); box(L, 0.06, 0.02, 0.02, 0xd8c8a0, 0, -0.71, -0.14);
+    if (c.raquettes) { box(L, 0.36, 0.03, 0.72, 0x9b7a4d, 0, -0.82, 0.04); box(L, 0.3, 0.035, 0.6, 0x3a2a1a, 0, -0.815, 0.04); for (const zz of [-0.18, 0.04, 0.26]) box(L, 0.32, 0.04, 0.03, 0xd8c8a0, 0, -0.81, zz); }
   }
   P.torso = pivot(body, 0, 0.8, 0);
   box(P.torso, 0.56, 0.62, 0.32, c.coat, 0, 0.31, 0);
@@ -67,6 +68,15 @@ export function human(o = {}) {
     box(P.torso, 0.06, 0.26, 0.04, 0x1f4fa8, 0.18, -0.08, -0.18); box(P.torso, 0.06, 0.22, 0.04, 0xc8282e, 0.24, -0.06, -0.18);
     box(P.torso, 0.07, 0.04, 0.045, 0xf2c12e, 0.18, -0.2, -0.18); box(P.torso, 0.07, 0.04, 0.045, 0xf2c12e, 0.24, -0.16, -0.18);
   } else box(P.torso, 0.57, 0.05, 0.33, 0x2a2018, 0, 0.06, 0);
+  if (c.vest) { // dossard de signaleur : orange, bandes réfléchissantes
+    box(P.torso, 0.6, 0.5, 0.36, c.vest, 0, 0.33, 0);
+    for (const y of [0.22, 0.42]) box(P.torso, 0.61, 0.05, 0.37, 0xe8f4f4, 0, y, 0);
+    box(P.torso, 0.05, 0.5, 0.37, 0xe8f4f4, -0.14, 0.33, 0); box(P.torso, 0.05, 0.5, 0.37, 0xe8f4f4, 0.14, 0.33, 0);
+  }
+  if (c.pads) { // épaulettes de hockey : plastron + numéro
+    box(P.torso, 0.64, 0.36, 0.4, c.pads, 0, 0.44, 0); box(P.torso, 0.66, 0.05, 0.42, 0xf2f2f2, 0, 0.3, 0);
+    box(P.torso, 0.08, 0.16, 0.02, 0xf2f2f2, -0.05, 0.46, -0.205); box(P.torso, 0.08, 0.16, 0.02, 0xf2f2f2, 0.07, 0.46, -0.205);
+  }
   P.head = pivot(P.torso, 0, 0.62, 0);
   box(P.head, 0.12, 0.06, 0.12, c.skin, 0, 0.02, 0); // cou
   box(P.head, 0.42, 0.42, 0.42, c.skin, 0, 0.24, 0);
@@ -99,11 +109,17 @@ export function human(o = {}) {
   }
   else if (c.hatType === 'kepi') { box(P.head, 0.46, 0.18, 0.46, c.hat, 0, 0.52, 0); box(P.head, 0.47, 0.04, 0.47, 0xe8c040, 0, 0.45, 0); box(P.head, 0.46, 0.04, 0.16, 0x111111, 0, 0.43, -0.28); box(P.head, 0.06, 0.06, 0.02, 0xe8c040, 0, 0.53, -0.235); }
   else if (c.hatType === 'bun') { box(P.head, 0.22, 0.2, 0.2, c.hair, 0, 0.56, 0.12); box(P.head, 0.04, 0.04, 0.24, 0xc8282e, 0.06, 0.6, 0.12); }
-  else if (c.hatType === 'casque') { box(P.head, 0.5, 0.18, 0.5, 0xf2c12e, 0, 0.52, 0); box(P.head, 0.56, 0.04, 0.56, 0xf2c12e, 0, 0.44, 0); box(P.head, 0.08, 0.06, 0.52, shade(0xf2c12e, 0.85), 0, 0.62, 0); }
+  else if (c.hatType === 'casque') { box(P.head, 0.5, 0.18, 0.5, c.casque, 0, 0.52, 0); box(P.head, 0.56, 0.04, 0.56, c.casque, 0, 0.44, 0); box(P.head, 0.08, 0.06, 0.52, shade(c.casque, 0.85), 0, 0.62, 0); }
+  else if (c.hatType === 'hockey') { // casque de hockey avec grille
+    box(P.head, 0.5, 0.24, 0.5, 0x1f4fa8, 0, 0.5, 0.01); box(P.head, 0.12, 0.3, 0.42, 0x1f4fa8, -0.23, 0.36, 0.04); box(P.head, 0.12, 0.3, 0.42, 0x1f4fa8, 0.23, 0.36, 0.04); box(P.head, 0.52, 0.04, 0.06, 0xf2f2f2, 0, 0.46, -0.24);
+    for (const x of [-0.14, -0.05, 0.05, 0.14]) box(P.head, 0.02, 0.36, 0.02, 0xb8bcc4, x, 0.22, -0.27);
+    for (const y of [0.1, 0.22, 0.34]) box(P.head, 0.36, 0.02, 0.02, 0xb8bcc4, 0, y, -0.27);
+  }
   else if (c.hatType === 'filet') { box(P.head, 0.46, 0.12, 0.46, 0xe8e8f0, 0, 0.47, 0); box(P.head, 0.3, 0.06, 0.3, 0xe8e8f0, 0, 0.55, 0.02); }
   for (const [k, sx] of [['armL', -1], ['armR', 1]]) {
     const A = P[k] = pivot(P.torso, sx * 0.37, 0.56, 0);
     box(A, 0.18, 0.56, 0.22, c.coat, 0, -0.26, 0); box(A, 0.19, 0.05, 0.23, shade(c.coat, 0.8), 0, -0.47, 0);
+    if (c.pads) box(A, 0.26, 0.2, 0.3, c.pads, 0, -0.04, 0);
     box(A, 0.2, 0.16, 0.24, c.zombie ? c.skin : c.mitt, 0, -0.58, 0); box(A, 0.07, 0.1, 0.08, c.zombie ? c.skin : shade(c.mitt, 0.9), -sx * 0.1, -0.55, -0.08);
   }
   P.hand = pivot(P.armR, 0, -0.6, 0);
@@ -116,6 +132,20 @@ export const PLAYER_LOOKS = {
   gars: {},
   fille: { coat: 0x2c7a5a, pants: 0x3a3048, boots: 0x6a3a2a, hat: 0x1f4fa8, hatBand: 0xf2f2f2, pom: 0xf2c12e, mitt: 0x1f4fa8, hair: 0x9a4a22, queue: true, cils: true, parka: true },
 };
+// équipement porté → retouches de l'apparence (le modèle est reconstruit quand l'équipement change)
+const GEAR_LOOK = {
+  tuque: {}, tuque_patrimoine: { hatType: 'tuque', hat: 0x1f4fa8, hatBand: 0xf2f2f2, pom: 0xf2c12e },
+  casque_or: { hatType: 'casque', casque: 0xe8c040 }, casque_chantier: { hatType: 'casque', casque: 0xf2c12e }, casque_hockey: { hatType: 'hockey' },
+  mitaines: { mitt: 0xc8282e }, mitaines_doublees: { mitt: 0x1f4fa8 }, gants_travail: { mitt: 0xc89a5a },
+  manteau: { coat: 0x1f3f8a, parka: true }, dossard: { vest: 0xff7a1a }, epaulettes: { pads: 0x2e5fa8 },
+  bottes: { boots: 0x3a2a1a }, raquettes: { raquettes: true },
+};
+export function gearLook(base, equip) {
+  const o = Object.assign({}, base);
+  if (!equip.tete) o.hatType = 'none';
+  for (const k of ['tete', 'mains', 'corps', 'pieds']) if (equip[k]) Object.assign(o, GEAR_LOOK[equip[k].id] || {});
+  return o;
+}
 export function weaponModel(kind) {
   const g = new THREE.Group();
   if (kind === 'baton' || kind === 'baton_carbone' || kind === 'baton_or') {
@@ -125,6 +155,9 @@ export function weaponModel(kind) {
   } else if (kind === 'pelle' || kind === 'pelle_alu') {
     box(g, 0.07, 0.07, 1.1, 0x8b6a3e, 0, 0, -0.4); box(g, 0.22, 0.06, 0.06, 0x111111, 0, 0, 0.14);
     box(g, 0.5, 0.04, 0.45, kind === 'pelle_alu' ? 0xc9ced6 : 0x2e5fa8, 0, 0, -1.12);
+  } else if (kind === 'grattoir') {
+    box(g, 0.08, 0.08, 0.7, 0xc8282e, 0, 0, -0.2); box(g, 0.09, 0.09, 0.12, 0x222222, 0, 0, 0.12);
+    box(g, 0.34, 0.08, 0.12, 0x2e5fa8, 0, 0, -0.62); box(g, 0.36, 0.03, 0.04, 0xc9ced6, 0, 0, -0.7);
   } else if (kind === 'lanceur') {
     box(g, 0.16, 0.16, 0.8, 0x2e5fa8, 0, 0.05, -0.25); box(g, 0.2, 0.2, 0.08, 0x1a1a1a, 0, 0.05, -0.66); box(g, 0.22, 0.22, 0.22, 0xf2f6fb, 0, 0.22, -0.1); box(g, 0.08, 0.2, 0.1, 0x333333, 0, -0.1, 0.02);
     box(g, 0.17, 0.04, 0.5, 0xf2f2f2, 0, 0.14, -0.3); box(g, 0.06, 0.06, 0.06, 0xc8282e, 0, 0.16, -0.58);

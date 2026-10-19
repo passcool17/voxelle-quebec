@@ -8,7 +8,8 @@ import { RECIPES, mineTime, toolFor, missing, consume } from './craft.js';
 import { Sky } from './sky.js';
 import { Audio } from './audio.js';
 import { Ambiance } from './fx.js';
-import { human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel, critterModel } from './models.js';
+import { TALENTS, TAL, talentFx, points as talentPts, canLearn, spentIn } from './talents.js';
+import { gearLook, human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel, critterModel } from './models.js';
 import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS, AMBIENT } from './data.js';
 import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
@@ -61,7 +62,7 @@ function normSave(s) {
   const f = freshSave();
   for (const k of ['blocks', 'inv', 'equip', 'stats', 'q', 'taken', 'edits']) if (!s[k] || typeof s[k] !== 'object') s[k] = f[k];
   for (const k in f.stats) if (s.stats[k] == null) s.stats[k] = 0;
-  s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0;
+  s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0; if (!s.tal || typeof s.tal !== 'object') s.tal = {};
   return s;
 }
 function writeSave() {
@@ -110,16 +111,26 @@ const dz = v => Math.abs(v) < 0.15 ? 0 : (v - Math.sign(v) * 0.15) / 0.85;
 function stats() {
   const e = S.equip; let def = 0, spd = 0;
   for (const k of ['tete', 'mains', 'corps', 'pieds']) if (e[k]) { const it = ITEMS[e[k].id]; def += (it.def || 0) * RARITY[e[k].r || 0].m; spd += it.spd || 0; }
-  const w = e.arme ? ITEMS[e.arme.id] : ITEMS.baton, wm = e.arme ? RARITY[e.arme.r || 0].m : 1;
-  return { def: Math.round(def), spd, hpMax: 100 + 14 * (S.lvl - 1), dmg: w.dmg * wm * (1 + 0.1 * (S.lvl - 1)), W: w };
+  const w = e.arme ? ITEMS[e.arme.id] : ITEMS.baton, wm = e.arme ? RARITY[e.arme.r || 0].m : 1, tf = G.tf || talentFx(S);
+  return { def: Math.round(def), spd: spd + tf.spd, hpMax: Math.round((100 + 14 * (S.lvl - 1)) * (1 + tf.hp)), dmg: w.dmg * wm * (1 + 0.1 * (S.lvl - 1)) * (1 + tf.dmg), W: w };
 }
 const xpNext = l => 100 + (l - 1) * (l - 1) * 60 + (l - 1) * 80;
 // personnage choisi (gars = le héros, fille = l'héroïne) : gardé à part de la sauvegarde, changeable au menu
 const PERSO_KEY = 'voxelle-quebec-perso';
 const perso = () => localStorage.getItem(PERSO_KEY) === 'fille' ? 'fille' : 'gars';
 const PERSO_NOM = { gars: 'LE HÉROS', fille: 'L’HÉROÏNE' };
+// talents : effets recalculés quand on apprend un talent ou qu'on charge une partie
+function refreshTalents() { G.tf = talentFx(S); G.mineBonus = G.tf.mine; G.oreBonus = G.tf.ore; }
+// modèle du joueur : le personnage choisi + l'équipement porté (tuque, casque, dossard, épaulettes, mitaines, bottes, raquettes)
+function playerModel() { const m = human(gearLook(PLAYER_LOOKS[perso()], S.equip)); setWeapon(m, S.equip.arme ? S.equip.arme.id : 'baton'); return m; }
+function refreshLook() {
+  const P = G.P; if (!P) return; const old = P.model, m = playerModel();
+  m.g.position.copy(old.g.position); m.g.rotation.copy(old.g.rotation); old.g.remove(P.gl); m.g.add(P.gl); scene.remove(old.g); scene.add(m.g); addBlob(m.g, 0.45);
+  m.stepOffV = old.stepOffV; P.model = m;
+}
 function makePlayer() {
-  const m = human(PLAYER_LOOKS[perso()]); setWeapon(m, S.equip.arme ? S.equip.arme.id : 'baton');
+  refreshTalents();
+  const m = playerModel();
   const gl = glider(); gl.position.set(0, 2.25, 0); gl.visible = false; m.g.add(gl);
   scene.add(m.g); addBlob(m.g, 0.45);
   const P = { x: S.pos[0], y: S.pos[1], z: S.pos[2], vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, hp: S.hp, stam: 1, yaw: S.yaw, model: m, gl, gliding: false, atkT: 0, atkCd: 0, hitAt: -1, iT: 0, buff: 0, brkCd: 0, fallV: 0, walkT: 0, rollT: 0, rollCd: 0, holdT: 0, atkWas: false, atkBuf: 0, combo: 0, lastSwing: -9, spinT: 0 };
@@ -164,7 +175,7 @@ function playerUpdate(dt) {
   const wx = mx * c + mz * s, wz = -mx * s + mz * c, mv = Math.hypot(wx, wz);
   const inWater = world.get(P.x, P.y + 0.5, P.z) === B.WATER, headWater = world.get(P.x, P.y + 1.4, P.z) === B.WATER;
   const canRun = run && P.stam > 0.05 && mv > 0.1 && !P.gliding;
-  if (canRun) P.stam = Math.max(0, P.stam - dt * 0.18); else P.stam = Math.min(1, P.stam + dt * (P.ground ? 0.25 : 0.1));
+  if (canRun) P.stam = Math.max(0, P.stam - dt * 0.18 * G.tf.runCost); else P.stam = Math.min(1, P.stam + dt * (P.ground ? 0.25 : 0.1));
   let sp = (canRun ? 8.4 : 5.4) * (1 + st.spd + (P.buff > 0 ? 0.25 : 0)); if (inWater) sp *= 0.55;
   const jumpP = pressed.has('Space') || input.tJumpP || (input.bot && input.bot.jumpP); input.tJumpP = false; if (input.bot) input.bot.jumpP = false;
   const jumpH = keys.has('Space') || input.tJump || input.gpJump || (input.bot && input.bot.jump);
@@ -189,7 +200,7 @@ function playerUpdate(dt) {
     const rollP = pressed.has('KeyC') || input.tRollP || (input.bot && input.bot.rollP); input.tRollP = false; if (input.bot) input.bot.rollP = false;
     P.rollCd -= dt;
     if (rollP && P.ground && !inWater && P.rollT <= 0 && P.rollCd <= 0 && P.stam > 0.15) {
-      const l = mv > 0.1 ? mv : 0; P.rollDir = l ? [wx / l, wz / l] : [-Math.sin(P.yaw), -Math.cos(P.yaw)]; P.rollT = ROLL_T; P.rollCd = 0.55; P.stam = Math.max(0, P.stam - 0.2);
+      const l = mv > 0.1 ? mv : 0; P.rollDir = l ? [wx / l, wz / l] : [-Math.sin(P.yaw), -Math.cos(P.yaw)]; P.rollT = ROLL_T; P.rollCd = G.tf.gardien ? 0.28 : 0.55; P.stam = Math.max(0, P.stam - (G.tf.gardien ? 0.1 : 0.2));
       P.atkT = 0; P.hitAt = -1; P.holdT = 0; audio.fx('roll'); burst(P.x, P.y + 0.15, P.z, 0xd8d0c0, 6, 2.5);
     }
     if (P.rollT > 0) { P.rollT -= dt; const k = 7 + 7 * Math.max(0, P.rollT / ROLL_T); P.vx = P.rollDir[0] * k; P.vz = P.rollDir[1] * k; P.yaw = Math.atan2(P.rollDir[0], P.rollDir[1]) + Math.PI; }
@@ -213,6 +224,7 @@ function playerUpdate(dt) {
     if (atkDown && !P.atkWas) P.atkBuf = 0.3;
     if (st.W.kind === 'ranged') { if (atkDown) tryAttack(st); }
     else {
+      const CHARGE_T = CHARGE_T0 * (G.tf.patin ? 0.6 : 1);
       if (atkDown) { const h0 = P.holdT; P.holdT += dt; if (h0 < CHARGE_T && P.holdT >= CHARGE_T) { audio.fx('charge'); burst(P.x, P.y + 1.2, P.z, 0xffd23a, 8, 3); } if (P.holdT > CHARGE_T && Math.random() < dt * 14) burst(P.x + (Math.random() - 0.5), P.y + 0.3 + Math.random() * 1.4, P.z + (Math.random() - 0.5), 0xffd23a, 1, 1.5); }
       else { if (P.holdT >= CHARGE_T) chargedAttack(st); P.holdT = 0; }
       if (P.atkBuf > 0 && P.atkCd <= 0) { P.atkBuf = 0; tryAttack(st); }
@@ -238,7 +250,7 @@ function playerUpdate(dt) {
   // roulade avant : rotation autour du centre du corps (avant = −z, donc angle négatif)
   if (P.rollT > 0) { const a = -(1 - P.rollT / ROLL_T) * Math.PI * 2, c = 0.55; m.body.rotation.x = a; m.body.position.set(0, c - c * Math.cos(a), -c * Math.sin(a)); }
   else if (m.body.rotation.x) { m.body.rotation.x = 0; m.body.position.z = 0; }
-  if (P.holdT > CHARGE_T) { m.P.armR.rotation.x = 2.6; m.P.torso.rotation.y = -0.6; }
+  if (P.holdT > CHARGE_T0 * (G.tf.patin ? 0.6 : 1)) { m.P.armR.rotation.x = 2.6; m.P.torso.rotation.y = -0.6; }
   if (P.iT > 0) m.g.visible = Math.floor(P.iT * 20) % 2 === 0; else m.g.visible = true;
 }
 function tryAttack(st) {
@@ -259,11 +271,11 @@ function tryAttack(st) {
     spawnProj({ x: P.x + fx * 0.6, y: P.y + 1.4, z: P.z + fz * 0.6 }, v, 'p', st.dmg, 'snow'); audio.fx('throw');
   } else { P.hitAt = 0.11; audio.fx('swing'); P.combo = G.t - P.lastSwing < 0.95 ? P.combo + 1 : 1; P.lastSwing = G.t; if (P.combo >= 3) { P.fin = true; P.combo = 0; P.atkCd *= 1.25; } }
 }
-const ROLL_T = 0.42, CHARGE_T = 0.6;
+const ROLL_T = 0.42, CHARGE_T0 = 0.6;
 function chargedAttack(st) {
   const P = G.P; P.atkCd = st.W.cd * 1.3; P.atkT = 0; P.hitAt = -1; P.spinT = 0.32; P.combo = 0;
   audio.fx('swing'); audio.fx('boom', 0.6); ring(P.x, P.y + 0.12, P.z, 0.6, st.W.range + 1.2, 0.35, 0xffd23a);
-  melee(st, { mult: 2.2, kbm: 2.2, all: true, add: 1.0, heavy: true });
+  melee(st, { mult: 2.2, kbm: 2.2, all: true, add: G.tf.patin ? 1.8 : 1.0, heavy: true });
   G.shake = Math.max(G.shake, 0.45);
 }
 function melee(st, o = {}) {
@@ -302,7 +314,7 @@ function breakBlock() {
   if (t.b === B.BEDROCK) return;
   if (!world.set(t.x, t.y, t.z, B.AIR)) return;
   audio.fx('break');
-  const d = DROP(t.b); if (d && PLACEABLE.includes(d)) { S.blocks[d] = (S.blocks[d] || 0) + 1; }
+  const d = DROP(t.b); if (d && PLACEABLE.includes(d)) { S.blocks[d] = (S.blocks[d] || 0) + 1 + (Math.random() < G.tf.extra ? 1 : 0); }
   const di = DROP_ITEM[t.b]; if (di) { const n = 1 + (Math.random() < (G.oreBonus || 0) ? 1 : 0); addItem(di, n); floatTxt(t.x + VS / 2, t.y + 1, t.z + VS / 2, '+' + n + ' ' + ITEMS[di].name, '#ffd23a'); audio.fx('coin', 0.6); S.stats.mined++; }
   burst(t.x + VS / 2, t.y + VS / 2, t.z + VS / 2, COL[t.b][1], 8); S.stats.blocks++; G.dirtyHot = true;
 }
@@ -350,8 +362,9 @@ function eat() {
 }
 function useItem(it) {
   const D = ITEMS[it.id], P = G.P; if (D.slot !== 'conso') return;
-  P.hp = Math.min(stats().hpMax, P.hp + D.heal); if (D.stam) P.stam = 1; if (D.buff) P.buff = D.buff;
-  it.n--; if (it.n <= 0) S.inv.splice(S.inv.indexOf(it), 1); audio.fx('eat'); floatTxt(P.x, P.y + 2, P.z, '+' + D.heal, '#8dff6a'); toast(D.name + ' : +' + D.heal + ' PV');
+  const heal = Math.round(D.heal * (1 + G.tf.food));
+  P.hp = Math.min(stats().hpMax, P.hp + heal); if (D.stam) P.stam = 1; if (D.buff) P.buff = D.buff;
+  it.n--; if (it.n <= 0) S.inv.splice(S.inv.indexOf(it), 1); audio.fx('eat'); floatTxt(P.x, P.y + 2, P.z, '+' + heal, '#8dff6a'); toast(D.name + ' : +' + heal + ' PV');
 }
 function swapWeapon() {
   const ws = S.inv.filter(i => ITEMS[i.id].slot === 'arme'); if (!ws.length) { toast('Une seule arme pour l’instant.'); return; }
@@ -361,7 +374,7 @@ function equip(it) {
   const D = ITEMS[it.id]; const slot = D.slot; if (!['arme', 'tete', 'mains', 'corps', 'pieds'].includes(slot)) return;
   const i = S.inv.indexOf(it); if (i >= 0) S.inv.splice(i, 1);
   if (S.equip[slot]) S.inv.push(S.equip[slot]);
-  S.equip[slot] = it; if (slot === 'arme') setWeapon(G.P.model, it.id);
+  S.equip[slot] = it; if (slot === 'arme') setWeapon(G.P.model, it.id); else refreshLook();
   audio.fx('ui'); toast(D.name + ' équipé' + (slot === 'tete' || slot === 'arme' ? '' : 's'));
   G.dirtyHot = true;
 }
@@ -453,7 +466,7 @@ const PHASES_BY = { supreme: ['', 'Inspection de chantier', 'Zone de travaux él
 let PHASES = PHASES_BY.supreme;
 function bossTitle(e) { PHASES = PHASES_BY[e.type] || PHASES_BY.supreme; $('bossname').innerHTML = e.T.name + ' (niv. ' + e.lvl + ') <small>· phase ' + e.phase + ' : ' + PHASES[e.phase] + '</small>'; }
 function damageEnemy(e, dmg, nx, nz, kb, o = {}) {
-  const crit = Math.random() < 0.12, d = Math.round(dmg * (0.88 + Math.random() * 0.24) * (crit ? 1.7 : 1));
+  const crit = Math.random() < 0.12 + (o.src === 'p' ? G.tf.crit : 0), d = Math.round(dmg * (0.88 + Math.random() * 0.24) * (crit ? 1.7 : 1));
   e.hp -= d; e.hurtT = 0.15; e.flashT = 0.09; if (G.dbg.log) G.dbg.log.push(e.type + ":" + d); e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
   if (!e.T.boss && e.type !== 'trou') { e.vx += nx * kb; e.vz += nz * kb; e.vy = Math.max(e.vy, 3.5); e.stunT = o.heavy ? 0.5 : 0.28; if (e.dive) { e.dive = null; e.rec = 1.2; } }
   else if (e.T.boss && o.heavy) { e.vx += nx * 2; e.vz += nz * 2; }
@@ -472,10 +485,10 @@ function killEnemy(e) {
   burst(e.x, e.y + e.T.h * 0.5, e.z, e.type === 'mouches' ? 0x202020 : 0xffffff, 14, 6);
   S.stats.kills++;
   gainXP(Math.round(e.T.xp * (1 + 0.25 * (e.lvl - 1))));
-  const [a, b] = e.T.cash; const n = Math.round((a + Math.random() * (b - a)) * (1 + 0.2 * (e.lvl - 1)));
+  const [a, b] = e.T.cash; const n = Math.round((a + Math.random() * (b - a)) * (1 + 0.2 * (e.lvl - 1)) * (1 + G.tf.cash));
   for (let k = 0; k < Math.min(6, Math.ceil(n / 3)); k++) dropPickup('piasse', e.x + (Math.random() - 0.5) * 1.5, e.y + 0.6, e.z + (Math.random() - 0.5) * 1.5, { val: Math.ceil(n / Math.min(6, Math.ceil(n / 3))) });
   if (Math.random() < 0.12) dropPickup('poutine', e.x, e.y + 0.6, e.z, {});
-  if (Math.random() < (e.T.boss ? 1 : 0.06)) dropGear(e);
+  if (Math.random() < (e.T.boss ? 1 : 0.06 + G.tf.luck + (e.elite ? 0.5 : 0))) dropGear(e);
   if (e.type === 'cone' && Math.random() < 0.55) { addItem('plastique', 1); floatTxt(e.x, e.y + e.T.h + 0.8, e.z, '+1 Plastique orange', '#ff9a3a'); }
   if (e.type === 'raton' && e.stole) dropPickup('piasse', e.x, e.y + 0.6, e.z, { val: e.stole });
   if (e.type === 'bureau' && S.q.permis && S.q.permis.st === 'active' && !G.pickups.some(p => p.kind === 'permis')) { S.bureauKills++; if (S.bureauKills >= 3 || Math.random() < 0.25) { dropPickup('permis', e.x, e.y + 0.6, e.z, {}); toast('Le bureaucrate a échappé un formulaire!'); } }
@@ -484,10 +497,15 @@ function killEnemy(e) {
   if (e.camp) { const c = G.camps.get(e.camp); if (c) { c.alive--; if (c.alive <= 0) { c.cleared = G.t; toast('Chantier nettoyé!'); } } }
 }
 function dropGear(e) {
-  const pool = ['tuque', 'mitaines', 'bottes', 'manteau', 'mitaines_doublees', 'pelle', 'baton_carbone', 'lanceur', 'pelle_alu'];
+  const pool = ['tuque', 'mitaines', 'bottes', 'manteau', 'mitaines_doublees', 'pelle', 'baton_carbone', 'lanceur', 'pelle_alu', 'casque_chantier', 'casque_hockey', 'dossard', 'epaulettes', 'gants_travail', 'grattoir', 'raquettes'];
   const id = e.T.boss ? (e.type === 'comite' ? 'baton_carbone' : 'manteau') : pool[(Math.random() * pool.length) | 0];
-  const r = e.T.boss ? 2 : Math.random() < 0.2 ? 2 : Math.random() < 0.5 ? 1 : 0;
-  dropPickup('gear', e.x, e.y + 0.6, e.z, { id, r });
+  dropPickup('gear', e.x, e.y + 0.6, e.z, { id, r: rollRarity(e.T.boss ? 2 : e.elite ? 1 : 0) });
+}
+// rareté : commun 55 %, rare 30 %, épique 12 %, légendaire 3 % (décalés vers le haut par le talent Trèfle et les ennemis forts)
+function rollRarity(min = 0) {
+  const l = G.tf.luck * 3, x = Math.random();
+  const r = x < 0.03 + l * 0.3 ? 3 : x < 0.15 + l ? 2 : x < 0.45 + l * 1.5 ? 1 : 0;
+  return Math.max(min, r);
 }
 function enemiesUpdate(dt) {
   const P = G.P;
@@ -785,8 +803,10 @@ function travel(key) {
   G.travelTo = key; G.state = 'loading'; G.loadT = 0; hide('hud'); show('loading'); audio.fx('horn');
 }
 // ---------- objets au sol ----------
+const beamGeo = new THREE.BoxGeometry(0.12, 2.4, 0.12).translate(0, 1.2, 0);
 function dropPickup(kind, x, y, z, o) {
   const m = pickupModel(kind === 'gear' ? 'gear' : kind); m.position.set(x, y, z); scene.add(m);
+  if (kind === 'gear') { const c = new THREE.Color(RARITY[o.r || 0].c), beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35 + 0.12 * (o.r || 0), depthWrite: false, blending: THREE.AdditiveBlending })); beam.scale.y = 1 + (o.r || 0) * 0.6; m.add(beam); }
   G.pickups.push(Object.assign({ kind, m, x, y, z, vy: o.still ? 0 : 4, vx: o.still ? 0 : (Math.random() - 0.5) * 3, vz: o.still ? 0 : (Math.random() - 0.5) * 3, t: 0, life: o.still ? 1e9 : 90 }, o));
 }
 function pickupsUpdate(dt) {
@@ -823,7 +843,7 @@ function questEvent(kind, what) {
 }
 function gainXP(n) {
   S.xp += n; floatTxt(G.P.x, G.P.y + 2.4, G.P.z, '+' + n + ' XP', '#9ae0ff');
-  while (S.xp >= xpNext(S.lvl)) { S.xp -= xpNext(S.lvl); S.lvl++; const st = stats(); G.P.hp = st.hpMax; audio.fx('level'); banner('NIVEAU ' + S.lvl + '!', 'PV max ' + st.hpMax + ' · dégâts +10 %'); burst(G.P.x, G.P.y + 1, G.P.z, 0xffd23a, 20, 6); }
+  while (S.xp >= xpNext(S.lvl)) { S.xp -= xpNext(S.lvl); S.lvl++; const st = stats(); G.P.hp = st.hpMax; audio.fx('level'); banner('NIVEAU ' + S.lvl + '!', 'PV max ' + st.hpMax + ' · dégâts +10 % · 1 point de talent (T)'); burst(G.P.x, G.P.y + 1, G.P.z, 0xffd23a, 20, 6); G.dirtyHot = true; }
 }
 function rewardTxt(r) { return (r.cash || 0) + ' piasses · ' + r.xp + ' XP' + (r.item ? ' · ' + ITEMS[r.item].name : '') + (r.give ? ' · ' + Object.entries(r.give).map(([k, v]) => v + ' × ' + ITEMS[k].name).join(', ') : ''); }
 function reward(r) {
@@ -915,7 +935,7 @@ function hudUpdate(dt) {
   $('hpbar').querySelector('.fill').style.width = Math.max(0, Math.min(100, P.hp / st.hpMax * 100)) + '%'; $('hpbar').querySelector('span').textContent = Math.ceil(Math.max(0, P.hp)) + ' / ' + st.hpMax;
   $('stbar').querySelector('.fill').style.width = P.stam * 100 + '%';
   $('xpbar').querySelector('.fill').style.width = Math.min(100, S.xp / xpNext(S.lvl) * 100) + '%';
-  $('lvl').textContent = 'NIV. ' + S.lvl + '  ·  ' + S.xp + ' / ' + xpNext(S.lvl) + ' XP';
+  const tp = talentPts(S); $('lvl').innerHTML = 'NIV. ' + S.lvl + '  ·  ' + S.xp + ' / ' + xpNext(S.lvl) + ' XP' + (tp ? ' <span class="gold">· ★ ' + tp + ' talent' + (tp > 1 ? 's' : '') + (isTouch ? '' : ' (T)') + '</span>' : '');
   $('cash').querySelector('b').textContent = S.cash;
   const col = gen.column(Math.floor(P.x), Math.floor(P.z)), rk = gen.nord.region(P.x, P.z);
   const place = rk ? REGIONS[rk][0] : col.st && col.w > 0.4 ? col.st.name || { ville: 'Vieille-Ville', village: 'Village', cabane: 'Cabane à sucre', chantier: 'Chantier', grand: 'Grand Chantier' }[col.st.type] : BIOME_NAME[col.biome];
@@ -988,11 +1008,13 @@ function renderInv() {
   const st = stats(), e = S.equip, slots = [['arme', 'Arme'], ['tete', 'Tête'], ['mains', 'Mains'], ['corps', 'Corps'], ['pieds', 'Pieds']];
   let h = '<div><div class="eq">' + slots.map(([k, l]) => { const it = e[k]; return `<div class="slot" data-eq="${k}">${it ? `<img src="${itemIcon(it.id)}">` : ''}<div>${it ? `<span style="color:${RARITY[it.r || 0].c}">${ITEMS[it.id].name}</span>` : '<span style="color:#789">(vide)</span>'}<small>${l}</small></div></div>`; }).join('') + '</div>';
   h += `<div class="statl">Niveau ${S.lvl} · PV ${Math.ceil(G.P.hp)} / ${st.hpMax}<br>Dégâts ${Math.round(st.dmg)} · Défense ${st.def}<br>Piasses : <span class="green">${S.cash}</span><br>Cerf-volant fléché : ${S.glider ? 'oui (Espace en l’air)' : 'non'}<br>Ennemis vaincus : ${S.stats.kills} · Blocs cassés : ${S.stats.blocks} · posés : ${S.stats.placed}</div></div>`;
-  h += '<div><div class="grid">' + S.inv.map((it, i) => `<div class="cell${invSel === i ? ' sel' : ''}" data-i="${i}"><img src="${itemIcon(it.id)}">${it.n > 1 ? `<i>${it.n}</i>` : ''}</div>`).join('') + '</div>';
+  h += '<div><div class="grid">' + S.inv.map((it, i) => `<div class="cell${invSel === i ? ' sel' : ''}" data-i="${i}"${it.r ? ` style="box-shadow: inset 0 0 0 3px ${RARITY[it.r].c}"` : ''}><img src="${itemIcon(it.id)}">${it.n > 1 ? `<i>${it.n}</i>` : ''}</div>`).join('') + '</div>';
   const sel = S.inv[invSel];
   h += '<div id="idesc">' + (sel ? `<span style="color:${RARITY[sel.r || 0].c}">${ITEMS[sel.id].name}</span>${sel.r ? ' (' + RARITY[sel.r].n + ')' : ''} — ${ITEMS[sel.id].desc}${ITEMS[sel.id].dmg ? ' · Dégâts ' + Math.round(ITEMS[sel.id].dmg * RARITY[sel.r || 0].m) : ''}${ITEMS[sel.id].def ? ' · Défense ' + Math.round(ITEMS[sel.id].def * RARITY[sel.r || 0].m) : ''}<br>` + (ITEMS[sel.id].slot === 'conso' ? '<button class="btn sm" id="iUse">MANGER</button>' : ITEMS[sel.id].slot === 'mat' || ITEMS[sel.id].slot === 'outil' ? '<button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' + (ITEMS[sel.id].slot === 'outil' ? ' <small>Outil : servi tout seul quand tu mines.</small>' : '') : ITEMS[sel.id].slot !== 'quete' ? '<button class="btn sm" id="iEq">ÉQUIPER</button> <button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' : '') : 'Choisis un objet.') + '</div>';
   h += '<div class="statl">Blocs : ' + (PLACEABLE.filter(b => S.blocks[b] > 0).map(b => `<img src="${blockIcon(b)}" style="width:1.4em;vertical-align:middle"> ${S.blocks[b]}`).join(' &nbsp; ') || 'aucun — casse des blocs avec F') + '</div></div>';
+  h += '<div class="row2"><button class="btn sm" id="iTal">TALENTS' + (talentPts(S) ? ' (★ ' + talentPts(S) + ')' : '') + '</button><button class="btn sm" id="iCraft">ATELIER</button></div>';
   $('invbody').innerHTML = h;
+  $('iTal').onclick = () => { closePanels(); openPanel('talents'); }; $('iCraft').onclick = () => { closePanels(); openPanel('craft'); };
   $('invbody').querySelectorAll('.cell').forEach(c => c.onclick = () => { invSel = +c.dataset.i; audio.fx('ui'); renderInv(); });
   const u = $('iUse'); if (u) u.onclick = () => { useItem(sel); invSel = null; renderInv(); };
   const q = $('iEq'); if (q) q.onclick = () => { equip(sel); invSel = null; renderInv(); };
@@ -1018,6 +1040,28 @@ function renderQuests() {
   h += `<p class="gold">${S.contractsDone} contrat(s) de village rempli(s)</p>`;
   $('qbody').innerHTML = h;
 }
+// talents : 3 branches ; cliquer un talent pour y mettre un point
+function renderTalents() {
+  const pts = talentPts(S);
+  let h = `<p class="cnote">${pts ? '<span class="gold">★ ' + pts + ' point' + (pts > 1 ? 's' : '') + ' à placer</span>' : 'Aucun point libre : gagne un niveau pour en avoir un.'} · Niveau ${S.lvl}</p><div class="tals">`;
+  for (const b of TALENTS) {
+    h += `<div class="tbr"><h2 style="color:${b.col}">${b.name}<small>${b.sub} · ${spentIn(S, b.key)} pt</small></h2>`;
+    for (const t of b.list) { const r = (S.tal || {})[t.id] || 0, ok = canLearn(S, t.id), locked = spentIn(S, b.key) < t.req;
+      h += `<div class="tal${ok ? ' can' : ''}${locked ? ' locked' : ''}${r ? ' has' : ''}" data-t="${t.id}"><b>${t.name}</b> <span class="pips">${'◆'.repeat(r)}${'◇'.repeat(t.max - r)}</span><br><small>${locked ? 'Débloqué avec ' + t.req + ' points dans la branche' : t.txt(Math.max(1, r))}</small></div>`; }
+    h += '</div>';
+  }
+  h += `</div><div class="row2"><button class="btn sm" id="tReset">RÉINITIALISER (${resetCost()} $)</button></div>`;
+  $('talbody').innerHTML = h;
+  $('talbody').querySelectorAll('.tal').forEach(c => c.onclick = () => { if (learn(c.dataset.t)) renderTalents(); else audio.fx('deny'); });
+  $('tReset').onclick = () => { if (!Object.keys(S.tal || {}).length) return; if (S.cash < resetCost()) { audio.fx('deny'); toast('Pas assez de piasses.'); return; } S.cash -= resetCost(); S.tal = {}; refreshTalents(); audio.fx('coin'); renderTalents(); };
+}
+const resetCost = () => 20 * Math.max(1, S.lvl - 1);
+function learn(id) {
+  if (!canLearn(S, id)) return false;
+  S.tal = S.tal || {}; S.tal[id] = (S.tal[id] || 0) + 1; refreshTalents(); audio.fx('level', 0.6); toast(TAL[id].name + ' : rang ' + S.tal[id]); G.dirtyHot = true;
+  if (G.P) G.P.hp = Math.min(G.P.hp, stats().hpMax);
+  return true;
+}
 // atelier : recettes à la main ou à l'établi (bloc posé à moins de 5 m)
 function nearBench() {
   const P = G.P, x0 = Math.floor(P.x * IVS), y0 = Math.floor((P.y + 0.8) * IVS), z0 = Math.floor(P.z * IVS), R = 10;
@@ -1039,12 +1083,12 @@ function renderCraft() {
 function craft(id) {
   const r = RECIPES.find(q => q.id === id); if (!r || missing(S, r, nearBench()).length) { audio.fx('deny'); return false; }
   consume(S, r);
-  if (r.out.b) S.blocks[r.out.b] = (S.blocks[r.out.b] || 0) + (r.out.n || 1); else addItem(r.out.i, r.out.n || 1, 0);
+  if (r.out.b) S.blocks[r.out.b] = (S.blocks[r.out.b] || 0) + (r.out.n || 1) * (r.bench && G.tf.foreman ? 2 : 1); else addItem(r.out.i, r.out.n || 1, 0);
   S.stats.crafted++; audio.fx('craft'); toast('Fabriqué : ' + r.name + ((r.out.n || 1) > 1 ? ' ×' + r.out.n : '')); G.dirtyHot = true; questEvent('craft', id);
   return true;
 }
-function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'craft') renderCraft(); if (id === 'inv') renderInv(); if (id === 'quests') renderQuests(); if (id === 'map') drawBigMap(); }
-function closePanels() { for (const id of ['inv', 'quests', 'map', 'dialog', 'craft']) hide(id); if (['inv', 'quests', 'map', 'dialog', 'craft'].includes(G.state)) G.state = 'play'; G.dirtyHot = true; }
+function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'craft') renderCraft(); if (id === 'talents') renderTalents(); if (id === 'inv') renderInv(); if (id === 'quests') renderQuests(); if (id === 'map') drawBigMap(); }
+function closePanels() { for (const id of ['inv', 'quests', 'map', 'dialog', 'craft', 'talents']) hide(id); if (['inv', 'quests', 'map', 'dialog', 'craft', 'talents'].includes(G.state)) G.state = 'play'; G.dirtyHot = true; }
 function openPause() { if (G.state !== 'play') return; G.state = 'pause'; unlock(); show('pause'); }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { audio.fx('ui'); const sc = b.closest('.screen'); sc.classList.add('hidden'); if (sc.id === 'help' || sc.id === 'opts') { if (G.prevScreen) show(G.prevScreen); } else closePanels(); });
 // options
@@ -1136,14 +1180,15 @@ function handleKeys() {
     else if (pressed.has('KeyJ')) openPanel('quests');
     else if (pressed.has('KeyM')) openPanel('map');
     else if (pressed.has('KeyK')) openPanel('craft');
+    else if (pressed.has('KeyT')) openPanel('talents');
     else if (pressed.has('Escape') || pressed.has('KeyP')) openPause();
     if (pressed.has('KeyR')) eat();
     if (pressed.has('KeyQ')) swapWeapon();
     for (let i = 1; i <= 9; i++) if (pressed.has('Digit' + i)) { S.hot = i - 1; G.dirtyHot = true; }
     if (input.wheel) { const n = Math.max(1, hotList().length); S.hot = ((S.hot + input.wheel) % n + n) % n; input.wheel = 0; G.dirtyHot = true; }
-  } else if (['inv', 'quests', 'map', 'craft'].includes(st)) {
+  } else if (['inv', 'quests', 'map', 'craft', 'talents'].includes(st)) {
     if (st === 'map' && (pressed.has('KeyZ') || pressed.has('Equal') || pressed.has('Minus'))) { G.mapZ = (G.mapZ + (pressed.has('Minus') ? 2 : 1)) % 3; drawBigMap(); }
-    const k = { inv: ['KeyI', 'Tab'], quests: ['KeyJ'], map: ['KeyM'], craft: ['KeyK'] }[st];
+    const k = { inv: ['KeyI', 'Tab'], quests: ['KeyJ'], map: ['KeyM'], craft: ['KeyK'], talents: ['KeyT'] }[st];
     if (pressed.has('Escape') || k.some(x => pressed.has(x))) closePanels();
   } else if (st === 'dialog') { if (pressed.has('Escape')) closeDialog(); }
   else if (st === 'pause') { if (pressed.has('Escape') || pressed.has('KeyP')) resume(); }
@@ -1245,5 +1290,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
+const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
 window.__game = API;

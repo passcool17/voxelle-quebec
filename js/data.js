@@ -23,6 +23,12 @@ export const ITEMS = {
   bleuets: { name: 'Casseau de bleuets', slot: 'conso', heal: 15, stam: 1, desc: 'Des bleuets du Lac, gros comme des billes. Rend 15 PV et l’énergie.', price: 10 },
   memo: { name: 'Mémo collant', slot: 'quete', desc: 'Écrit à l’encre de sirop d’érable. Ça sent la 2e coulée.' },
   casque_or: { name: 'Casque doré du Grand Plan', slot: 'tete', def: 9, spd: 0.05, desc: 'Le Comité l’avait commandé pour lui-même. En trois exemplaires.' },
+  // équipement visible sur le personnage
+  casque_chantier: { name: 'Casque de chantier', slot: 'tete', def: 4, desc: 'Trouvé sur un chantier qui dort depuis 1994.', price: 60 },
+  casque_hockey: { name: 'Casque de hockey', slot: 'tete', def: 6, desc: 'Avec la grille. Protège le dentier.', price: 110 },
+  dossard: { name: 'Dossard de signaleur', slot: 'corps', def: 4, spd: 0.03, desc: 'Orange et réfléchissant. Les cônes te prennent pour un des leurs.', price: 80 },
+  epaulettes: { name: 'Épaulettes de hockey', slot: 'corps', def: 10, spd: -0.03, desc: 'Plus large que le cadre de porte. Pas mal plus large.', price: 180 },
+  gants_travail: { name: 'Gants de travail', slot: 'mains', def: 4, desc: 'En cuir, pour les écharpes de bois et les poignées de main fermes.', price: 55 },
   // construire et miner
   charbon: { name: 'Charbon', slot: 'mat', desc: 'Trouvé dans la pierre. Noircit les mitaines.', price: 8 },
   fer: { name: 'Minerai de fer', slot: 'mat', desc: 'Du fer brut, plein de rouille et de promesses.', price: 14 },
@@ -35,9 +41,9 @@ export const ITEMS = {
   tire: { name: 'Tire sur la neige', slot: 'conso', heal: 30, buff: 10, desc: 'Sirop bouillant sur la neige, roulé sur un bâton. Rend 30 PV et donne de la vitesse.', price: 14 },
   tarte: { name: 'Tarte aux bleuets', slot: 'conso', heal: 70, buff: 15, desc: 'Rend 70 PV et donne de la vitesse. Tache les dents.', price: 30 },
 };
-export const SHOPS = { etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone'] };
-export const RARITY = [{ n: 'commun', c: '#e8e8e8', m: 1 }, { n: 'rare', c: '#5ab8ff', m: 1.25 }, { n: 'épique', c: '#d07aff', m: 1.55 }];
-export const SHOP = ['poutine', 'sirop', 'tourtiere', 'bottes', 'mitaines_doublees', 'manteau', 'baton_carbone', 'pelle_alu'];
+export const SHOPS = { etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau', 'dossard'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone', 'epaulettes'] };
+export const RARITY = [{ n: 'commun', c: '#e8e8e8', m: 1 }, { n: 'rare', c: '#5ab8ff', m: 1.25 }, { n: 'épique', c: '#d07aff', m: 1.55 }, { n: 'légendaire', c: '#ffa83a', m: 1.9 }];
+export const SHOP = ['poutine', 'sirop', 'tourtiere', 'bottes', 'mitaines_doublees', 'manteau', 'baton_carbone', 'pelle_alu', 'casque_hockey', 'gants_travail', 'pic_bois'];
 
 export const ENEMIES = {
   cone: { name: 'Cône-golem', hp: 32, dmg: 8, spd: 3.3, range: 1.7, cd: 1.1, xp: 22, cash: [2, 6], aggro: 15, hw: 0.4, h: 1.6 },

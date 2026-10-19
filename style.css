@@ -154,3 +154,10 @@ body.touch #prompt { bottom: auto; top: 30%; }
 .rcp small span { white-space: nowrap; margin-right: 6px; }
 #cdesc { min-height: 3.4em; margin-top: 8px; background: #0c1828; border: 2px solid #3a4a66; padding: 6px 10px; }
 #cdesc .btn { margin-top: 6px; }
+/* talents */
+.tals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tbr h2 { margin: 0 0 6px; } .tbr h2 small { display: block; font-size: .6em; color: #9ab; }
+.tal { background: #16263e; border: 2px solid #556; padding: 5px 8px; margin-bottom: 6px; cursor: pointer; }
+.tal.can { border-color: var(--gold); } .tal.has { background: #1e3350; } .tal.locked { opacity: .5; }
+.tal .pips { color: var(--gold); letter-spacing: 2px; }
+@media (max-width: 700px), (max-height: 450px) { .tals { grid-template-columns: 1fr 1fr 1fr; gap: 4px; } .tal { padding: 3px 5px; font-size: .85em; } }
