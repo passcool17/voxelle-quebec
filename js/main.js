@@ -13,6 +13,7 @@ import { gearLook, human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel
 import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS, AMBIENT } from './data.js';
 import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
+import { DUN, dunPlan, dunInside, dunRoomAt } from './donjons.js';
 
 const $ = id => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -49,7 +50,7 @@ function addBlob(g, r) { const b = new THREE.Mesh(blobGeo, blobMat); b.scale.set
 const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
-    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
+    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
 }
 let S = null; // sauvegarde active
 function loadSave() {
@@ -60,7 +61,7 @@ function loadSave() {
 // anciennes sauvegardes : on complète les champs ajoutés depuis (sans rien perdre)
 function normSave(s) {
   const f = freshSave();
-  for (const k of ['blocks', 'inv', 'equip', 'stats', 'q', 'taken', 'edits']) if (!s[k] || typeof s[k] !== 'object') s[k] = f[k];
+  for (const k of ['blocks', 'inv', 'equip', 'stats', 'q', 'taken', 'edits', 'dun']) if (!s[k] || typeof s[k] !== 'object') s[k] = f[k];
   for (const k in f.stats) if (s.stats[k] == null) s.stats[k] = 0;
   s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0; if (!s.tal || typeof s.tal !== 'object') s.tal = {};
   return s;
@@ -451,7 +452,7 @@ function projUpdate(dt) {
 // ---------- ennemis ----------
 function enemyLevel(x, z) { const rl = gen.reg.level(x, z); if (rl) return rl; if (z < -480) return Math.min(6, 3 + Math.floor((-480 - z) / 700)); return 1 + Math.floor(Math.hypot(x - gen.VX, z - gen.VZ) / 220); }
 function spawnEnemy(type, x, z, opt = {}) {
-  const T = ENEMIES[type], lvl = opt.lvl || enemyLevel(x, z), y = world.ground(x, z);
+  const T = ENEMIES[type], lvl = opt.lvl || enemyLevel(x, z), y = opt.y != null ? world.ground(x, z, opt.y + 1.5) : world.ground(x, z);
   const M = enemyModel(type); scene.add(M.g); if (!T.fly) addBlob(M.g, Math.max(0.4, T.hw * 1.2));
   const hpm = 1 + 0.3 * (lvl - 1);
   const e = { type, T, lvl, x, y, z, vx: 0, vy: 0, vz: 0, hw: T.hw, h: T.h, ground: false, hp: T.hp * hpm, hpMax: T.hp * hpm, dmg: T.dmg * (1 + 0.18 * (lvl - 1)), model: M, state: type === 'trou' ? 'hidden' : 'idle', cd: 1, atkAnim: 0, t: Math.random() * 10, wander: Math.random() * 6.28, home: { x, z }, camp: opt.camp, hurtT: 0, yaw: Math.random() * 6.28, moving: false };
@@ -461,8 +462,8 @@ function spawnEnemy(type, x, z, opt = {}) {
   if (T.fly) e.y += T.dive ? 6 : 0.8;
   G.enemies.push(e); return e;
 }
-const FOE_COL = { comite: 0x5a6a8a, cone: 0xff7a1a, supreme: 0xff7a1a, bureau: 0xf8f8f0, plow: 0xf28a1a, raton: 0x8d8a84, mouches: 0x202020, trou: 0x4a4c50, orignal: 0x4a3020, souffleuse: 0xd83a1a, goeland: 0xf2f2f2 };
-const PHASES_BY = { supreme: ['', 'Inspection de chantier', 'Zone de travaux élargie', 'Heures supplémentaires'], comite: ['', 'Réunion de démarrage', 'Comité élargi', 'Prolongation des travaux'] };
+const FOE_COL = { grosraton: 0x8d8a84, deneigete: 0xd83a1a, comite: 0x5a6a8a, cone: 0xff7a1a, supreme: 0xff7a1a, bureau: 0xf8f8f0, plow: 0xf28a1a, raton: 0x8d8a84, mouches: 0x202020, trou: 0x4a4c50, orignal: 0x4a3020, souffleuse: 0xd83a1a, goeland: 0xf2f2f2 };
+const PHASES_BY = { grosraton: ['', 'Réveil grognon', 'Fouille des poubelles', 'Rage du filon'], deneigete: ['', 'Démarrage à froid', 'Souffleuse à pleine vitesse', 'Tempête de juillet'], supreme: ['', 'Inspection de chantier', 'Zone de travaux élargie', 'Heures supplémentaires'], comite: ['', 'Réunion de démarrage', 'Comité élargi', 'Prolongation des travaux'] };
 let PHASES = PHASES_BY.supreme;
 function bossTitle(e) { PHASES = PHASES_BY[e.type] || PHASES_BY.supreme; $('bossname').innerHTML = e.T.name + ' (niv. ' + e.lvl + ') <small>· phase ' + e.phase + ' : ' + PHASES[e.phase] + '</small>'; }
 function damageEnemy(e, dmg, nx, nz, kb, o = {}) {
@@ -492,15 +493,15 @@ function killEnemy(e) {
   if (e.type === 'cone' && Math.random() < 0.55) { addItem('plastique', 1); floatTxt(e.x, e.y + e.T.h + 0.8, e.z, '+1 Plastique orange', '#ff9a3a'); }
   if (e.type === 'raton' && e.stole) dropPickup('piasse', e.x, e.y + 0.6, e.z, { val: e.stole });
   if (e.type === 'bureau' && S.q.permis && S.q.permis.st === 'active' && !G.pickups.some(p => p.kind === 'permis')) { S.bureauKills++; if (S.bureauKills >= 3 || Math.random() < 0.25) { dropPickup('permis', e.x, e.y + 0.6, e.z, {}); toast('Le bureaucrate a échappé un formulaire!'); } }
-  if (e.T.boss) { if (e.type === 'comite') { S.comiteDead = true; banner('LE COMITÉ EST DISSOUS!', 'Retourne voir Rolande, à L’Étape'); } else { S.bossDead = true; banner('LE CÔNE SUPRÊME EST VAINCU!', 'Les rues sont libres… pour l’instant.'); } $('bossbox').classList.add('hidden'); G.boss = null; }
+  if (e.T.boss) { if (e.T.dun) { const s = G.dun || gen.reg.places[e.T.dun]; S.dun[e.T.dun] = 1; S.stats.dun = (S.stats.dun || 0) + 1; banner(e.T.name.split(',')[0].toUpperCase() + ' EST VAINCU!', 'Le trésor du donjon est à toi.'); for (let k = 0; k < 2; k++) dropPickup('gear', e.x + k - 0.5, e.y + 0.6, e.z, { id: pick(['casque_hockey', 'epaulettes', 'pic_fer', 'grattoir', 'manteau', 'gants_travail']), r: rollRarity(2) }); } else if (e.type === 'comite') { S.comiteDead = true; banner('LE COMITÉ EST DISSOUS!', 'Retourne voir Rolande, à L’Étape'); } else { S.bossDead = true; banner('LE CÔNE SUPRÊME EST VAINCU!', 'Les rues sont libres… pour l’instant.'); } $('bossbox').classList.add('hidden'); G.boss = null; }
   questEvent('kill', e.type);
   if (e.camp) { const c = G.camps.get(e.camp); if (c) { c.alive--; if (c.alive <= 0) { c.cleared = G.t; toast('Chantier nettoyé!'); } } }
 }
 function dropGear(e) {
-  const pool = ['tuque', 'mitaines', 'bottes', 'manteau', 'mitaines_doublees', 'pelle', 'baton_carbone', 'lanceur', 'pelle_alu', 'casque_chantier', 'casque_hockey', 'dossard', 'epaulettes', 'gants_travail', 'grattoir', 'raquettes'];
-  const id = e.T.boss ? (e.type === 'comite' ? 'baton_carbone' : 'manteau') : pool[(Math.random() * pool.length) | 0];
-  dropPickup('gear', e.x, e.y + 0.6, e.z, { id, r: rollRarity(e.T.boss ? 2 : e.elite ? 1 : 0) });
+  const pool = GEAR_POOL;
+  dropPickup('gear', e.x, e.y + 0.6, e.z, { id: e.T.boss ? (e.type === 'comite' ? 'baton_carbone' : e.T.dun ? (e.T.dun === 'mine' ? 'pic_fer' : 'dossard') : 'manteau') : pool[(Math.random() * pool.length) | 0], r: rollRarity(e.T.boss ? 2 : e.elite ? 1 : 0) });
 }
+const GEAR_POOL = ['tuque', 'mitaines', 'bottes', 'manteau', 'mitaines_doublees', 'pelle', 'baton_carbone', 'lanceur', 'pelle_alu', 'casque_chantier', 'casque_hockey', 'dossard', 'epaulettes', 'gants_travail', 'grattoir', 'raquettes'];
 // rareté : commun 55 %, rare 30 %, épique 12 %, légendaire 3 % (décalés vers le haut par le talent Trèfle et les ennemis forts)
 function rollRarity(min = 0) {
   const l = G.tf.luck * 3, x = Math.random();
@@ -555,7 +556,7 @@ function enemiesUpdate(dt) {
           e.cd = T.cd; e.atkAnim = 0.01;
           setTimeout(() => { if (!e.dead && Math.hypot(P.x - e.x, P.z - e.z) < reach + 0.8) { hurtPlayer(e.dmg, e, T.name); if (e.type === 'raton' && !e.stole && S.cash > 0) { const s = Math.min(S.cash, 3 + (Math.random() * 6 | 0)); S.cash -= s; e.stole = s; toast('Le raton t’a volé ' + s + ' piasses! Rattrape-le!'); } if (e.type === 'trou') audio.fx('chomp'); } }, 220);
         }
-        if (T.boss && e.cd <= 0.05 && Math.random() < dt * 0.3 && G.enemies.length < 14) { spawnEnemy('cone', e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, { camp: e.camp }); const c = G.camps.get(e.camp); if (c) c.alive++; toast(T.name + (e.type === 'comite' ? ' convoque des cônes en sous-comité!' : ' appelle des renforts!')); }
+        if (T.boss && e.cd <= 0.05 && Math.random() < dt * 0.3 && G.enemies.length < 14) { spawnEnemy(T.minion || 'cone', e.x + (Math.random() - 0.5) * 4, e.z + (Math.random() - 0.5) * 4, { camp: e.camp, y: e.y }); const c = G.camps.get(e.camp); if (c) c.alive++; toast(T.name + (e.type === 'comite' ? ' convoque des cônes en sous-comité!' : ' appelle des renforts!')); }
       }
     }
     e.moving = Math.hypot(tvx, tvz) > 0.3;
@@ -597,7 +598,7 @@ function bossAI(e, dt, d, ux, uz, dy) {
 }
 // apparition des ennemis selon le biome et l'heure
 function spawner(dt) {
-  G.spawnT -= dt; if (G.spawnT > 0) return; G.spawnT = 1.3;
+  G.spawnT -= dt; if (G.spawnT > 0) return; G.spawnT = 1.3; if (G.dun) return;
   const P = G.P, wild = G.enemies.filter(e => !e.camp).length, cap = mobile ? 5 : 7;
   const night = sky.dayF < 0.35;
   if (wild < cap + (night ? 2 : 0)) {
@@ -653,6 +654,51 @@ function npcLook(role, seed) {
   }
   return base;
 }
+// ---------- donjons : entrée, sortie, noirceur, ennemis, pièges, mini-boss ----------
+G.traps = new Map();
+const DUNS = () => gen.reg.structs.filter(s => s.type === 'donjon');
+function dunDoor(d) {
+  const P = G.P, s = d.s, p = dunPlan(s); if (G.drive) return;
+  if (d.down) { P.x = p.ent.x + 0.5; P.z = p.ent.z + 0.5; P.y = s.fy + 0.05; toast(DUN[s.kind].name + ' · ' + (S.dun[s.key] ? 'déjà nettoyée' : 'le boss dort au fond')); audio.fx('dig'); }
+  else { P.x = s.x + 0.5; P.z = s.z + 4.5; P.y = gen.heightAt(P.x, P.z) + 1.5; audio.fx('ui'); }
+  P.vx = P.vz = P.vy = 0; P.iT = 1; G.camDist = Math.min(G.camDist, 4.5);
+}
+function trapMake(t, key) {
+  const g = new THREE.Group();
+  if (t.kind === 'pics') { box(g, 1.6, 0.08, 1.6, 0x3a3630, 0, 0.04, 0); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const sp = box(g, 0.1, 0.5, 0.1, 0xb8bcc4, a * 0.5, 0, b * 0.5); sp.userData.sp = 1; } }
+  else { box(g, 1.2, 0.12, 1.2, 0x4a4c50, 0, 0.06, 0); const st = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.6, 0.8), new THREE.MeshBasicMaterial({ color: 0xe8f0f4, transparent: true, opacity: 0.45, depthWrite: false })); st.position.y = 1.4; st.userData.st = 1; g.add(st); }
+  g.position.set(t.x, t.y, t.z); scene.add(g); return Object.assign({ g, key }, t);
+}
+function dunUpdate(dt) {
+  const P = G.P; let cur = null, door = null;
+  for (const s of DUNS()) {
+    if (dunInside(s, P.x, P.y, P.z)) cur = s;
+    else if (Math.hypot(P.x - s.x - 0.5, P.z - s.z - 0.5) < 3.2 && Math.abs(P.y - gen.heightAt(s.x, s.z)) < 4) door = { s, down: true };
+  }
+  if (cur) { const e = dunPlan(cur).ent; if (Math.abs(P.x - e.x) < e.hr + 0.6 && Math.abs(P.z - e.z) < e.hr + 0.6 && Math.hypot(P.x - (e.x - e.hr + 0.5), P.z - (e.z - e.hr + 0.5)) < 2.6) door = { s: cur, down: false }; }
+  G.door = G.drive ? null : door;
+  if (cur !== G.dun) { G.dun = cur; G.dunSpawned = new Set(); if (cur) banner(DUN[cur.kind].name.toUpperCase(), REGIONS[cur.key][1]); }
+  // ennemis des salles : apparaissent quand on approche (une fois par visite)
+  if (cur) dunPlan(cur).foes.forEach((f, k) => { if (!G.dunSpawned.has(k) && Math.hypot(P.x - f.x, P.z - f.z) < 20) { G.dunSpawned.add(k); spawnEnemy(f.type, f.x, f.z, { y: cur.fy, lvl: DUN[cur.kind].lvl - 1 + ((Math.random() * 3) | 0) }); } });
+  sky.under += ((cur ? 1 : 0) - sky.under) * Math.min(1, dt * 3);
+  if (cur && !S.dun[cur.key] && !G.boss) { const b = dunPlan(cur).bossRoom; if (Math.abs(P.x - b.x - 0.5) < b.hr - 0.5 && Math.abs(P.z - b.z - 0.5) < b.hr - 0.5) { const T = DUN[cur.kind].boss; spawnEnemy(T, b.x + 0.5, b.z - 2.5, { y: cur.fy, lvl: DUN[cur.kind].lvl + 1 }); banner(ENEMIES[T].name.toUpperCase(), cur.kind === 'mine' ? 'Il garde le filon depuis 1952' : 'Elle hiberne dans les égouts tout l’été'); audio.fx('horn'); } }
+  // pièges : cycle de 3 s, actifs 0,9 s
+  for (const [k, t] of G.traps) {
+    const d = Math.hypot(P.x - t.x, P.z - t.z); if (d > 60) { scene.remove(t.g); G.traps.delete(k); continue; }
+    const c = (G.t + t.ph) % 3, on = c < 0.9, up = on ? Math.min(1, c * 8) : Math.max(0, 1 - (c - 0.9) * 4);
+    for (const m of t.g.children) { if (m.userData.sp) m.position.y = -0.2 + up * 0.45; if (m.userData.st) { m.visible = up > 0.05; m.scale.set(0.6 + up * 0.5, up, 0.6 + up * 0.5); m.position.y = up * 1.3; } }
+    if (on && c > 0.12 && d < 0.95 && Math.abs(P.y - t.y) < 1.2) hurtPlayer(t.kind === 'pics' ? 14 : 10, null, t.kind === 'pics' ? 'Des pics rouillés' : 'Un jet de vapeur');
+  }
+}
+function openChest(p) {
+  const gold = p.kind === 'coffre_or', s = G.dun, lv = s ? DUN[s.kind].lvl : 3; S.taken[p.key] = 1; S.stats.chests = (S.stats.chests || 0) + 1;
+  const cash = (gold ? 60 : 12) + ((Math.random() * (gold ? 60 : 20)) | 0) + lv * 3; S.cash += cash; audio.fx('quest'); burst(p.x, p.y + 0.4, p.z, 0xffd34a, 16, 4);
+  const got = ['+' + cash + ' $'];
+  const mat = gold ? ['fer', 4] : Math.random() < 0.5 ? ['charbon', 2 + ((Math.random() * 3) | 0)] : ['fer', 1 + ((Math.random() * 2) | 0)]; addItem(mat[0], mat[1]); got.push(mat[1] + ' ' + ITEMS[mat[0]].name);
+  if (gold || Math.random() < 0.55) { dropPickup('gear', p.x, p.y + 0.6, p.z, { id: pick(GEAR_POOL), r: rollRarity(gold ? 2 : 1) }); got.push('de l’équipement'); }
+  if (Math.random() < 0.4) { const f = pick(['tire', 'poutine', 'guedille', 'fromage']); addItem(f, 1); got.push(ITEMS[f].name); }
+  floatTxt(p.x, p.y + 1.2, p.z, (gold ? 'TRÉSOR! ' : 'Coffre : ') + got.join(' · '), '#ffd34a'); toast((gold ? 'Coffre au trésor : ' : 'Coffre : ') + got.join(', '));
+}
 function npcsUpdate(dt) {
   const P = G.P; const near = gen.allStructs(P.x - 120, P.z - 120, P.x + 120, P.z + 120);
   for (const s of near) {
@@ -669,7 +715,8 @@ function npcsUpdate(dt) {
       G.npcs.set(key, npc);
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
-    m.items.forEach((it, k) => { const key = 'c' + s.i + ',' + s.j + ':' + k; if (S.taken[key] || G.pickups.some(p => p.key === key)) return; dropPickup(it.kind, it.x, world.ground(it.x, it.z) + 0.4, it.z, { key, still: true }); });
+    m.items.forEach((it, k) => { const key = 'c' + s.i + ',' + s.j + ':' + k; if (S.taken[key] || G.pickups.some(p => p.key === key)) return; dropPickup(it.kind, it.x, world.ground(it.x, it.z, it.y) + 0.4, it.z, { key, still: true }); });
+    if (m.traps) m.traps.forEach((t, k) => { const key = 't' + s.i + ',' + s.j + ':' + k; if (!G.traps.has(key)) G.traps.set(key, trapMake(t, key)); });
   }
   let talk = null, td = 2.6;
   for (const [k, n] of G.npcs) {
@@ -705,8 +752,8 @@ function npcsUpdate(dt) {
   G.sayT -= dt; if (G.sayT <= 0 && G.state === 'play') { G.sayT = 5 + Math.random() * 6; const near = [...G.npcs.values()].filter(n => Math.hypot(n.x - P.x, n.z - P.z) < 15 && n !== talk && !(G.t < n.sayUntil));
     if (near.length) { const n = near[(Math.random() * near.length) | 0]; const pool = sky.rain > 0.4 ? AMBIENT.pluie : sky.snow > 0.4 ? AMBIENT.neige : n.act && AMBIENT[n.act] ? AMBIENT[n.act] : n.role === 'villageois' ? CHATTER : ROLE_CHAT[n.role] || AMBIENT.salut; say(n, pick(pool)); } }
   const C = G.car; G.nearCar = !!(C && !G.drive && !P.gliding && Math.hypot(C.x - P.x, C.z - P.z) < 3.4 && Math.abs(C.y - P.y) < 2.5);
-  const pr = $('prompt'), ptxt = talk ? 'Parler à ' + talk.name : G.drive ? 'Sortir du bazou' : G.nearCar ? 'Conduire le bazou' : '';
-  if (ptxt && G.state === 'play') { pr.innerHTML = (isTouch ? '' : '<kbd>E</kbd> ') + ptxt; pr.classList.remove('hidden'); $('tTalk').classList.remove('hidden'); $('tTalk').textContent = talk ? 'PARLE' : G.drive ? 'SORS' : 'AUTO'; }
+  const pr = $('prompt'), ptxt = talk ? 'Parler à ' + talk.name : G.drive ? 'Sortir du bazou' : G.nearCar ? 'Conduire le bazou' : G.door ? (G.door.down ? 'Descendre : ' + DUN[G.door.s.kind].name : 'Remonter à la surface') : '';
+  if (ptxt && G.state === 'play') { pr.innerHTML = (isTouch ? '' : '<kbd>E</kbd> ') + ptxt; pr.classList.remove('hidden'); $('tTalk').classList.remove('hidden'); $('tTalk').textContent = talk ? 'PARLE' : G.drive ? 'SORS' : G.nearCar ? 'AUTO' : G.door.down ? 'ENTRE' : 'MONTE'; }
   else { pr.classList.add('hidden'); $('tTalk').classList.add('hidden'); }
 }
 const pick = a => a[(Math.random() * a.length) | 0];
@@ -836,6 +883,7 @@ function collect(p) {
   if (p.kind === 'piasse') { S.cash += p.val || 1; audio.fx('coin'); floatTxt(p.x, p.y + 0.6, p.z, '+' + (p.val || 1) + ' $', '#8dff6a'); }
   else if (p.kind === 'poutine') { addItem('poutine'); audio.fx('coin'); toast('Poutine ramassée!'); }
   else if (p.kind === 'chaudiere' || p.kind === 'ble' || p.kind === 'pinceau' || p.kind === 'casier') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
+  else if (p.kind === 'coffre' || p.kind === 'coffre_or') openChest(p);
   else if (p.kind === 'permis') { audio.fx('quest'); questEvent('collect', 'permis'); }
   else if (p.kind === 'gear') { addItem(p.id, 1, p.r); audio.fx('coin'); toast(ITEMS[p.id].name + ' (' + RARITY[p.r].n + ') ajouté au sac'); }
 }
@@ -984,7 +1032,7 @@ function drawMarkers(ctx, cx, cz, scale, W, round) {
     if (round) { ctx.save(); ctx.beginPath(); ctx.arc(W / 2, W / 2, W / 2 - 2, 0, 6.283); ctx.clip(); }
     for (const [lw, c] of [[scale > 0.9 ? 5 : 4, '#0c1420'], [scale > 0.9 ? 2.5 : 2, '#e8e2c8']]) { ctx.lineWidth = lw; ctx.strokeStyle = c; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
     if (round) ctx.restore(); }
-  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff', baie: '#5ab8ff', belvc: '#9ae0ff', perce: '#5ab8ff', rocher: '#c8a888', phare: '#ff4a3a', mtl: '#ff7a1a', quai: '#9ae0ff' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
+  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff', donjon: '#c04aff', baie: '#5ab8ff', belvc: '#9ae0ff', perce: '#5ab8ff', rocher: '#c8a888', phare: '#ff4a3a', mtl: '#ff7a1a', quai: '#9ae0ff' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
   // noms des lieux
   ctx.textAlign = 'center'; ctx.lineJoin = 'round';
   for (const L of gen.nord.labels) { const px = (L.x - cx) * scale + W / 2, pz = (L.z - cz) * scale + W / 2, t = round && L.sh ? L.sh : L.n;
@@ -1185,7 +1233,7 @@ let touchSet = false; function setupTouchOnce() { if (!touchSet) { touchSet = tr
 function handleKeys() {
   const st = G.state;
   if (st === 'play') {
-    if (pressed.has('KeyE')) { if (G.drive) exitCar(); else if (G.talkTo) openDialog(G.talkTo); else if (G.nearCar) enterCar(); }
+    if (pressed.has('KeyE')) { if (G.drive) exitCar(); else if (G.talkTo) openDialog(G.talkTo); else if (G.nearCar) enterCar(); else if (G.door) dunDoor(G.door); }
     if (pressed.has('KeyI') || pressed.has('Tab')) openPanel('inv');
     else if (pressed.has('KeyJ')) openPanel('quests');
     else if (pressed.has('KeyM')) openPanel('map');
@@ -1227,7 +1275,7 @@ function frame(now) {
     const P = G.P;
     if (st === 'play') {
       const gd = G.hitstop > 0 ? dt * 0.08 : dt; G.hitstop = Math.max(0, G.hitstop - dt); // arrêt sur image à l'impact
-      if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); npcsUpdate(dt); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
+      if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); npcsUpdate(dt); dunUpdate(gd); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
       crittersUpdate(dt);
       sky.t = (sky.t + dt / DAY_LEN) % 1;
       G.weatherT -= dt; if (G.weatherT <= 0) { const r = Math.random(); sky.snowT = r < 0.28 ? 1 : 0; sky.rainT = r >= 0.28 && r < 0.5 ? 1 : 0; G.weatherT = 90 + Math.random() * 150; }
@@ -1300,5 +1348,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, get pickups() { return G.pickups; } };
+const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;

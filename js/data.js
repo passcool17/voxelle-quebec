@@ -62,6 +62,8 @@ export const ENEMIES = {
   souffleuse: { name: 'Souffleuse à neige enragée', hp: 70, dmg: 11, spd: 2.2, range: 15, cd: 3.0, xp: 48, cash: [5, 12], aggro: 21, hw: 0.6, h: 1.2, lob: true },
   goeland: { name: 'Goéland voleur de frites', hp: 26, dmg: 6, spd: 7, range: 1.4, cd: 2.6, xp: 28, cash: [2, 6], aggro: 22, hw: 0.45, h: 0.7, fly: true, dive: true },
   comite: { name: 'Le Comité du Grand Plan', hp: 1100, dmg: 24, spd: 3.2, range: 3.6, cd: 1.5, xp: 1200, cash: [250, 320], aggro: 28, hw: 1.0, h: 3.8, boss: true },
+  grosraton: { name: 'Gros-Raton, roi des galeries', hp: 480, dmg: 16, spd: 4.4, range: 2.8, cd: 1.4, xp: 520, cash: [90, 130], aggro: 24, hw: 0.9, h: 2.0, boss: true, minion: 'raton', dun: 'mine' },
+  deneigete: { name: 'La Déneigeuse d’été', hp: 560, dmg: 19, spd: 3.4, range: 3.2, cd: 1.7, xp: 600, cash: [100, 150], aggro: 24, hw: 1.3, h: 2.8, boss: true, minion: 'trou', dun: 'egout', charge: true },
   supreme: { name: 'Le Cône Suprême', hp: 650, dmg: 20, spd: 3.0, range: 3.6, cd: 1.6, xp: 600, cash: [120, 160], aggro: 26, hw: 1.0, h: 3.8, boss: true },
 };
 export const NPCS = {

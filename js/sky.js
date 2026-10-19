@@ -5,7 +5,7 @@ const C = (h) => new THREE.Color(h);
 const DAY_TOP = C(0x3f86e0), DAY_HOR = C(0xc4e2ff), SET_HOR = C(0xff9a5a), SET_TOP = C(0x5a5aa8), NIGHT_TOP = C(0x020512), NIGHT_HOR = C(0x0b1838), SNOW_HOR = C(0xc8d0d8), SNOW_TOP = C(0x8f9aa8);
 export class Sky {
   constructor(scene, mobile) {
-    this.scene = scene; this.t = 0.3; this.dayF = 1; this.snow = 0; this.snowT = 0; this.rain = 0; this.rainT = 0; this.flash = 0; this.thunder = 0;
+    this.scene = scene; this.t = 0.3; this.dayF = 1; this.snow = 0; this.snowT = 0; this.rain = 0; this.rainT = 0; this.flash = 0; this.thunder = 0; this.under = 0;
     this.u = { top: { value: C(0) }, hor: { value: C(0) }, sun: { value: new THREE.Vector3() }, dayF: { value: 1 } };
     const sm = new THREE.ShaderMaterial({ uniforms: this.u, side: THREE.BackSide, depthWrite: false, fog: false,
       vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
@@ -75,6 +75,7 @@ export class Sky {
     // brume du matin (vers 5 h – 8 h) : brouillard plus proche et plus pâle
     const mist = Math.max(0, 1 - Math.abs(this.t - 0.27) / 0.07) * (1 - this.snow); this.mist = mist;
     this.fog.color.copy(this.hor).lerp(C(0xe8eef4).multiplyScalar(0.4 + dayF * 0.6), mist * 0.35); this.fog.far = viewDist * (1 - this.snow * 0.45 - this.rain * 0.3 - mist * 0.35); this.fog.near = this.fog.far * (0.38 - this.snow * 0.25);
+    const U = this.under || 0; if (U > 0.001) { this.fog.color.lerp(C(0x0c0a08), U); this.fog.far += (34 - this.fog.far) * U; this.fog.near += (3 - this.fog.near) * U; }
     this.dome.position.copy(camPos); this.stars.position.copy(camPos); this.aurora.position.set(camPos.x, camPos.y * 0.3, camPos.z);
     this.starMat.opacity = (1 - dayF) * (1 - this.snow * 0.9) * 0.9; this.stars.rotation.y = now * 0.002;
     this.au.t.value = now; this.au.a.value = (1 - smooth(-0.25, 0.05, el)) * (1 - this.snow * 0.85) * 0.8; this.aurora.visible = this.au.a.value > 0.01;
@@ -87,16 +88,17 @@ export class Sky {
     this.sun.color.set(0xffffff).lerp(C(0xffb070), setF).lerp(C(0x8fa8ff), 1 - dayF);
     this.sun.intensity = (2.6 * dayF + 0.85 * moonUp * (1 - dayF)) * (1 - this.snow * 0.4 - this.rain * 0.45);
     this.hemi.intensity = 0.75 + 0.4 * dayF + this.flash * 2.5; this.hemi.color.copy(this.hor).lerp(C(0xffffff), 0.3); this.hemi.groundColor.set(0x4a3a28).multiplyScalar(0.4 + dayF * 0.6);
+    if (U > 0.001) { this.sun.intensity *= 1 - U; this.hemi.intensity += (0.55 - this.hemi.intensity) * U; this.hemi.color.lerp(C(0xffc890), U); this.hemi.groundColor.lerp(C(0x3a2a1a), U); }
     // nuages
     this.clouds.position.set(0, 112, 0); this.cloudMat.color.set(0xffffff).lerp(this.hor, 0.25).multiplyScalar(0.35 + dayF * 0.65); this.cloudMat.opacity = 0.12 + 0.73 * dayF;
     for (const c of this.clouds.children) { c.position.x += dt * 2; if (c.position.x - camPos.x > 260) c.position.x -= 520; if (c.position.x - camPos.x < -260) c.position.x += 520; if (c.position.z - camPos.z > 260) c.position.z -= 520; if (c.position.z - camPos.z < -260) c.position.z += 520; }
     // neige
-    this.snowMat.opacity = Math.min(1, this.snow * 1.3) * 0.9; this.snowPts.visible = this.snow > 0.02;
+    this.snowMat.opacity = Math.min(1, this.snow * 1.3) * 0.9; this.snowPts.visible = this.snow > 0.02 && U < 0.5;
     if (this.snowPts.visible) { const p = this.snowPts.geometry.attributes.position, A = p.array; for (let i = 0; i < A.length; i += 3) { A[i + 1] -= dt * (2 + (i % 7) * 0.25); A[i] += Math.sin(now + i) * dt * 0.4; if (A[i + 1] < -20) A[i + 1] += 40; } p.needsUpdate = true; this.snowPts.position.set(Math.floor(camPos.x / 50) * 50, camPos.y, Math.floor(camPos.z / 50) * 50);
       // recadrer autour de la caméra
       for (let i = 0; i < A.length; i += 3) { const wx = A[i] + this.snowPts.position.x - camPos.x; if (wx > 25) A[i] -= 50; else if (wx < -25) A[i] += 50; const wz = A[i + 2] + this.snowPts.position.z - camPos.z; if (wz > 25) A[i + 2] -= 50; else if (wz < -25) A[i + 2] += 50; } }
     // pluie
-    this.rainMat.opacity = Math.min(1, this.rain * 1.4) * 0.55; this.rainL.visible = this.rain > 0.02;
+    this.rainMat.opacity = Math.min(1, this.rain * 1.4) * 0.55; this.rainL.visible = this.rain > 0.02 && U < 0.5;
     if (this.rainL.visible) { const p = this.rainL.geometry.attributes.position, A = p.array, dy = dt * 24;
       for (let i = 0; i < A.length; i += 6) { A[i + 1] -= dy; A[i + 4] -= dy; if (A[i + 1] < -18) { A[i + 1] += 36; A[i + 4] += 36; } } p.needsUpdate = true; this.rainL.position.copy(camPos); }
     return { dayF, el };

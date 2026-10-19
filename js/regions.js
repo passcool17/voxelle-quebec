@@ -3,6 +3,7 @@
 import { B, SEA } from './blocks.js';
 import { smooth, hash2 } from './noise.js';
 import { REGIONS, panel } from './nord.js';
+import { dunBuild, dunLayout, dunPlan } from './donjons.js';
 
 Object.assign(REGIONS, {
   charlevoix: ['Charlevoix', 'Des montagnes qui plongent dans le fleuve'],
@@ -15,6 +16,8 @@ Object.assign(REGIONS, {
   montreal: ['Montréal', 'Deux saisons : l’hiver pis la construction'],
   mtl: ['Place des Cônes', 'Montréal · centre-ville (en travaux)'],
   quai: ['Quai de la Vieille-Ville', 'Traversier pour la Gaspésie'],
+  mine: ['Mine abandonnée', 'Charlevoix · fermée depuis 1952 · rouverte par les ratons'],
+  egout: ['Égouts de Montréal', 'Accès interdit (sauf aventuriers pis ratons)'],
 });
 export const CH = { x0: 980, x1: 1620, bsp: 1290 }, GA = { x0: 2250, x1: 3060, perce: 2640 }, MT = { x0: -1720, x1: -1080, c: -1400 };
 const LOT = 26, ST = 6; // Montréal : îlots de 26 m dont 6 m de rue
@@ -65,6 +68,11 @@ export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
   { const x = GA.perce - 82, z = Math.round(zsS(x) + 9); add({ type: 'phare', key: 'phare', name: 'Phare', x, z, h: Math.floor(gaspH(x, z, z - zsS(x))), R: 5, R2: 9, BR: 8, safe: true }); }
   { const x = MT.c, z = Math.round(zsN(x) - 12 - 2 * LOT - LOT / 2); add({ type: 'mtl', key: 'mtl', name: 'Place des Cônes', x: Math.floor(x / LOT) * LOT + ST + 10, z: Math.floor(z / LOT) * LOT + ST + 10, h: SEA + 5, R: 9, R2: 14, BR: 14, safe: true }); }
   { const x = VX + 18, z = Math.round(zsN(x) - 4); add({ type: 'quai', key: 'quai', name: 'Quai', x, z, h: SEA + 2, R: 3, R2: 7, BR: 18, safe: true }); }
+  // donjons : la mine (Charlevoix, dans la montagne) et les égouts (Montréal, sous la Place des Cônes)
+  { const x = CH.bsp + 60, z = Math.round(zsN(x) - 120), h = Math.floor(charH(x, z, zsN(x) - z)); let lo = h;
+    for (let i = -6; i <= 40; i += 4) for (let j = -40; j <= 6; j += 4) lo = Math.min(lo, charH(x + i, z + j, zsN(x + i) - z - j));
+    add({ type: 'donjon', kind: 'mine', key: 'mine', name: 'Mine', x, z, h, dx: 1, fy: Math.floor(Math.min(lo - 8, h - 10)), R: 3, R2: 9, BR: 50 }); }
+  { const x = P.mtl.x - ST - 7, z = P.mtl.z; add({ type: 'donjon', kind: 'egout', key: 'egout', name: 'Égouts', x, z, h: SEA + 5, dx: -1, fy: SEA - 6, R: -1, R2: 0, BR: 50 }); }
   // arrêts : autocar (Orignal Express) et traversier
   const stops = [
     { key: 'charlevoix', label: 'BAIE-SAINT-PAUL', ax: P.baie.x - 14.5, az: P.baie.z + 8.5, car: [P.baie.x - 20, P.baie.z + 8, 0] },
@@ -90,7 +98,7 @@ export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
   const level = (x, z) => { const r = region(x, z); if (!r) return 0; if (x > CH.x0 - 60 && x < CH.x1 + 60) return 3 + (hash2(x | 0, z | 0, 5) < 0.3 ? 1 : 0); if (x > GA.x0 - 60) return 5; if (x < MT.x1 + 60) return 4 + (hash2(x | 0, z | 0, 6) < 0.4 ? 1 : 0); return 0; };
   // un lot de Montréal : rue / ruelle / type d'îlot
   const lotType = (i, j) => { const h = hash2(i, j, seed + 4401); return h < 0.52 ? 'plex' : h < 0.7 ? 'chantier' : h < 0.85 ? 'parc' : 'stat'; };
-  return { terrain, structs, places: P, stops, region, labels, level, zsN, zsS, mtlIn, lotType, LOT, ST };
+  return { dunPlan, terrain, structs, places: P, stops, region, labels, level, zsN, zsS, mtlIn, lotType, LOT, ST };
 }
 
 // ---------- Montréal : rues, trottoirs, plex, chantiers, cônes et nids-de-poule (passe sur un tronçon) ----------
@@ -198,7 +206,8 @@ export function regLayout(s, m, r) {
   else if (s.type === 'mtl') {
     m.npcs.push({ role: 'contremaitre', x: s.x - 6.5, z: s.z + 7.5 }, { role: 'cycliste', x: s.x + 7.5, z: s.z + 7.5 }, { role: 'chauffeur', x: s.x - 2.5, z: s.z + 14.5, stop: 'montreal' }, { role: 'commercant', x: s.x + 7.5, z: s.z - 7.5, shop: 'montreal' });
     for (let k = 0; k < 6; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 22, z: s.z + (r() - 0.5) * 22 });
-  } else if (s.type === 'quai') m.npcs.push({ role: 'matelot', x: s.x + 1.5, z: s.z - 1.5, stop: 'quai' });
+  } else if (s.type === 'donjon') { dunLayout(s, m); if (s.kind === 'mine') m.npcs.push({ role: 'villageois', x: s.x - 4.5, z: s.z + 4.5 }); }
+  else if (s.type === 'quai') m.npcs.push({ role: 'matelot', x: s.x + 1.5, z: s.z - 1.5, stop: 'quai' });
 }
 export function regBuild(s, P, H) {
   const h = s.h;
@@ -237,12 +246,26 @@ export function regBuild(s, P, H) {
     for (let y = 0; y < 14; y++) P.fill(s.x - 1, h + 1 + y, s.z - 1, s.x + 1, h + 1 + y, s.z + 1, y % 4 < 2 ? B.WHITE : B.REDROOF);
     P.fill(s.x - 1, h + 15, s.z - 1, s.x + 1, h + 16, s.z + 1, B.LAMP); P.fill(s.x - 2, h + 17, s.z - 2, s.x + 2, h + 17, s.z + 2, B.REDROOF); P.fill(s.x - 1, h + 18, s.z - 1, s.x + 1, h + 18, s.z + 1, B.REDROOF);
     H.house(P, s.x + 3, s.z - 2, 5, 4, h, B.WHITE, B.REDROOF, 'e', 3);
-  } else if (s.type === 'quai') {
+  } else if (s.type === 'donjon') { dunBuild(s, P); dunEntrance(s, P, h); }
+  else if (s.type === 'quai') {
     P.fill(s.x - 3, SEA + 1, s.z - 2, s.x + 3, SEA + 1, s.z + 16, B.PLANK); for (let z = s.z; z <= s.z + 16; z += 4) { P.fill(s.x - 3, SEA - 3, z, s.x - 3, SEA, z, B.LOG); P.fill(s.x + 3, SEA - 3, z, s.x + 3, SEA, z, B.LOG); }
     P.fill(s.x - 3, SEA + 2, s.z - 2, s.x + 3, SEA + 12, s.z + 16, 0);
     // traversier blanc et bleu amarré
     const fz = s.z + 10, fx = s.x + 6; P.fill(fx, SEA - 1, fz - 7, fx + 5, SEA + 1, fz + 7, B.WHITE); P.fill(fx, SEA + 1, fz - 7, fx + 5, SEA + 1, fz + 7, B.BLUE); P.fill(fx + 1, SEA + 2, fz - 3, fx + 4, SEA + 4, fz + 3, B.WHITE); P.fill(fx + 2, SEA + 5, fz - 1, fx + 3, SEA + 6, fz + 1, B.REDROOF);
     busSign(P, s.x - 3, s.z - 3, SEA + 1, 'TRAVERSIER');
+  }
+}
+function dunEntrance(s, P, h) {
+  if (s.kind === 'mine') { // chevalement de bois sur le flanc de la montagne
+    P.fill(s.x - 2, h, s.z - 2, s.x + 2, h, s.z + 2, B.PLANK); P.fill(s.x - 1, h, s.z - 1, s.x + 1, h, s.z + 1, B.COAL);
+    for (const [a, b] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) P.fill(s.x + a, h + 1, s.z + b, s.x + a, h + 4, s.z + b, B.LOG);
+    P.fill(s.x - 2, h + 5, s.z - 2, s.x + 2, h + 5, s.z + 2, B.DPLANK); P.fill(s.x - 2, h + 1, s.z - 2, s.x + 2, h + 4, s.z + 2, 0, false);
+    for (const [a, b] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) P.fill(s.x + a, h + 1, s.z + b, s.x + a, h + 4, s.z + b, B.LOG);
+    P.fill(s.x, h + 6, s.z, s.x, h + 7, s.z, B.LOG);
+    panel(P, ['MINE'], F(s.x), F(h + 5) + 3, F(s.z + 3), 'x', B.SIGN, B.TRIM, true);
+  } else { // trou d'homme dans la rue, entouré de cônes
+    P.fill(s.x - 1, h, s.z - 1, s.x, h, s.z, B.IRON); for (const [a, b] of [[-2, -2], [1, -2], [-2, 1], [1, 1]]) P.set(s.x + a, h + 1, s.z + b, B.CONE);
+    panel(P, ['ÉGOUTS'], F(s.x), F(h) + 8, F(s.z - 3), 'x', B.SIGN, B.TRIM, true); P.ffill(F(s.x), F(h) + 2, F(s.z - 3), F(s.x), F(h) + 7, F(s.z - 3), B.IRON);
   }
 }
 function busSign(P, x, z, h, txt) { const fx = F(x), fz = F(z), y = F(h) + 2; P.ffill(fx, y, fz, fx, y + 6, fz, B.IRON); panel(P, [txt], fx, y + 14, fz - 1, 'x', B.BLUE, B.TRIM, true); }

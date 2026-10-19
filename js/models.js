@@ -206,7 +206,9 @@ export function glider() {
 }
 
 // ---------- ennemis ----------
+const BIG = { grosraton: ['raton', 2.6], deneigete: ['plow', 1.6] };
 export function enemyModel(type) {
+  if (BIG[type]) { const M = enemyModel(BIG[type][0]), o = new THREE.Group(); o.add(M.g); M.g.scale.setScalar(BIG[type][1]); M.g.traverse(m => { if (m.isMesh) m.castShadow = true; }); return Object.assign(M, { g: o, base: BIG[type][0] }); }
   const g = new THREE.Group(), P = {}; let kind = type;
   if (type === 'cone' || type === 'supreme' || type === 'comite') {
     const s = type === 'cone' ? 1 : 2.4, cm = type === 'comite', C1 = cm ? 0x5a6a8a : 0xff7a1a, C2 = cm ? 0x4a5a78 : 0xf47014;
@@ -306,17 +308,17 @@ export function enemyModel(type) {
   return { g, P, kind };
 }
 export function animEnemy(e, t, dt) {
-  const M = e.model, P = M.P;
+  const M = e.model, P = M.P, ty = M.base || e.type;
   if (M.kind === 'human') return animHuman(M.m, t, e.moving ? 0.7 : 0, e.atkAnim, !e.ground, false);
   const mv = e.moving ? 1 : 0, s = Math.sin(t * 9);
-  if (e.type === 'cone' || e.type === 'supreme' || e.type === 'comite') { P.body.position.y = Math.abs(s) * 0.08 * mv; P.body.rotation.z = s * 0.06 * mv; P.armL.rotation.x = s * 0.8 * mv; P.armR.rotation.x = -s * 0.8 * mv; if (e.atkAnim > 0) { P.armL.rotation.x = P.armR.rotation.x = FWD * 2.2 * Math.sin(e.atkAnim * Math.PI); } }
-  else if (e.type === 'plow') { P.light.visible = Math.sin(t * 14) > -0.2; P.light.rotation.y = t * 8; P.body.position.y = Math.sin(t * 30) * 0.02 * mv; P.blade.position.y = 0.55 + (e.state === 'wind' ? Math.sin(t * 20) * 0.08 : 0); }
-  else if (e.type === 'raton') { P.body.position.y = Math.abs(s) * 0.1 * mv; P.tail.rotation.y = Math.sin(t * 6) * 0.4; P.head.rotation.x = e.atkAnim > 0 ? 0.4 : 0; P.poutine.visible = !e.stole; }
-  else if (e.type === 'orignal') { const k = Math.min(1.6, Math.hypot(e.vx, e.vz) / 3); P.legs.forEach((L, i) => { L.rotation.x = Math.sin(t * 7 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k; }); P.head.rotation.x = e.charge && !e.charge.wind ? 0.5 : e.atkAnim > 0 ? 0.6 * Math.sin(e.atkAnim * Math.PI) : 0; P.body.rotation.x = e.charge && e.charge.wind ? Math.sin(t * 30) * 0.03 : 0; }
-  else if (e.type === 'souffleuse') { P.auger.rotation.x = t * (e.state === 'chase' ? 14 : 4); P.body.position.y = Math.sin(t * 40) * 0.015; P.chute.rotation.x = e.atkAnim > 0 ? -0.5 * Math.sin(e.atkAnim * Math.PI) : 0; }
-  else if (e.type === 'goeland') { const fl = e.dive ? -0.5 : e.rec > 0 ? 0.6 + Math.sin(t * 6) * 0.3 : Math.sin(t * 11) * 0.7; P.wL.rotation.z = fl; P.wR.rotation.z = -fl; P.body.rotation.x = e.dive ? 0.5 : 0; }
-  else if (e.type === 'mouches') { for (const f of P.flies) { const ph = f.userData.ph + t * (5 + f.userData.r * 3), r = f.userData.r; f.position.set(Math.cos(ph) * r, 1.1 + Math.sin(ph * 1.7) * 0.4, Math.sin(ph * 1.3) * r); } }
-  else if (e.type === 'trou') { const open = e.state === 'chase' || e.atkAnim > 0 ? 1 : 0; e.jawT = (e.jawT || 0) + (open - (e.jawT || 0)) * Math.min(1, dt * 8); P.jaw.position.y = 0.08 + e.jawT * (0.15 + (e.atkAnim > 0 ? Math.sin(e.atkAnim * Math.PI) * 0.4 : Math.abs(Math.sin(t * 8)) * 0.1)); P.eyes.visible = e.jawT > 0.3; P.eyes.position.y = 0.2 + e.jawT * 0.3; }
+  if (ty === 'cone' || ty === 'supreme' || ty === 'comite') { P.body.position.y = Math.abs(s) * 0.08 * mv; P.body.rotation.z = s * 0.06 * mv; P.armL.rotation.x = s * 0.8 * mv; P.armR.rotation.x = -s * 0.8 * mv; if (e.atkAnim > 0) { P.armL.rotation.x = P.armR.rotation.x = FWD * 2.2 * Math.sin(e.atkAnim * Math.PI); } }
+  else if (ty === 'plow') { P.light.visible = Math.sin(t * 14) > -0.2; P.light.rotation.y = t * 8; P.body.position.y = Math.sin(t * 30) * 0.02 * mv; P.blade.position.y = 0.55 + (e.state === 'wind' ? Math.sin(t * 20) * 0.08 : 0); }
+  else if (ty === 'raton') { P.body.position.y = Math.abs(s) * 0.1 * mv; P.tail.rotation.y = Math.sin(t * 6) * 0.4; P.head.rotation.x = e.atkAnim > 0 ? 0.4 : 0; P.poutine.visible = !e.stole; }
+  else if (ty === 'orignal') { const k = Math.min(1.6, Math.hypot(e.vx, e.vz) / 3); P.legs.forEach((L, i) => { L.rotation.x = Math.sin(t * 7 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k; }); P.head.rotation.x = e.charge && !e.charge.wind ? 0.5 : e.atkAnim > 0 ? 0.6 * Math.sin(e.atkAnim * Math.PI) : 0; P.body.rotation.x = e.charge && e.charge.wind ? Math.sin(t * 30) * 0.03 : 0; }
+  else if (ty === 'souffleuse') { P.auger.rotation.x = t * (e.state === 'chase' ? 14 : 4); P.body.position.y = Math.sin(t * 40) * 0.015; P.chute.rotation.x = e.atkAnim > 0 ? -0.5 * Math.sin(e.atkAnim * Math.PI) : 0; }
+  else if (ty === 'goeland') { const fl = e.dive ? -0.5 : e.rec > 0 ? 0.6 + Math.sin(t * 6) * 0.3 : Math.sin(t * 11) * 0.7; P.wL.rotation.z = fl; P.wR.rotation.z = -fl; P.body.rotation.x = e.dive ? 0.5 : 0; }
+  else if (ty === 'mouches') { for (const f of P.flies) { const ph = f.userData.ph + t * (5 + f.userData.r * 3), r = f.userData.r; f.position.set(Math.cos(ph) * r, 1.1 + Math.sin(ph * 1.7) * 0.4, Math.sin(ph * 1.3) * r); } }
+  else if (ty === 'trou') { const open = e.state === 'chase' || e.atkAnim > 0 ? 1 : 0; e.jawT = (e.jawT || 0) + (open - (e.jawT || 0)) * Math.min(1, dt * 8); P.jaw.position.y = 0.08 + e.jawT * (0.15 + (e.atkAnim > 0 ? Math.sin(e.atkAnim * Math.PI) * 0.4 : Math.abs(Math.sin(t * 8)) * 0.1)); P.eyes.visible = e.jawT > 0.3; P.eyes.position.y = 0.2 + e.jawT * 0.3; }
 }
 
 // ---------- animaux d'ambiance (inoffensifs) ----------
@@ -347,6 +349,7 @@ export function pickupModel(kind) {
   else if (kind === 'sirop') { box(g, 0.3, 0.4, 0.14, 0xc07a20, 0, 0, 0, true); box(g, 0.1, 0.1, 0.1, 0xf2f2f2, 0, 0.25, 0); }
   else if (kind === 'ble') { box(g, 0.3, 0.4, 0.3, 0xc9ced6, 0, 0, 0); box(g, 0.31, 0.24, 0.31, 0xf2d03a, 0, 0, 0, true); box(g, 0.12, 0.12, 0.315, 0x2c8a3a, 0, 0, 0); }
   else if (kind === 'poutine') { box(g, 0.36, 0.18, 0.3, 0xf2f2f2, 0, 0, 0); box(g, 0.32, 0.1, 0.26, 0xe8b84a, 0, 0.12, 0, true); }
+  else if (kind === 'coffre' || kind === 'coffre_or') { const gold = kind === 'coffre_or'; box(g, 0.8, 0.5, 0.56, gold ? 0x8a5a1a : 0x7a5228, 0, -0.1, 0); box(g, 0.84, 0.18, 0.6, gold ? 0xa86a1e : 0x8b6a3e, 0, 0.22, 0); box(g, 0.86, 0.08, 0.1, gold ? 0xffd34a : 0x6a6a6e, 0, 0.05, 0.27, gold); box(g, 0.14, 0.16, 0.06, 0xffd34a, 0, 0.05, 0.31, true); }
   else if (kind === 'pinceau') { box(g, 0.06, 0.06, 0.5, 0xb98b52, 0, 0, 0); box(g, 0.08, 0.08, 0.08, 0xc9ced6, 0, 0, -0.28); box(g, 0.08, 0.08, 0.12, 0x2e7fd8, 0, 0, -0.38, true); }
   else if (kind === 'casier') { box(g, 0.6, 0.4, 0.44, 0x8b6a3e, 0, 0, 0); box(g, 0.5, 0.3, 0.46, 0x2a3a3a, 0, 0, 0, true); box(g, 0.62, 0.06, 0.46, 0xc8282e, 0, 0.21, 0); }
   else { box(g, 0.4, 0.4, 0.4, 0x9a6adf, 0, 0, 0, true); box(g, 0.46, 0.08, 0.46, 0xf2c12e, 0, 0.1, 0); }
