@@ -25,6 +25,7 @@
   <div id="tracker"></div>
   <div id="cross"></div>
   <div id="prompt" class="hidden"></div>
+  <div id="minebar"><div></div></div>
   <div id="hotbar"></div>
   <div id="weapon"></div>
   <div id="toast"></div>
@@ -41,7 +42,7 @@
   <button class="tb hidden" id="tTalk">PARLE</button>
   <button class="tb sm" id="tEat">MANGE</button>
   <button class="tb sm" id="tSwap">ARME</button>
-  <div id="tTop"><button class="tb sm" id="tInv">SAC</button><button class="tb sm" id="tQuest">QUÊTES</button><button class="tb sm" id="tMap">CARTE</button><button class="tb sm" id="tPause">II</button></div>
+  <div id="tTop"><button class="tb sm" id="tInv">SAC</button><button class="tb sm" id="tQuest">QUÊTES</button><button class="tb sm" id="tMap">CARTE</button><button class="tb sm" id="tCraft">ATELIER</button><button class="tb sm" id="tPause">II</button></div>
 </div>
 
 <section id="title" class="screen">
@@ -78,7 +79,8 @@
       <tr><td>Frapper</td><td>Clic gauche (3 coups de suite = coup final)</td><td>RT</td><td>FRAPPE</td></tr>
       <tr><td>Coup chargé</td><td>Garder le clic, puis lâcher</td><td>Garder RT</td><td>Garder FRAPPE</td></tr>
       <tr><td>Roulade (esquive)</td><td>C</td><td>L3</td><td>ROULE</td></tr>
-      <tr><td>Casser / poser</td><td>F / clic droit</td><td>RB / LT</td><td>CASSE / POSE</td></tr>
+      <tr><td>Miner / poser</td><td>F (garder = enchaîner) / clic droit</td><td>RB / LT</td><td>CASSE / POSE</td></tr>
+      <tr><td>Atelier (fabriquer)</td><td>K</td><td>—</td><td>ATELIER</td></tr>
       <tr><td>Parler</td><td>E</td><td>B</td><td>PARLE</td></tr>
       <tr><td>Courir</td><td>Maj</td><td>LB</td><td>Pousser le pouce au bout</td></tr>
       <tr><td>Manger / arme</td><td>R / Q</td><td>X / Y</td><td>MANGE / ARME</td></tr>
@@ -105,6 +107,7 @@
 <section id="dialog" class="screen hidden overlay"><div class="panel dlg"><div id="dname"></div><div id="dtext"></div><div id="dbtns"></div></div></section>
 <section id="inv" class="screen hidden overlay"><div class="panel wide"><h1>SAC À DOS</h1><div id="invbody"></div><button class="btn" data-close>FERMER (I)</button></div></section>
 <section id="quests" class="screen hidden overlay"><div class="panel wide"><h1>JOURNAL DE QUÊTES</h1><div id="qbody"></div><button class="btn" data-close>FERMER (J)</button></div></section>
+<section id="craft" class="screen hidden overlay"><div class="panel wide"><h1>ATELIER</h1><div id="craftbody"></div><button class="btn" data-close>FERMER (K)</button></div></section>
 <section id="map" class="screen hidden overlay"><div class="panel wide"><h1>CARTE</h1><canvas id="bigmap" width="480" height="480"></canvas><div id="maplegend"></div><button class="btn" data-close>FERMER (M)</button></div></section>
 <section id="dead" class="screen hidden"><div class="panel"><h1 class="red">TU T’ES FAIT RAMASSER!</h1><p id="deadtxt"></p><button class="btn big" id="bRespawn">REVENIR À LA VIEILLE-VILLE</button></div></section>
 <div id="floats"></div>

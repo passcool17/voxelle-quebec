@@ -142,3 +142,15 @@ body.touch #prompt { bottom: auto; top: 30%; }
 #qbody .qitem .ic { display: inline-block; width: 1.3em; color: var(--gold); } #qbody .qitem.done .ic { color: var(--green); } #qbody .qitem.locked { opacity: .55; }
 #qbody .qbar { height: 8px; background: #2a3448; border: 2px solid #0c1420; margin: 4px 0; max-width: 360px; } #qbody .qbar div { height: 100%; background: var(--gold); } #qbody .qbar.big { max-width: none; height: 12px; } #qbody .qbar.big div { background: var(--green); }
 #dtext .chap { color: #9ae0ff; font-size: .85em; letter-spacing: .08em; }
+/* construire et miner */
+#minebar { display: none; position: absolute; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); width: 90px; height: 9px; background: rgba(8,16,28,.75); border: 2px solid #0c1420; }
+#minebar div { height: 100%; width: 0; background: var(--gold); }
+.cnote { margin: 0 0 6px; }
+.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; max-height: 52vh; overflow: auto; }
+.rcp { display: flex; gap: 8px; align-items: center; background: #16263e; border: 2px solid #556; padding: 4px 8px; cursor: pointer; }
+.rcp.sel { border-color: var(--gold); } .rcp.no { opacity: .6; }
+.rcp > img { width: 36px; height: 36px; image-rendering: pixelated; flex: none; }
+.rcp small img { width: 1.2em; vertical-align: middle; image-rendering: pixelated; }
+.rcp small span { white-space: nowrap; margin-right: 6px; }
+#cdesc { min-height: 3.4em; margin-top: 8px; background: #0c1828; border: 2px solid #3a4a66; padding: 6px 10px; }
+#cdesc .btn { margin-top: 6px; }

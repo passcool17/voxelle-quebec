@@ -111,6 +111,9 @@ export function createGen(seed) {
       const k = (x + FM) + (z + FM) * FW, c = cf[k], h = hf[k], wx = ox + x, wz = oz + z, hm = h / 2;
       data[idx(x, 0, z)] = B.BEDROCK;
       for (let y = 1; y <= h; y++) data[idx(x, y, z)] = B.STONE;
+      // minerais (charbon, fer) en petites poches dans la pierre, sous la terre
+      const ro = hash2(wx >> 1, wz >> 1, seed + 601);
+      if (ro < 0.05 && h > 16) { const y0 = 4 + Math.floor(hash2(wz >> 1, wx >> 1, seed + 602) * (h - 16)), ore = ro < 0.032 ? B.COAL : B.IRONORE; data[idx(x, y0, z)] = ore; data[idx(x, y0 + 1, z)] = ore; }
       const hn = hash2(wx >> 1, wz >> 1, seed);
       let top = B.GRASS, sub = B.DIRT, sd = 6;
       const wv = c.wl ? c.wl * 2 + 1 : SEAV;

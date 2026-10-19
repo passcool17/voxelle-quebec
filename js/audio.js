@@ -79,6 +79,8 @@ export class Audio {
       case 'jump': tone('square', 300, 520, 0.1, 0.05); break;
       case 'land': this.nz(t, 0.08, 0.15 * v, 'lowpass', 500); break;
       case 'break': this.nz(t, 0.18, 0.35 * v, 'lowpass', 1200); tone('triangle', 180, 80, 0.12, 0.12); break;
+      case 'dig': this.nz(t, 0.06, 0.18 * v, 'bandpass', 700, S, 1.5); tone('triangle', 140, 90, 0.05, 0.06 * v); break;
+      case 'craft': tone('square', 523, 0, 0.07, 0.07); tone('square', 659, 0, 0.07, 0.07, 0.07); tone('square', 784, 0, 0.14, 0.08, 0.14); this.nz(t, 0.05, 0.15, 'highpass', 2500); break;
       case 'place': this.kick(t, 0.25 * v, S); this.nz(t, 0.04, 0.2 * v, 'highpass', 1800); break;
       case 'throw': tone('sine', 600, 200, 0.1, 0.12); this.nz(t, 0.08, 0.12 * v, 'bandpass', 1500); break;
       case 'splat': this.nz(t, 0.12, 0.25 * v, 'lowpass', 2400); break;

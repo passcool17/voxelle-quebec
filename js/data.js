@@ -23,6 +23,16 @@ export const ITEMS = {
   bleuets: { name: 'Casseau de bleuets', slot: 'conso', heal: 15, stam: 1, desc: 'Des bleuets du Lac, gros comme des billes. Rend 15 PV et l’énergie.', price: 10 },
   memo: { name: 'Mémo collant', slot: 'quete', desc: 'Écrit à l’encre de sirop d’érable. Ça sent la 2e coulée.' },
   casque_or: { name: 'Casque doré du Grand Plan', slot: 'tete', def: 9, spd: 0.05, desc: 'Le Comité l’avait commandé pour lui-même. En trois exemplaires.' },
+  // construire et miner
+  charbon: { name: 'Charbon', slot: 'mat', desc: 'Trouvé dans la pierre. Noircit les mitaines.', price: 8 },
+  fer: { name: 'Minerai de fer', slot: 'mat', desc: 'Du fer brut, plein de rouille et de promesses.', price: 14 },
+  plastique: { name: 'Plastique orange', slot: 'mat', desc: 'Ce qui reste d’un cône-golem. Recyclable (en théorie).', price: 5 },
+  pic_bois: { name: 'Pic en bois', slot: 'outil', tool: 'pic', pow: 2.2, desc: 'Mine la pierre 2 fois plus vite. Fait en planches, pis ça paraît.', price: 30 },
+  pic_fer: { name: 'Pic en fer', slot: 'outil', tool: 'pic', pow: 4, desc: 'Mine la pierre 4 fois plus vite. Le roc-mère, lui, s’en fout.', price: 90 },
+  hache: { name: 'Hache de bûcheron', slot: 'outil', tool: 'hache', pow: 3, desc: 'Coupe le bois 3 fois plus vite. Chemise à carreaux non incluse.', price: 60 },
+  grattoir: { name: 'Grattoir à pare-brise', slot: 'arme', kind: 'melee', dmg: 15, cd: 0.3, range: 2.4, arc: 1.8, desc: 'Rapide comme un matin de verglas. Efficace contre les cônes.', price: 70 },
+  raquettes: { name: 'Raquettes', slot: 'pieds', def: 2, spd: 0.09, desc: 'Comme pépère dans le bois. Vont plus vite que les bottes.', price: 60 },
+  tire: { name: 'Tire sur la neige', slot: 'conso', heal: 30, buff: 10, desc: 'Sirop bouillant sur la neige, roulé sur un bâton. Rend 30 PV et donne de la vitesse.', price: 14 },
   tarte: { name: 'Tarte aux bleuets', slot: 'conso', heal: 70, buff: 15, desc: 'Rend 70 PV et donne de la vitesse. Tache les dents.', price: 30 },
 };
 export const SHOPS = { etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone'] };

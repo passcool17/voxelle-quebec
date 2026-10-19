@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { createGen, BIOME, BIOME_NAME, layout, CELL } from './worldgen.js';
 import { REGIONS, Z_ROAD0, Z_END } from './nord.js';
 import { World, moveBody, boxHit } from './world.js';
-import { B, CSM as CS, SEA, NAME, PLACEABLE, DROP, SOLID, COL, LEAF, VS } from './blocks.js';
+import { B, CSM as CS, SEA, NAME, PLACEABLE, DROP, DROP_ITEM, SOLID, COL, LEAF, VS, IVS } from './blocks.js';
+import { RECIPES, mineTime, toolFor, missing, consume } from './craft.js';
 import { Sky } from './sky.js';
 import { Audio } from './audio.js';
 import { Ambiance } from './fx.js';
@@ -47,13 +48,21 @@ function addBlob(g, r) { const b = new THREE.Mesh(blobGeo, blobMat); b.scale.set
 const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
-    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
+    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
 }
 let S = null; // sauvegarde active
 function loadSave() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 2) return s; } catch (e) {}
-  try { const o = JSON.parse(localStorage.getItem(OLD_SAVE_KEY)); if (o && o.v === 1) { o.v = 2; o.edits = {}; o.migrated = true; return o; } } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 2) return normSave(s); } catch (e) {}
+  try { const o = JSON.parse(localStorage.getItem(OLD_SAVE_KEY)); if (o && o.v === 1) { o.v = 2; o.edits = {}; o.migrated = true; return normSave(o); } } catch (e) {}
   return null;
+}
+// anciennes sauvegardes : on complète les champs ajoutés depuis (sans rien perdre)
+function normSave(s) {
+  const f = freshSave();
+  for (const k of ['blocks', 'inv', 'equip', 'stats', 'q', 'taken', 'edits']) if (!s[k] || typeof s[k] !== 'object') s[k] = f[k];
+  for (const k in f.stats) if (s.stats[k] == null) s.stats[k] = 0;
+  s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0;
+  return s;
 }
 function writeSave() {
   if (!S || !G.P) return;
@@ -90,9 +99,9 @@ function pollPad() {
   const b = i => p.buttons[i] && p.buttons[i].pressed, prev = input.gpPrev, now = p.buttons.map(x => x.pressed);
   const edge = i => now[i] && !prev[i];
   if (edge(0)) pressed.add('Space'); if (edge(1)) pressed.add('KeyE'); if (edge(2)) pressed.add('KeyR'); if (edge(3)) pressed.add('KeyQ');
-  if (edge(5)) pressed.add('KeyF'); if (edge(6)) input.rmbP = true; if (edge(9)) pressed.add('Escape'); if (edge(8)) pressed.add('KeyI');
+  if (edge(5)) input.gpBrkP = true; if (edge(6)) input.rmbP = true; if (edge(9)) pressed.add('Escape'); if (edge(8)) pressed.add('KeyI');
   if (edge(14)) input.wheel -= 1; if (edge(15)) input.wheel += 1; if (edge(12)) pressed.add('KeyJ'); if (edge(13)) pressed.add('KeyM'); if (edge(10)) pressed.add('KeyC');
-  input.gpAtk = b(7); input.gpRun = b(4); input.gpJump = b(0);
+  input.gpAtk = b(7); input.gpRun = b(4); input.gpJump = b(0); input.gpBrk = b(5);
   input.gpPrev = now; if (now.some(x => x)) audio.init();
 }
 const dz = v => Math.abs(v) < 0.15 ? 0 : (v - Math.sign(v) * 0.15) / 0.85;
@@ -219,7 +228,7 @@ function playerUpdate(dt) {
   if (hit) { const hx = hit.x + VS / 2, hy = hit.y + VS / 2, hz = hit.z + VS / 2; if (Math.hypot(hx - P.x, hy - (P.y + 1.4), hz - P.z) < 6.2) G.target = hit; }
   outline.visible = !!G.target && !isTouch || (!!G.target && isTouch);
   if (G.target) outline.position.set(G.target.x + VS / 2, G.target.y + VS / 2, G.target.z + VS / 2);
-  if (pressed.has('KeyF') || input.tBrkP || (input.bot && input.bot.brkP)) breakBlock(); input.tBrkP = false; if (input.bot) input.bot.brkP = false;
+  mineUpdate(dt);
   if (input.rmbP || input.tPlaceP || (input.bot && input.bot.placeP)) placeBlock(); input.rmbP = false; input.tPlaceP = false; if (input.bot) input.bot.placeP = false;
   // modèle
   const m = P.model; m.g.position.set(P.x, P.y - (m.stepOffV || 0), P.z); m.g.rotation.y = P.yaw + (P.spinT > 0 ? (1 - P.spinT / 0.32) * Math.PI * 2 : 0);
@@ -270,12 +279,31 @@ function melee(st, o = {}) {
   if (n && o.fin) { G.dbg.fin++; floatTxt(P.x, P.y + 2.6, P.z, 'COMBO!', '#ffd23a'); G.shake = Math.max(G.shake, 0.35); }
   if (n) audio.fx(n && G.enemies.some(e => e.type === 'cone') ? 'bonk' : 'hit');
 }
+// minage : un appui (F, CASSE, RB) mine le bloc visé jusqu'au bout ; garder enfoncé enchaîne les blocs.
+// Le temps dépend de la dureté du bloc et du meilleur outil du sac (pic, hache).
+const mineBar = $('minebar');
+function mineUpdate(dt) {
+  const P = G.P, down = keys.has('KeyF') || input.tBrk || input.gpBrk || (input.bot && input.bot.brk);
+  if (pressed.has('KeyF') || input.tBrkP || input.gpBrkP || (input.bot && input.bot.brkP)) P.mineGo = true;
+  input.tBrkP = false; input.gpBrkP = false; if (input.bot) input.bot.brkP = false;
+  const t = G.target, k = t ? t.x + ',' + t.y + ',' + t.z : null;
+  if (!P.mine || P.mine.k !== k) P.mine = { k, p: 0, b: t ? t.b : 0 };
+  if (!t || !(P.mineGo || down) || G.drive) { if (!down) P.mineGo = false; P.mine.p = 0; mineBar.style.display = 'none'; outline.material.color.setHex(0x0c1420); return; }
+  if (t.b === B.BEDROCK) { if (P.brkCd <= 0) { audio.fx('deny'); toast('Le roc-mère est incassable.'); P.brkCd = 1; } P.mineGo = false; return; }
+  const T = mineTime(S, ITEMS, t.b, G.mineBonus || 0); P.mine.p += dt / T;
+  if (Math.random() < dt * 10) { burst(t.x + VS / 2, t.y + VS / 2, t.z + VS / 2, COL[t.b][1], 1, 2); }
+  if ((P.mine.tick = (P.mine.tick || 0) - dt) <= 0) { P.mine.tick = 0.22; audio.fx('dig', 0.5); if (P.atkT <= 0) P.atkT = 0.001; }
+  outline.material.color.setRGB(0.05 + P.mine.p * 0.95, 0.08 + P.mine.p * 0.75, 0.12);
+  mineBar.style.display = 'block'; mineBar.firstChild.style.width = Math.min(100, P.mine.p * 100) + '%';
+  if (P.mine.p >= 1) { breakBlock(); P.mine = null; P.mineGo = down; mineBar.style.display = 'none'; }
+}
 function breakBlock() {
-  const P = G.P; if (P.brkCd > 0 || !G.target) return; const t = G.target;
-  if (t.b === B.BEDROCK) { audio.fx('deny'); toast('Le roc-mère est incassable.'); P.brkCd = 0.3; return; }
+  const P = G.P; if (!G.target) return; const t = G.target;
+  if (t.b === B.BEDROCK) return;
   if (!world.set(t.x, t.y, t.z, B.AIR)) return;
-  P.brkCd = 0.12; audio.fx('break');
+  audio.fx('break');
   const d = DROP(t.b); if (d && PLACEABLE.includes(d)) { S.blocks[d] = (S.blocks[d] || 0) + 1; }
+  const di = DROP_ITEM[t.b]; if (di) { const n = 1 + (Math.random() < (G.oreBonus || 0) ? 1 : 0); addItem(di, n); floatTxt(t.x + VS / 2, t.y + 1, t.z + VS / 2, '+' + n + ' ' + ITEMS[di].name, '#ffd23a'); audio.fx('coin', 0.6); S.stats.mined++; }
   burst(t.x + VS / 2, t.y + VS / 2, t.z + VS / 2, COL[t.b][1], 8); S.stats.blocks++; G.dirtyHot = true;
 }
 function placeBlock() {
@@ -339,7 +367,7 @@ function equip(it) {
 }
 function addItem(id, n = 1, r = 0) {
   const D = ITEMS[id];
-  if (D.slot === 'conso' || D.slot === 'quete') { const it = S.inv.find(i => i.id === id); if (it) it.n += n; else S.inv.push({ id, n }); }
+  if (D.slot === 'conso' || D.slot === 'quete' || D.slot === 'mat') { const it = S.inv.find(i => i.id === id); if (it) it.n += n; else S.inv.push({ id, n }); }
   else for (let k = 0; k < n; k++) S.inv.push({ id, r });
 }
 
@@ -448,6 +476,7 @@ function killEnemy(e) {
   for (let k = 0; k < Math.min(6, Math.ceil(n / 3)); k++) dropPickup('piasse', e.x + (Math.random() - 0.5) * 1.5, e.y + 0.6, e.z + (Math.random() - 0.5) * 1.5, { val: Math.ceil(n / Math.min(6, Math.ceil(n / 3))) });
   if (Math.random() < 0.12) dropPickup('poutine', e.x, e.y + 0.6, e.z, {});
   if (Math.random() < (e.T.boss ? 1 : 0.06)) dropGear(e);
+  if (e.type === 'cone' && Math.random() < 0.55) { addItem('plastique', 1); floatTxt(e.x, e.y + e.T.h + 0.8, e.z, '+1 Plastique orange', '#ff9a3a'); }
   if (e.type === 'raton' && e.stole) dropPickup('piasse', e.x, e.y + 0.6, e.z, { val: e.stole });
   if (e.type === 'bureau' && S.q.permis && S.q.permis.st === 'active' && !G.pickups.some(p => p.kind === 'permis')) { S.bureauKills++; if (S.bureauKills >= 3 || Math.random() < 0.25) { dropPickup('permis', e.x, e.y + 0.6, e.z, {}); toast('Le bureaucrate a échappé un formulaire!'); } }
   if (e.T.boss) { if (e.type === 'comite') { S.comiteDead = true; banner('LE COMITÉ EST DISSOUS!', 'Retourne voir Rolande, à L’Étape'); } else { S.bossDead = true; banner('LE CÔNE SUPRÊME EST VAINCU!', 'Les rues sont libres… pour l’instant.'); } $('bossbox').classList.add('hidden'); G.boss = null; }
@@ -961,13 +990,13 @@ function renderInv() {
   h += `<div class="statl">Niveau ${S.lvl} · PV ${Math.ceil(G.P.hp)} / ${st.hpMax}<br>Dégâts ${Math.round(st.dmg)} · Défense ${st.def}<br>Piasses : <span class="green">${S.cash}</span><br>Cerf-volant fléché : ${S.glider ? 'oui (Espace en l’air)' : 'non'}<br>Ennemis vaincus : ${S.stats.kills} · Blocs cassés : ${S.stats.blocks} · posés : ${S.stats.placed}</div></div>`;
   h += '<div><div class="grid">' + S.inv.map((it, i) => `<div class="cell${invSel === i ? ' sel' : ''}" data-i="${i}"><img src="${itemIcon(it.id)}">${it.n > 1 ? `<i>${it.n}</i>` : ''}</div>`).join('') + '</div>';
   const sel = S.inv[invSel];
-  h += '<div id="idesc">' + (sel ? `<span style="color:${RARITY[sel.r || 0].c}">${ITEMS[sel.id].name}</span>${sel.r ? ' (' + RARITY[sel.r].n + ')' : ''} — ${ITEMS[sel.id].desc}${ITEMS[sel.id].dmg ? ' · Dégâts ' + Math.round(ITEMS[sel.id].dmg * RARITY[sel.r || 0].m) : ''}${ITEMS[sel.id].def ? ' · Défense ' + Math.round(ITEMS[sel.id].def * RARITY[sel.r || 0].m) : ''}<br>` + (ITEMS[sel.id].slot === 'conso' ? '<button class="btn sm" id="iUse">MANGER</button>' : ITEMS[sel.id].slot !== 'quete' ? '<button class="btn sm" id="iEq">ÉQUIPER</button> <button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' : '') : 'Choisis un objet.') + '</div>';
+  h += '<div id="idesc">' + (sel ? `<span style="color:${RARITY[sel.r || 0].c}">${ITEMS[sel.id].name}</span>${sel.r ? ' (' + RARITY[sel.r].n + ')' : ''} — ${ITEMS[sel.id].desc}${ITEMS[sel.id].dmg ? ' · Dégâts ' + Math.round(ITEMS[sel.id].dmg * RARITY[sel.r || 0].m) : ''}${ITEMS[sel.id].def ? ' · Défense ' + Math.round(ITEMS[sel.id].def * RARITY[sel.r || 0].m) : ''}<br>` + (ITEMS[sel.id].slot === 'conso' ? '<button class="btn sm" id="iUse">MANGER</button>' : ITEMS[sel.id].slot === 'mat' || ITEMS[sel.id].slot === 'outil' ? '<button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' + (ITEMS[sel.id].slot === 'outil' ? ' <small>Outil : servi tout seul quand tu mines.</small>' : '') : ITEMS[sel.id].slot !== 'quete' ? '<button class="btn sm" id="iEq">ÉQUIPER</button> <button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' : '') : 'Choisis un objet.') + '</div>';
   h += '<div class="statl">Blocs : ' + (PLACEABLE.filter(b => S.blocks[b] > 0).map(b => `<img src="${blockIcon(b)}" style="width:1.4em;vertical-align:middle"> ${S.blocks[b]}`).join(' &nbsp; ') || 'aucun — casse des blocs avec F') + '</div></div>';
   $('invbody').innerHTML = h;
   $('invbody').querySelectorAll('.cell').forEach(c => c.onclick = () => { invSel = +c.dataset.i; audio.fx('ui'); renderInv(); });
   const u = $('iUse'); if (u) u.onclick = () => { useItem(sel); invSel = null; renderInv(); };
   const q = $('iEq'); if (q) q.onclick = () => { equip(sel); invSel = null; renderInv(); };
-  const s = $('iSell'); if (s) s.onclick = () => { S.cash += sellPrice(sel); S.inv.splice(invSel, 1); invSel = null; audio.fx('coin'); renderInv(); };
+  const s = $('iSell'); if (s) s.onclick = () => { S.cash += sellPrice(sel); if (sel.n > 1) sel.n--; else { S.inv.splice(invSel, 1); invSel = null; } audio.fx('coin'); renderInv(); };
 }
 function sellPrice(it) { return Math.round((ITEMS[it.id].price || 40) * 0.3 * RARITY[it.r || 0].m); }
 function objTxt(id) { const q = QUESTS[id], s = S.q[id]; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
@@ -989,8 +1018,33 @@ function renderQuests() {
   h += `<p class="gold">${S.contractsDone} contrat(s) de village rempli(s)</p>`;
   $('qbody').innerHTML = h;
 }
-function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'inv') renderInv(); if (id === 'quests') renderQuests(); if (id === 'map') drawBigMap(); }
-function closePanels() { for (const id of ['inv', 'quests', 'map', 'dialog']) hide(id); if (['inv', 'quests', 'map', 'dialog'].includes(G.state)) G.state = 'play'; G.dirtyHot = true; }
+// atelier : recettes à la main ou à l'établi (bloc posé à moins de 5 m)
+function nearBench() {
+  const P = G.P, x0 = Math.floor(P.x * IVS), y0 = Math.floor((P.y + 0.8) * IVS), z0 = Math.floor(P.z * IVS), R = 10;
+  for (let y = y0 - 6; y <= y0 + 6; y++) for (let z = z0 - R; z <= z0 + R; z++) for (let x = x0 - R; x <= x0 + R; x++) if (world.getV(x, y, z) === B.BENCH) return true;
+  return false;
+}
+let craftSel = 0;
+function renderCraft() {
+  const nb = nearBench(), ing = (r) => [...Object.entries(r.inb || {}).map(([b, n]) => `<span class="${(S.blocks[b] || 0) >= n ? '' : 'red'}"><img src="${blockIcon(+b)}">${n} ${NAME[b]}</span>`), ...Object.entries(r.ini || {}).map(([id, n]) => `<span class="${S.inv.filter(i => i.id === id).reduce((a, i) => a + (i.n || 1), 0) >= n ? '' : 'red'}"><img src="${itemIcon(id)}">${n} ${ITEMS[id].name}</span>`)].join(' ');
+  const outIcon = r => r.out.b ? blockIcon(r.out.b) : itemIcon(r.out.i);
+  let h = `<p class="cnote">${nb ? '<span class="green">Établi à côté : toutes les recettes.</span>' : 'Sans établi, seulement les recettes de base. Fabrique un <b>Établi</b> (4 planches) et pose-le.'}</p><div class="recipes">`;
+  RECIPES.forEach((r, i) => { const miss = missing(S, r, nb); h += `<div class="rcp${miss.length ? ' no' : ''}${i === craftSel ? ' sel' : ''}" data-i="${i}"><img src="${outIcon(r)}"><div><b>${r.name}${(r.out.n || 1) > 1 ? ' ×' + r.out.n : ''}</b>${r.bench ? ' <small class="gold">établi</small>' : ''}<br><small>${ing(r)}</small></div></div>`; });
+  const r = RECIPES[craftSel], miss = missing(S, r, nb), D = r.out.i ? ITEMS[r.out.i] : null;
+  h += `</div><div id="cdesc"><b>${r.name}</b> — ${D ? D.desc : 'Bloc : ' + NAME[r.out.b] + ' ×' + (r.out.n || 1) + '.'}${r.note ? ' ' + r.note : ''}<br>${miss.length ? '<span class="red">Il manque : ' + miss.map(m => m === 'établi' ? 'un établi à côté' : m[0] === 'b' && !isNaN(+m.slice(1)) ? NAME[+m.slice(1)] : ITEMS[m].name).join(', ') + '</span>' : '<button class="btn" id="cGo">FABRIQUER</button>'}</div>`;
+  $('craftbody').innerHTML = h;
+  $('craftbody').querySelectorAll('.rcp').forEach(c => c.onclick = () => { craftSel = +c.dataset.i; audio.fx('ui'); renderCraft(); });
+  const go = $('cGo'); if (go) go.onclick = () => { craft(RECIPES[craftSel].id); renderCraft(); };
+}
+function craft(id) {
+  const r = RECIPES.find(q => q.id === id); if (!r || missing(S, r, nearBench()).length) { audio.fx('deny'); return false; }
+  consume(S, r);
+  if (r.out.b) S.blocks[r.out.b] = (S.blocks[r.out.b] || 0) + (r.out.n || 1); else addItem(r.out.i, r.out.n || 1, 0);
+  S.stats.crafted++; audio.fx('craft'); toast('Fabriqué : ' + r.name + ((r.out.n || 1) > 1 ? ' ×' + r.out.n : '')); G.dirtyHot = true; questEvent('craft', id);
+  return true;
+}
+function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'craft') renderCraft(); if (id === 'inv') renderInv(); if (id === 'quests') renderQuests(); if (id === 'map') drawBigMap(); }
+function closePanels() { for (const id of ['inv', 'quests', 'map', 'dialog', 'craft']) hide(id); if (['inv', 'quests', 'map', 'dialog', 'craft'].includes(G.state)) G.state = 'play'; G.dirtyHot = true; }
 function openPause() { if (G.state !== 'play') return; G.state = 'pause'; unlock(); show('pause'); }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { audio.fx('ui'); const sc = b.closest('.screen'); sc.classList.add('hidden'); if (sc.id === 'help' || sc.id === 'opts') { if (G.prevScreen) show(G.prevScreen); } else closePanels(); });
 // options
@@ -1032,7 +1086,7 @@ function setupTouch() {
   const hold = (id, k) => { const b = $(id); b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); input[k] = true; b.classList.add('on'); audio.init(); }); const up = () => { input[k] = false; b.classList.remove('on'); }; b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up); };
   const tap = (id, fn) => $(id).addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio.init(); fn(); });
   hold('tAtk', 'tAtk'); hold('tJump', 'tJump'); tap('tJump', () => input.tJumpP = true); tap('tRoll', () => input.tRollP = true);
-  tap('tBrk', () => input.tBrkP = true); tap('tPlace', () => input.tPlaceP = true); tap('tTalk', () => pressed.add('KeyE'));
+  hold('tBrk', 'tBrk'); tap('tBrk', () => input.tBrkP = true); tap('tCraft', () => pressed.add('KeyK')); tap('tPlace', () => input.tPlaceP = true); tap('tTalk', () => pressed.add('KeyE'));
   tap('tEat', () => pressed.add('KeyR')); tap('tSwap', () => pressed.add('KeyQ')); tap('tInv', () => pressed.add('KeyI')); tap('tQuest', () => pressed.add('KeyJ')); tap('tMap', () => pressed.add('KeyM')); tap('tPause', () => pressed.add('Escape'));
 }
 
@@ -1081,14 +1135,15 @@ function handleKeys() {
     if (pressed.has('KeyI') || pressed.has('Tab')) openPanel('inv');
     else if (pressed.has('KeyJ')) openPanel('quests');
     else if (pressed.has('KeyM')) openPanel('map');
+    else if (pressed.has('KeyK')) openPanel('craft');
     else if (pressed.has('Escape') || pressed.has('KeyP')) openPause();
     if (pressed.has('KeyR')) eat();
     if (pressed.has('KeyQ')) swapWeapon();
     for (let i = 1; i <= 9; i++) if (pressed.has('Digit' + i)) { S.hot = i - 1; G.dirtyHot = true; }
     if (input.wheel) { const n = Math.max(1, hotList().length); S.hot = ((S.hot + input.wheel) % n + n) % n; input.wheel = 0; G.dirtyHot = true; }
-  } else if (['inv', 'quests', 'map'].includes(st)) {
+  } else if (['inv', 'quests', 'map', 'craft'].includes(st)) {
     if (st === 'map' && (pressed.has('KeyZ') || pressed.has('Equal') || pressed.has('Minus'))) { G.mapZ = (G.mapZ + (pressed.has('Minus') ? 2 : 1)) % 3; drawBigMap(); }
-    const k = { inv: ['KeyI', 'Tab'], quests: ['KeyJ'], map: ['KeyM'] }[st];
+    const k = { inv: ['KeyI', 'Tab'], quests: ['KeyJ'], map: ['KeyM'], craft: ['KeyK'] }[st];
     if (pressed.has('Escape') || k.some(x => pressed.has(x))) closePanels();
   } else if (st === 'dialog') { if (pressed.has('Escape')) closeDialog(); }
   else if (st === 'pause') { if (pressed.has('Escape') || pressed.has('KeyP')) resume(); }
@@ -1190,5 +1245,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
+const API = { craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
 window.__game = API;

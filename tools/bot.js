@@ -54,7 +54,7 @@ const brain = require('./brain');
   await ev(() => __game.closeDialog()); await p.waitForTimeout(300);
   // 5. casser / poser un bloc
   const bp = await ev(async () => { const g = __game, G = g.G, P = G.P; G.camPitch = 0.75; await new Promise(r => setTimeout(r, 400)); const t = G.target; if (!t) return { err: 'pas de cible' };
-    const before = g.world.get(t.x, t.y, t.z), cnt0 = JSON.stringify(g.S.blocks); g.pressed.add('KeyF'); await new Promise(r => setTimeout(r, 300));
+    const before = g.world.get(t.x, t.y, t.z), cnt0 = JSON.stringify(g.S.blocks); g.pressed.add('KeyF'); for (let k = 0; k < 40 && g.world.get(t.x, t.y, t.z) === before; k++) await new Promise(r => setTimeout(r, 100)); // minage : prend la dureté du bloc
     const after = g.world.get(t.x, t.y, t.z); await new Promise(r => setTimeout(r, 400)); const t2 = G.target;
     g.input.rmbP = true; await new Promise(r => setTimeout(r, 300)); const placed = t2 ? g.world.get(t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2]) : -9;
     return { broke: [t.x, t.y, t.z, before, after], placed: t2 ? [t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2], placed] : null, cnt0, cnt1: JSON.stringify(g.S.blocks), stats: g.S.stats }; });
