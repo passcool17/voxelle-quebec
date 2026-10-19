@@ -77,8 +77,8 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   res.sauve = await ev(() => { __game.writeSave(); return JSON.parse(localStorage.getItem('voxelle-quebec-v2')).dun; });
   await p.reload(); await W(3000); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   res.recharge = await ev(() => __game.S.dun.mine === 1 && __game.S.dun.egout === 1);
-  await ev(() => { const s = JSON.parse(localStorage.getItem('voxelle-quebec-v2')); delete s.dun; localStorage.setItem('voxelle-quebec-v2', JSON.stringify(s)); });
-  await p.reload(); await W(3000); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+  // le jeu sauvegarde au pagehide : on vieillit la sauvegarde après le rechargement
+  await p.reload(); await W(3000); await ev(() => { const s = JSON.parse(localStorage.getItem('voxelle-quebec-v2')); delete s.dun; localStorage.setItem('voxelle-quebec-v2', JSON.stringify(s)); }); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   res.vieille = await ev(() => typeof __game.S.dun === 'object' && !__game.S.dun.mine);
   console.log(JSON.stringify(res, null, 1));
   // tactile : bouton ENTRE à l'entrée de la mine
