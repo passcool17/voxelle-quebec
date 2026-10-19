@@ -46,9 +46,9 @@ const FONT = {
   6: '011100111101111', 7: '111001010010010', 8: '111101111101111', 9: '111101111001110', ' ': '000000000000000', '-': '000000111000000', '.': '000000000000010', ':': '000010000010000',
 };
 const ACC = { 'É': ['E', 'aigu'], 'È': ['E', 'grave'], 'Ê': ['E', 'circ'] };
-function textW(str) { let w = 0; for (const ch of str) w += (ch === '\'' || ch === '’' ? 1 : 3) + 1; return Math.max(0, w - 1); }
+export function textW(str) { let w = 0; for (const ch of str) w += (ch === '\'' || ch === '’' ? 1 : 3) + 1; return Math.max(0, w - 1); }
 // texte en voxels fins ; (fx, fy, fz) = coin haut-gauche de la 1re lettre, (ux, uz) = sens de lecture
-function vtext(P, str, fx, fy, fz, ux, uz, b) {
+export function vtext(P, str, fx, fy, fz, ux, uz, b) {
   let c = 0;
   for (const ch of str) {
     if (ch === '\'' || ch === '’') { P.fset(fx + c * ux, fy, fz + c * uz, b); P.fset(fx + c * ux, fy - 1, fz + c * uz, b); c += 2; continue; }
@@ -59,7 +59,7 @@ function vtext(P, str, fx, fy, fz, ux, uz, b) {
   }
 }
 // panneau : lignes de texte, centré en (fcx, fcz), haut à fyTop. axis 'x' = panneau le long de x (faces ±z), 'z' = le long de z (faces ±x)
-function panel(P, lines, fcx, fyTop, fcz, axis, bg, fg, both = true, pad = 1) {
+export function panel(P, lines, fcx, fyTop, fcz, axis, bg, fg, both = true, pad = 1) {
   const W = Math.max(...lines.map(textW)) + 2 * pad, Hh = lines.length * 8 - 1 + 2 * pad, h0 = Math.floor(W / 2);
   const fy0 = fyTop - Hh + 1;
   if (axis === 'x') P.ffill(fcx - h0, fy0, fcz, fcx - h0 + W - 1, fyTop, fcz, bg); else P.ffill(fcx, fy0, fcz - h0, fcx, fyTop, fcz - h0 + W - 1, bg);

@@ -349,7 +349,7 @@ function die(why) {
 }
 function respawn() {
   if (G.drive) exitCar();
-  const P = G.P, near = P.z < -480 ? gen.nord.stops.slice(1).reduce((a, b) => Math.hypot(b.ax - P.x, b.az - P.z) < Math.hypot(a.ax - P.x, a.az - P.z) ? b : a) : null;
+  const P = G.P, near = P.z < -480 || Math.abs(P.x - gen.VX) > 700 ? gen.nord.stops.slice(1).reduce((a, b) => Math.hypot(b.ax - P.x, b.az - P.z) < Math.hypot(a.ax - P.x, a.az - P.z) ? b : a) : null;
   if (near) { P.x = near.ax; P.z = near.az; P.y = gen.heightAt(P.x, P.z) + 1.5; toast('Tu te réveilles à l’arrêt d’autocar : ' + near.label); }
   else { P.x = gen.VX + 2.5; P.z = gen.VZ + 10.5; P.y = gen.VH + 1; } P.vx = P.vy = P.vz = 0; P.hp = stats().hpMax; P.gliding = false; P.gl.visible = false; P.iT = 2;
   hide('dead'); G.state = 'play'; writeSave();
@@ -449,7 +449,7 @@ function projUpdate(dt) {
   }
 }
 // ---------- ennemis ----------
-function enemyLevel(x, z) { if (z < -480) return Math.min(6, 3 + Math.floor((-480 - z) / 700)); return 1 + Math.floor(Math.hypot(x - gen.VX, z - gen.VZ) / 220); }
+function enemyLevel(x, z) { const rl = gen.reg.level(x, z); if (rl) return rl; if (z < -480) return Math.min(6, 3 + Math.floor((-480 - z) / 700)); return 1 + Math.floor(Math.hypot(x - gen.VX, z - gen.VZ) / 220); }
 function spawnEnemy(type, x, z, opt = {}) {
   const T = ENEMIES[type], lvl = opt.lvl || enemyLevel(x, z), y = world.ground(x, z);
   const M = enemyModel(type); scene.add(M.g); if (!T.fly) addBlob(M.g, Math.max(0.4, T.hw * 1.2));
@@ -608,7 +608,11 @@ function spawner(dt) {
       const y = world.ground(x, z), wb = world.get(x, y - 0.25, z);
       if (wb !== B.WATER && Math.abs(y - P.y) < 14) {
         let pool;
-        if (col.nord) { const nr = gen.nord.region(x, z); pool = nr === 'saguenay' || nr === 'fjord' || nr === 'kenogami' || nr === 'chicoutimi' ? (night ? ['raton', 'bureau', 'mouches', 'souffleuse'] : ['mouches', 'raton', 'orignal', 'goeland', 'goeland']) : night ? ['orignal', 'bureau', 'mouches', 'raton'] : ['mouches', 'mouches', 'orignal', 'orignal', 'raton']; if (col.rd < 10) pool.push('trou', 'cone'); }
+        const rr = col.reg && gen.nord.region(x, z);
+        if (rr) pool = rr === 'charlevoix' || rr === 'belvcharl' || rr === 'baie' ? (night ? ['raton', 'bureau', 'orignal'] : ['raton', 'mouches', 'orignal', 'goeland', 'souffleuse'])
+          : rr === 'gaspesie' || rr === 'perce' || rr === 'phare' || rr === 'rocher' ? (night ? ['raton', 'bureau', 'goeland'] : ['goeland', 'goeland', 'goeland', 'raton', 'orignal'])
+          : (night ? ['cone', 'trou', 'bureau', 'raton'] : ['cone', 'cone', 'trou', 'trou', 'bureau', 'goeland']);
+        else if (col.nord) { const nr = gen.nord.region(x, z); pool = nr === 'saguenay' || nr === 'fjord' || nr === 'kenogami' || nr === 'chicoutimi' ? (night ? ['raton', 'bureau', 'mouches', 'souffleuse'] : ['mouches', 'raton', 'orignal', 'goeland', 'goeland']) : night ? ['orignal', 'bureau', 'mouches', 'raton'] : ['mouches', 'mouches', 'orignal', 'orignal', 'raton']; if (col.rd < 10) pool.push('trou', 'cone'); }
         else if (col.biome === BIOME.BOREALE) pool = night ? ['bureau', 'raton', 'mouches'] : ['mouches', 'mouches', 'raton'];
         else if (col.biome === BIOME.ERABLIERE) pool = night ? ['raton', 'raton', 'bureau'] : ['raton', 'mouches', 'trou'];
         else if (col.biome === BIOME.COLLINES) pool = ['plow', 'plow', 'souffleuse', night ? 'bureau' : 'mouches'];
@@ -658,7 +662,7 @@ function npcsUpdate(dt) {
     m.npcs.forEach((n, k) => {
       const key = s.i + ',' + s.j + ':' + k; if (G.npcs.has(key)) return;
       const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g); addBlob(model.g, 0.42);
-      const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? (n.shop === 'etape' ? 'Comptoir de L’Étape' : s.nord ? 'Dépanneur du Royaume' : 'Dépanneur') : NPCS[n.role].name;
+      const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.reg ? 'Aubergiste de ' + s.name : s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? ({ etape: 'Comptoir de L’Étape', charlevoix: 'Boutique du terroir', perce: 'Poissonnerie de Percé', montreal: 'Dépanneur ouvert 24 h (sauf travaux)' }[n.shop] || (s.nord ? 'Dépanneur du Royaume' : 'Dépanneur')) : NPCS[n.role].name;
       const npc = { key, role: n.role, stop: n.stop, shop: n.shop, s, x: n.x, z: n.z, y: world.ground(n.x, n.z), vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, home: { x: n.x, z: n.z }, model, name: nm, t: Math.random() * 9, yaw: Math.random() * 6, wander: Math.random() * 6, walkT: 0, chat: ROLE_CHAT[n.role] ? ROLE_CHAT[n.role][(s.seed + k) % ROLE_CHAT[n.role].length] : CHATTER[(s.seed + k * 7) % CHATTER.length] };
       if (n.role === 'villageois') { npc.act = ['marche', 'marche', 'pelle', 'jase', 'hockey'][(s.seed + k * 13) % 5]; if (npc.act === 'pelle') setWeapon(model, 'pelle'); if (npc.act === 'hockey') setWeapon(model, 'baton'); }
       npc.label = makeLabel('npc', `<div class="say"></div><div class="mk"></div><div class="nm">${nm}</div>`); npc.mkEl = npc.label.querySelector('.mk'); npc.sayEl = npc.label.querySelector('.say');
@@ -821,6 +825,7 @@ function pickupsUpdate(dt) {
     if (d > 150 && !p.still) p.life = 0;
     if (d < 1.4 && p.t > 0.3) {
       const gate = { chaudiere: ['sirop', 'Une chaudière d’eau d’érable… Pépère Tremblay en cherche peut-être.', 'Pépère a déjà son sirop.'], ble: ['pate', 'Une canne de blé d’Inde en crème… La cuisinière de L’Étape en cherche peut-être.', 'Rolande a déjà son blé d’Inde.'] }[p.kind];
+      if (!gate && ITEMS[p.kind] && ITEMS[p.kind].slot === 'quete' && p.key) { const qid = Object.keys(QUESTS).find(id => QUESTS[id].item === p.kind); if (qid && !(S.q[qid] && S.q[qid].st === 'active')) { if (!G.cdHint || G.t - G.cdHint > 6) { G.cdHint = G.t; toast(S.q[qid] && S.q[qid].st === 'done' ? 'Tu as déjà rapporté tout ça.' : ITEMS[p.kind].name + '… ' + NPCS[QUESTS[qid].giver].name.split(',')[0] + ' en cherche peut-être.'); } continue; } }
       if (gate && !(S.q[gate[0]] && S.q[gate[0]].st === 'active')) { if (!G.cdHint || G.t - G.cdHint > 6) { G.cdHint = G.t; toast(S.q[gate[0]] && S.q[gate[0]].st === 'done' ? gate[2] : gate[1]); } continue; }
       collect(p); p.life = 0;
     }
@@ -830,7 +835,7 @@ function pickupsUpdate(dt) {
 function collect(p) {
   if (p.kind === 'piasse') { S.cash += p.val || 1; audio.fx('coin'); floatTxt(p.x, p.y + 0.6, p.z, '+' + (p.val || 1) + ' $', '#8dff6a'); }
   else if (p.kind === 'poutine') { addItem('poutine'); audio.fx('coin'); toast('Poutine ramassée!'); }
-  else if (p.kind === 'chaudiere' || p.kind === 'ble') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
+  else if (p.kind === 'chaudiere' || p.kind === 'ble' || p.kind === 'pinceau' || p.kind === 'casier') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
   else if (p.kind === 'permis') { audio.fx('quest'); questEvent('collect', 'permis'); }
   else if (p.kind === 'gear') { addItem(p.id, 1, p.r); audio.fx('coin'); toast(ITEMS[p.id].name + ' (' + RARITY[p.r].n + ') ajouté au sac'); }
 }
@@ -853,6 +858,7 @@ function reward(r) {
 }
 function questTargetPos(id) {
   const q = QUESTS[id], s = S.q[id];
+  if (q.home) { const R = gen.reg.places, p = s && s.st === 'ready' ? R[q.home] : R[q.at || q.home]; return p ? { x: p.x, z: p.z } : null; }
   const NP = gen.nord.places, gp = { gaston: gen.cell(0, 0), lapaperasse: gen.cell(0, 0), pepere: gen.cell(1, 0), ginette: gen.cell(-1, 0), cuisiniere: NP.etape, saguenayen: NP.port }[q.giver];
   if (s && s.st === 'active' && q.type === 'talk' && q.to === 'pepere') { const c = gen.cell(1, 0); return { x: c.x, z: c.z }; }
   if (s && s.st === 'active' && id === 'comite') return { x: NP.travaux.x, z: NP.travaux.z };
@@ -898,14 +904,18 @@ function renderDialog(n, extra) {
     }
   }
   else if (n.role === 'commercant') { txt = 'Bienvenue au dépanneur! On a de tout, ou presque.'; add('MAGASINER', () => openShop(n), true); }
-  else if (n.role === 'chauffeur') {
-    txt = 'Autocars <b class="gold">Orignal Express</b> : Vieille-Ville, Réserve, L’Étape, Chicoutimi. ' + FARE + ' piasses le billet. Ton bazou voyage sur le toit, gratis.';
-    for (const st of gen.nord.stops) if (st.key !== n.stop) add(st.label + ' · ' + FARE + ' $', () => { if (S.cash < FARE) { audio.fx('deny'); toast('Pas assez de piasses pour le billet!'); return; } S.cash -= FARE; closeDialog(); travel(st.key); }, true);
+  else if (n.role === 'chauffeur' || n.role === 'matelot' || (n.role === 'capitaine' && n.stop)) {
+    const ferry = n.role !== 'chauffeur';
+    txt = ferry ? (n.role === 'capitaine' ? n.chat + '<br><br>' : '') + '<b class="gold">Traversier du Fleuve</b> : Quai de la Vieille-Ville ↔ Percé, en Gaspésie. ' + FARE * 2 + ' piasses. Ton bazou voyage dans la cale.'
+      : 'Autocars <b class="gold">Orignal Express</b> : Vieille-Ville, Réserve, L’Étape, Chicoutimi, Baie-Saint-Paul, Montréal. ' + FARE + ' piasses le billet. Ton bazou voyage sur le toit, gratis.';
+    const fare = ferry ? FARE * 2 : FARE;
+    for (const st of gen.nord.stops) if (st.key !== n.stop && !!st.mode === ferry) add(st.label + ' · ' + fare + ' $', () => { if (S.cash < fare) { audio.fx('deny'); toast('Pas assez de piasses pour le billet!'); return; } S.cash -= fare; closeDialog(); travel(st.key); }, true);
   }
   else if (ROLE_CHAT[n.role] && !NPCS[n.role].quest) txt = n.chat;
   else if (n.role === 'garde') txt = 'Les remparts sont solides. Les cônes, par exemple, rentrent par les portes comme tout le monde.';
   else if (n.role === 'acericulteur') txt = 'Mon sirop est le meilleur du rang. Le voisin dit la même chose, mais il ment.';
   else txt = n.chat;
+  if (n.role === 'capitaine' && n.stop && (talkQ || ready || avail || active) && !extra) for (const st of gen.nord.stops) if (st.key !== n.stop && st.mode) add('TRAVERSIER : ' + st.label + ' · ' + FARE * 2 + ' $', () => { if (S.cash < FARE * 2) { audio.fx('deny'); toast('Pas assez de piasses pour le billet!'); return; } S.cash -= FARE * 2; closeDialog(); travel(st.key); });
   if (!btns.length || !btns.some(b => b.label === 'AU REVOIR')) add('AU REVOIR', close);
   $('dtext').innerHTML = pre + txt;
   const bb = $('dbtns'); bb.innerHTML = '';
@@ -974,7 +984,7 @@ function drawMarkers(ctx, cx, cz, scale, W, round) {
     if (round) { ctx.save(); ctx.beginPath(); ctx.arc(W / 2, W / 2, W / 2 - 2, 0, 6.283); ctx.clip(); }
     for (const [lw, c] of [[scale > 0.9 ? 5 : 4, '#0c1420'], [scale > 0.9 ? 2.5 : 2, '#e8e2c8']]) { ctx.lineWidth = lw; ctx.strokeStyle = c; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
     if (round) ctx.restore(); }
-  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
+  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff', baie: '#5ab8ff', belvc: '#9ae0ff', perce: '#5ab8ff', rocher: '#c8a888', phare: '#ff4a3a', mtl: '#ff7a1a', quai: '#9ae0ff' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
   // noms des lieux
   ctx.textAlign = 'center'; ctx.lineJoin = 'round';
   for (const L of gen.nord.labels) { const px = (L.x - cx) * scale + W / 2, pz = (L.z - cz) * scale + W / 2, t = round && L.sh ? L.sh : L.n;
@@ -1290,5 +1300,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
+const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, get pickups() { return G.pickups; } };
 window.__game = API;

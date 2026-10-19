@@ -29,6 +29,12 @@ export const ITEMS = {
   dossard: { name: 'Dossard de signaleur', slot: 'corps', def: 4, spd: 0.03, desc: 'Orange et réfléchissant. Les cônes te prennent pour un des leurs.', price: 80 },
   epaulettes: { name: 'Épaulettes de hockey', slot: 'corps', def: 10, spd: -0.03, desc: 'Plus large que le cadre de porte. Pas mal plus large.', price: 180 },
   gants_travail: { name: 'Gants de travail', slot: 'mains', def: 4, desc: 'En cuir, pour les écharpes de bois et les poignées de main fermes.', price: 55 },
+  // nouvelles régions
+  pinceau: { name: 'Pinceau de Jeanne', slot: 'quete', desc: 'Encore plein de bleu fleuve. Un goéland l’a échappé.' },
+  casier: { name: 'Casier à homard', slot: 'quete', desc: 'En bois et en filet. Sent la mer, beaucoup.' },
+  guedille: { name: 'Guédille au homard', slot: 'conso', heal: 90, desc: 'Un pain hot-dog plein de homard. Rend 90 PV.', price: 32 },
+  fromage: { name: 'Fromage de Charlevoix', slot: 'conso', heal: 40, stam: 1, desc: 'Affiné dans une cave, mangé sur un quai. Rend 40 PV et l’énergie.', price: 16 },
+  bagel: { name: 'Bagel au sésame', slot: 'conso', heal: 28, buff: 8, desc: 'Cuit au four à bois. Mangé dans le trafic. Rend 28 PV et donne de la vitesse.', price: 9 },
   // construire et miner
   charbon: { name: 'Charbon', slot: 'mat', desc: 'Trouvé dans la pierre. Noircit les mitaines.', price: 8 },
   fer: { name: 'Minerai de fer', slot: 'mat', desc: 'Du fer brut, plein de rouille et de promesses.', price: 14 },
@@ -41,7 +47,7 @@ export const ITEMS = {
   tire: { name: 'Tire sur la neige', slot: 'conso', heal: 30, buff: 10, desc: 'Sirop bouillant sur la neige, roulé sur un bâton. Rend 30 PV et donne de la vitesse.', price: 14 },
   tarte: { name: 'Tarte aux bleuets', slot: 'conso', heal: 70, buff: 15, desc: 'Rend 70 PV et donne de la vitesse. Tache les dents.', price: 30 },
 };
-export const SHOPS = { etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau', 'dossard'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone', 'epaulettes'] };
+export const SHOPS = { charlevoix: ['fromage', 'tarte', 'sirop', 'tourtiere', 'raquettes', 'pic_fer', 'hache'], perce: ['guedille', 'poutine', 'bleuets', 'manteau', 'bottes', 'casque_hockey'], montreal: ['bagel', 'poutine', 'casque_chantier', 'dossard', 'grattoir', 'gants_travail', 'epaulettes'], etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau', 'dossard'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone', 'epaulettes'] };
 export const RARITY = [{ n: 'commun', c: '#e8e8e8', m: 1 }, { n: 'rare', c: '#5ab8ff', m: 1.25 }, { n: 'épique', c: '#d07aff', m: 1.55 }, { n: 'légendaire', c: '#ffa83a', m: 1.9 }];
 export const SHOP = ['poutine', 'sirop', 'tourtiere', 'bottes', 'mitaines_doublees', 'manteau', 'baton_carbone', 'pelle_alu', 'casque_hockey', 'gants_travail', 'pic_bois'];
 
@@ -73,9 +79,21 @@ export const NPCS = {
   pecheur: { name: 'Ti-Mé, pêcheur', look: { coat: 0xc02020, hat: 0x2c5a34, beard: 0x8a8a8a, hair: 0x8a8a8a } },
   saguenayen: { name: 'Gilles, du port de Chicoutimi', look: { coat: 0x1f3f8a, hat: 0xf2c12e, beard: 0x5a3a22, pom: 0x1f3f8a } },
   chauffeur: { name: 'Chauffeur d’autocar', look: { coat: 0x2e5fa8, hatType: 'kepi', hat: 0x2e5fa8, sash: false, mitt: 0xf0c8a0 } },
+  peintre: { name: 'Jeanne, peintre de Baie-Saint-Paul', quest: true, look: { coat: 0x8a3a6a, hatType: 'bun', hair: 0x2a1e18, sash: false, apron: 0xe8d8c0, mitt: 0xf0c8a0 } },
+  capitaine: { name: 'Capitaine Ti-Louis, traversier de Percé', quest: true, look: { coat: 0x1f3f8a, hatType: 'kepi', hat: 0xf2f2f2, beard: 0xd8d8d8, hair: 0xd8d8d8, sash: false } },
+  matelot: { name: 'Matelot Bouchard, traversier', look: { coat: 0x1f3f8a, hatType: 'kepi', hat: 0xf2f2f2, sash: false, mitt: 0xf0c8a0 } },
+  gardienne: { name: 'Madeleine, gardienne du phare', look: { coat: 0xc02020, hat: 0xf2f2f2, hatBand: 0xc02020, pom: 0xc02020, hair: 0xb8b8c0, sash: false } },
+  contremaitre: { name: 'Raymond, contremaître de la Ville', quest: true, look: { coat: 0xff7a1a, hatType: 'casque', hair: 0x5a3a22, beard: 0x5a3a22, sash: false, mitt: 0xc89a5a } },
+  cycliste: { name: 'Josée, cycliste du Plateau', quest: true, look: { coat: 0x2c8a4a, hatType: 'casque', hair: 0xc89a3a, queue: true, cils: true, sash: false, mitt: 0x222222 } },
   guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
 };
 export const ROLE_CHAT = {
+  peintre: ['Le fleuve change de bleu aux cinq minutes. Moi, je change de pinceau aux cinq minutes.', 'Les côtes de Charlevoix sont tellement à pic que mon chevalet roule tout seul.'],
+  capitaine: ['Le traversier part quand il est prêt. Pis il est prêt quand j’ai fini mon café.', 'Le Rocher? Y’a un trou dedans depuis des siècles. Pas mal comme les routes à Montréal.'],
+  matelot: ['Traversier pour Percé! Prends ta tuque, ça vente sur le pont.', 'On part à l’heure. L’heure de qui, ça c’est une autre question.'],
+  gardienne: ['Mon phare guide les bateaux depuis 1874. Moi, je guide les touristes depuis le dîner.', 'Les fous de Bassan sur le Rocher? Y’en a des milliers. Pis y sont pas mal plus fins que les goélands.'],
+  contremaitre: ['Le chantier finit en 2099. Peut-être 2100 si y pleut.', 'Un cône, c’est pas un obstacle. C’est un mode de vie.', 'On a bouché un nid-de-poule en 1998. On en parle encore au bureau.'],
+  cycliste: ['La piste cyclable est ouverte! Entre les cônes, les trous pis le camion de livraison.', 'J’ai crevé trois pneus aujourd’hui. Un record personnel!'],
   cuisiniere: ['Ici, le café est chaud pis la tarte est frette. Comme il faut.', 'Les camionneurs disent que mon pâté chinois vaut le détour. Y’a pas de détour, c’est la seule route.'],
   gardeparc: ['Bienvenue dans la Réserve! Pas de feu en dehors des foyers, pis on flatte pas les orignaux.', 'Les orignaux ont priorité sur la 175. C’est pas écrit dans le code, mais essaye de leur dire.', 'Les mouches noires? On les compte plus. Elles, elles nous comptent.'],
   pecheur: ['La truite mord à matin. Les mouches noires, elles, mordent toute la journée.', 'J’ai pogné une truite grosse de même. Bon, de même. Correct, de même.', 'Aux Sept îles, y’a sept lacs. Ou six. Ça dépend du niveau d’eau pis de la bière.'],
@@ -124,6 +142,21 @@ export const QUESTS = {
     intro: 'Mauvaise nouvelle : le Cône Suprême dirige un grand chantier dans les hauteurs, au nord-est. Si on l’arrête pas, il va mettre des cônes jusque dans le fleuve!',
     wait: 'Le Grand Chantier est au nord-est, dans les hauteurs. Prends des poutines.', done: 'Tu as vaincu le Cône Suprême! Les rues sont libres. Voici le Bâton doré du Carnaval.' },
 };
+// Nouvelles régions : une quête (ou deux) par région
+Object.assign(QUESTS, {
+  pinceaux: { giver: 'peintre', home: 'baie', at: 'belvcharl', title: 'Les pinceaux envolés', type: 'collect', item: 'pinceau', n: 4, reward: { cash: 140, xp: 380, give: { fromage: 2, tire: 2 } },
+    intro: 'Un goéland m’a volé tout mon coffre de pinceaux! Il les a échappés un par un en montant au Belvédère, en haut de la côte. Rapporte-m’en quatre, pis je te peins un portrait. Avec ta tuque, promis.',
+    wait: 'Le Belvédère est en haut de la côte, au nord-ouest du village. Les pinceaux sont éparpillés autour.', done: 'Mes pinceaux! Pis regarde ce bleu… Tiens, du fromage d’ici pis de la tire. Ton portrait va être prêt dans six à huit ans.' },
+  casiers: { giver: 'capitaine', home: 'perce', at: 'perce', title: 'Les casiers à homard', type: 'collect', item: 'casier', n: 5, reward: { cash: 160, xp: 420, give: { guedille: 3 } },
+    intro: 'La tempête a garroché mes casiers à homard partout sur la grève, au pied des falaises! Ramène-m’en cinq avant que les goélands fassent l’inventaire.',
+    wait: 'Les casiers sont sur la grève, des deux côtés du quai. Attention aux goélands, y’aiment le homard autant que moi.', done: 'Cinq casiers! La saison est sauvée. Tiens, trois guédilles au homard. Du vrai, pas du « goût homard ».' },
+  nids: { giver: 'contremaitre', home: 'mtl', at: 'mtl', title: 'Les nids-de-poule de la rue Saint-Denis', type: 'kill', target: 'trou', n: 5, reward: { cash: 170, xp: 450, item: 'casque_chantier' },
+    intro: 'Les nids-de-poule ont développé une conscience. Pis des dents. La Ville a voté un budget pour les boucher en 2031. Moi, j’ai pas le temps d’attendre : règle-moi-en cinq, dans les rues autour de la place.',
+    wait: 'Les nids-de-poule se cachent dans l’asphalte. Quand la rue te mord les chevilles, frappe!', done: 'Cinq de moins! Tiens, un casque de chantier officiel. Il a jamais servi : on était en pause.' },
+  piste: { giver: 'cycliste', home: 'mtl', at: 'mtl', requires: ['nids'], title: 'Une piste cyclable sans cônes', type: 'kill', target: 'cone', n: 8, reward: { cash: 180, xp: 480, item: 'grattoir' },
+    intro: 'Ma piste cyclable a disparu sous les cônes. Pis là, les cônes se sont mis à marcher! Débarrasse-moi de huit cônes-golems, que je puisse rouler jusqu’au Plateau sans slalom.',
+    wait: 'Les cônes-golems rôdent dans les rues de Montréal. Y’en a plus que de citoyens.', done: 'Wow, je vois l’asphalte! Pis un trou. Pis un autre cône… pas grave. Tiens, mon grattoir : je l’ai trouvé dans un banc de neige en juillet.' },
+});
 // Récit principal, suite : le Comité du Grand Plan (personnages et organisation fictifs)
 Object.assign(QUESTS, {
   memo: { chap: 3, giver: 'lapaperasse', requires: ['permis'], title: 'Le mémo à l’encre de sirop', type: 'talk', to: 'pepere', n: 1, give: 'memo', reward: { cash: 60, xp: 220, give: { sirop: 2 } },

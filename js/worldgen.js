@@ -1,6 +1,7 @@
 // Génération procédurale du monde : relief, fleuve, biomes, arbres, structures (Vieille-Ville, villages, chantiers, cabanes à sucre).
 // Partagé entre le Web Worker (blocs) et le fil principal (hauteurs, positions des structures et des PNJ).
 import { makeNoise, mulberry, hash2, smooth } from './noise.js';
+import { createRegions, buildCity, regLayout, regBuild } from './regions.js';
 import { B, CS, WH, SEA, SEAV, CSM, VS } from './blocks.js';
 import { createNord, buildRoad, nordLayout, nordBuild } from './nord.js';
 export const BIOME = { RIVE: 0, CAMPAGNE: 1, BOREALE: 2, ERABLIERE: 3, COLLINES: 4, VILLE: 5 };
@@ -11,9 +12,11 @@ const lerp = (a, b, t) => a + (b - a) * t;
 export function createGen(seed) {
   const N = makeNoise(seed), N2 = makeNoise(seed + 101), N3 = makeNoise(seed + 202), N4 = makeNoise(seed + 303);
   const riverZ = x => 34 * N.fbm(x * 0.0022 + 3.1, 1.7, 3) + 12 * N2.n2(x * 0.009, 7.7);
-  const riverW = x => 24 + 8 * N3.n2(x * 0.004, 1.3);
+  const riverW = x => 24 + 8 * N3.n2(x * 0.004, 1.3) + 180 * smooth(1750, 2350, x); // le fleuve s'élargit en golfe vers la Gaspésie
   const VX = 0, VZ = Math.round(riverZ(0) - 72), VH = SEA + 17, VR = 34;
   const nord = createNord({ N, N2, N3, seed });
+  const reg = createRegions({ N, N2, N3, seed, riverZ, riverW, VX });
+  { const nr = nord.region; nord.region = (x, z) => reg.region(x, z) || nr(x, z); nord.labels.push(...reg.labels); nord.stops.push(...reg.stops); Object.assign(nord.places, reg.places); }
   function rawH(x, z) {
     const rz = riverZ(x), north = rz - z, d = Math.abs(z - rz), W = riverW(x);
     if (z < -660) { const T = nord.terrain(x, z, 0); return { h: T.h, north, d, W, wl: T.wl, nord: T.nord, rd: T.rd, nb: T.biome, dens: T.dens }; }
@@ -25,6 +28,8 @@ export function createGen(seed) {
     const bed = SEA - 1 - 8 * Math.max(0, 1 - (d / W) ** 2);
     const sh = smooth(W * 0.8, W + 30, d);
     const T = nord.terrain(x, z, lerp(bed, land, sh));
+    const RG = reg.terrain(x, z, T.h, north, d, W);
+    if (RG) return { h: RG.h, north, d, W, wl: 0, nord: false, rd: 99, nb: RG.nb, dens: RG.dens, reg: RG.reg, city: RG.city };
     return { h: T.h, north, d, W, wl: T.wl, nord: T.nord, rd: T.rd, nb: T.biome, dens: T.dens };
   }
   // ---------- structures (grille de cellules) ----------
@@ -36,6 +41,7 @@ export function createGen(seed) {
   function makeCell(i, j) {
     let type;
     if (j <= -3) return null; // le Nord a ses propres lieux (nord.js)
+    { const cx = VX + i * CELL, cz = VZ + j * CELL; if (reg.region(cx, cz) || reg.region(cx, cz - 60) || reg.region(cx, cz + 60)) return null; } // nouvelles régions : leurs propres lieux
     const forced = { '0,0': 'ville', '1,0': 'cabane', '-1,0': 'village', '0,-1': 'chantier', '2,-1': 'grand', '-1,-1': 'none', '1,-1': 'none', '0,-2': 'none' }[i + ',' + j];
     const r = mulberry((seed * 7919) ^ (i * 92821 + j * 68917));
     const hv = r();
@@ -60,6 +66,7 @@ export function createGen(seed) {
     const ci = Math.round((x - VX) / CELL), cj = Math.round((z - VZ) / CELL), out = [];
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const s = cell(ci + a, cj + b); if (s) out.push(s); }
     if (z < -400) for (const s of nord.structs) { const r = Math.max(s.R2, s.BR || 0) + 20; if (Math.abs(x - s.x) < r && Math.abs(z - s.z) < r) out.push(s); }
+    for (const s of reg.structs) { const r = Math.max(s.R2, s.BR || 0) + 20; if (Math.abs(x - s.x) < r && Math.abs(z - s.z) < r) out.push(s); }
     return out;
   }
   function biomeRaw(x, z, R) {
@@ -81,7 +88,7 @@ export function createGen(seed) {
     }
     let biome = biomeRaw(x, z, R);
     if (st && st.type === 'ville' && w > 0.5) biome = BIOME.VILLE;
-    return { h: Math.floor(h), hc: h, biome, w, st, north: R.north, d: R.d, W: R.W, wl: w > 0.5 && st && st.nord && st.type !== 'camp' ? 0 : R.wl, nord: R.nord, rd: R.rd, dens: R.dens };
+    return { h: Math.floor(h), hc: h, biome, w, st, north: R.north, d: R.d, W: R.W, wl: w > 0.5 && st && st.nord && st.type !== 'camp' ? 0 : R.wl, nord: R.nord, rd: R.rd, dens: R.dens, reg: R.reg, city: R.city };
   }
   // hauteur du dernier voxel plein (en mètres, multiple de VS) : la surface est à heightAt + 1
   function heightAt(x, z) { const c = column(Math.floor(x), Math.floor(z)); return Math.floor(c.hc * 2) / 2; }
@@ -89,6 +96,7 @@ export function createGen(seed) {
     const out = [];
     for (let i = Math.floor((x0 - VX) / CELL) - 1; i <= Math.ceil((x1 - VX) / CELL) + 1; i++) for (let j = Math.floor((z0 - VZ) / CELL) - 1; j <= Math.ceil((z1 - VZ) / CELL) + 1; j++) { const s = cell(i, j); if (s && s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s); }
     for (const s of nord.structs) if (s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s);
+    for (const s of reg.structs) if (s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s);
     return out;
   }
 
@@ -144,7 +152,7 @@ export function createGen(seed) {
     // arbres et rochers (positions tirées sur la grille d'un mètre)
     for (let j = 0; j < GW; j++) for (let i = 0; i < GW; i++) {
       const c = cols[i + j * GW], wx = oxm - M + i, wz = ozm - M + j;
-      if (c.w > 0.02 || c.h <= SEA + 1 || c.biome === BIOME.RIVE || c.rd < 9 || (c.wl && c.h < c.wl + 1)) continue;
+      if (c.w > 0.02 || c.city || c.h <= SEA + 1 || c.biome === BIOME.RIVE || c.rd < 9 || (c.wl && c.h < c.wl + 1)) continue;
       const hv = hash2(wx, wz, seed + 9), fy = Math.min(WH - 3, Math.floor(c.hc * 2) + 1), fx = wx * 2, fz = wz * 2;
       const dens = [0, 0.008, 0.05, 0.04, 0.016, 0][c.biome] * (c.biome === BIOME.COLLINES && c.h > SEA + 40 ? 0.2 : 1) * (c.dens || 1);
       if (hv >= dens) { if (hv < dens + [0, 0.002, 0.004, 0.002, 0.006, 0][c.biome]) rock(P, fx, fy, fz, hash2(wz, wx, seed + 31)); continue; }
@@ -156,17 +164,18 @@ export function createGen(seed) {
     }
     // route 175 et ses panneaux (avant les lieux, qui peuvent la recouvrir)
     if (oz * VS < -100 && oz * VS > -2420) buildRoad(nord, P, data, idx, hf, FW, FM, CS, WH, ox, oz);
+    if (oxm < -1000 && oxm > -1800) buildCity(reg, P, data, idx, hf, cf, FW, FM, CS, ox, oz, seed);
     // structures
     const seen = new Set();
     for (const [dx, dz] of [[0, 0], [CSM, 0], [0, CSM], [CSM, CSM], [CSM / 2, CSM / 2]]) for (const s of structsNear(oxm + dx, ozm + dz)) {
       if (seen.has(s)) continue; seen.add(s);
       const rad = (s.BR || s.R) + 4; if (s.x + rad < oxm || s.x - rad > oxm + CSM || s.z + rad < ozm || s.z - rad > ozm + CSM) continue;
-      if (s.nord && s.type !== 'village') nordBuild(s, P, HELP); else BUILD[s.type](P, s);
+      if (s.reg) regBuild(s, P, HELP); else if (s.nord && s.type !== 'village') nordBuild(s, P, HELP); else BUILD[s.type](P, s);
     }
     // végétation au sol (herbes, fleurs, bleuets) sur le dessus resté libre
     for (let z = 0; z < CS; z++) for (let x = 0; x < CS; x++) {
       const k = (x + FM) + (z + FM) * FW, c = cf[k], h = hf[k];
-      if (h + 1 >= WH || c.w > 0.3) continue;
+      if (h + 1 >= WH || c.w > 0.3 || c.city) continue;
       const tb = data[idx(x, h, z)]; if ((tb !== B.GRASS && tb !== B.SNOWGRASS && tb !== B.MOSS) || data[idx(x, h + 1, z)] !== 0) continue;
       const wx = ox + x, wz = oz + z, r = hash2(wx, wz, seed + 77), r2 = hash2(wz, wx, seed + 78);
       const pf = N.n2(wx * 0.03 + 11, wz * 0.03) * 0.5 + 0.5;
@@ -181,7 +190,7 @@ export function createGen(seed) {
     return data;
   }
   const HELP = { house, church, lampPost, nord };
-  return { genChunk, column, heightAt, rawH, riverZ, riverW, structsNear, cell, allStructs, VX, VZ, VH, VR, layout, nord };
+  return { genChunk, column, heightAt, rawH, riverZ, riverW, structsNear, cell, allStructs, VX, VZ, VH, VR, layout, nord, reg };
 }
 
 // ---------- arbres (en voxels fins) ----------
@@ -331,6 +340,7 @@ function lampPost(P, x, z, h) {
 export function layout(s) {
   // Métadonnées d'une structure : PNJ, points d'apparition, objets à ramasser, entrées.
   const r = mulberry(s.seed), m = { npcs: [], spawns: [], items: [], gates: [], houses: [] };
+  if (s.reg) { regLayout(s, m, r); return m; }
   if (s.nord && s.type !== 'village') { nordLayout(s, m, r); return m; }
   if (s.type === 'village') {
     const n = 5 + (r() * 2 | 0), a0 = r() * 6.28;

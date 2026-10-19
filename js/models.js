@@ -347,6 +347,8 @@ export function pickupModel(kind) {
   else if (kind === 'sirop') { box(g, 0.3, 0.4, 0.14, 0xc07a20, 0, 0, 0, true); box(g, 0.1, 0.1, 0.1, 0xf2f2f2, 0, 0.25, 0); }
   else if (kind === 'ble') { box(g, 0.3, 0.4, 0.3, 0xc9ced6, 0, 0, 0); box(g, 0.31, 0.24, 0.31, 0xf2d03a, 0, 0, 0, true); box(g, 0.12, 0.12, 0.315, 0x2c8a3a, 0, 0, 0); }
   else if (kind === 'poutine') { box(g, 0.36, 0.18, 0.3, 0xf2f2f2, 0, 0, 0); box(g, 0.32, 0.1, 0.26, 0xe8b84a, 0, 0.12, 0, true); }
+  else if (kind === 'pinceau') { box(g, 0.06, 0.06, 0.5, 0xb98b52, 0, 0, 0); box(g, 0.08, 0.08, 0.08, 0xc9ced6, 0, 0, -0.28); box(g, 0.08, 0.08, 0.12, 0x2e7fd8, 0, 0, -0.38, true); }
+  else if (kind === 'casier') { box(g, 0.6, 0.4, 0.44, 0x8b6a3e, 0, 0, 0); box(g, 0.5, 0.3, 0.46, 0x2a3a3a, 0, 0, 0, true); box(g, 0.62, 0.06, 0.46, 0xc8282e, 0, 0.21, 0); }
   else { box(g, 0.4, 0.4, 0.4, 0x9a6adf, 0, 0, 0, true); box(g, 0.46, 0.08, 0.46, 0xf2c12e, 0, 0.1, 0); }
   return bake(g);
 }
