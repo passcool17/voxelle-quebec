@@ -5,7 +5,7 @@ function brain() {
   window.__botInfo = B;
   window.__bot = (api, dt) => {
     const G = api.G, P = G.P, T = window.__task; const I = api.input;
-    I.bot = { mx: 0, mz: 0, run: false, jump: false, jumpP: false, atk: false };
+    I.bot = { mx: 0, mz: 0, run: false, jump: false, jumpP: false, atk: false, rollP: false };
     if (G.state !== 'play' || !P || !T) return;
     const S = api.S, st = api.stats();
     if (P.hp < st.hpMax * 0.45 && S.inv.some(i => ['poutine', 'sirop', 'tourtiere'].includes(i.id))) api.pressed.add('KeyR');
@@ -18,7 +18,13 @@ function brain() {
     else if (T.type === 'idle') return;
     const dx = tx - P.x, dz = tz - P.z, d = Math.hypot(dx, dz);
     let yaw = Math.atan2(-dx, -dz);
-    if (foe) { G.camYaw += Math.atan2(Math.sin(yaw - G.camYaw), Math.cos(yaw - G.camYaw)) * Math.min(1, dt * 10); G.camPitch = 0.3; I.bot.atk = d < want + 1.2 || (st.W.kind === 'ranged' && d < 20);
+    if (foe) { G.camYaw += Math.atan2(Math.sin(yaw - G.camYaw), Math.cos(yaw - G.camYaw)) * Math.min(1, dt * 10); G.camPitch = 0.3; const wa = d < want + 1.2 || (st.W.kind === 'ranged' && d < 20);
+      // clic répété (un coup par appui) ; de temps en temps, coup chargé (garder ~0,8 s)
+      B.chg = (B.chg || 0) + dt; if (B.chg > 5 && wa && st.W.kind !== 'ranged') { I.bot.atk = true; if (B.chg > 5.8) B.chg = 0; } else { B.pulse = !B.pulse; I.bot.atk = wa && B.pulse; }
+      // esquives : sauter l'onde de choc, rouler hors d'une charge ou d'une zone d'impact
+      const bo = G.boss; if (bo && ((bo.stomp && !bo.stomp.fired && bo.stomp.t < 0.25) || (bo.wave && Math.abs(Math.hypot(bo.x - P.x, bo.z - P.z) - bo.wave.r) < 2.2))) I.bot.jumpP = P.ground;
+      if (bo && bo.bch && !bo.bch.wind && Math.hypot(bo.x - P.x, bo.z - P.z) < 6) { I.bot.rollP = true; I.bot.mx = B.side; I.bot.mz = 0; }
+      for (const r of G.rings) if (r.r0 === r.r1 && r.r0 < 2.5 && Math.hypot(r.m.position.x - P.x, r.m.position.z - P.z) < 2) { I.bot.rollP = true; I.bot.mx = B.side; }
       I.bot.mz = d > want ? -1 : d < want - 1.5 ? 0.6 : 0; I.bot.mx = 0.35 * B.side; if (Math.random() < dt * 0.4) B.side *= -1; }
     else { G.camYaw = yaw; G.camPitch = T.pitch ?? 0.3; I.bot.mz = -1; I.bot.run = d > 6 && P.stam > 0.3 && !T.walk; }
     // blocage : sauter, puis contourner, puis se dégager

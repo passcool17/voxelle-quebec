@@ -112,6 +112,10 @@ label.chk { justify-content: flex-start; } input[type=checkbox] { width: 24px; h
 .tb.sm { position: static; border-radius: 10px; width: auto; height: auto; min-height: 7vh; padding: 0 12px; font-size: calc(var(--u) * .85); }
 #tAtk { right: 4vw; bottom: 8vh; width: 19vh; height: 19vh; background: rgba(200,40,46,.6); }
 #tJump { right: calc(4vw + 21vh); bottom: 4vh; }
+#tRoll { right: calc(4vw + 22vh); bottom: calc(4vh + 17vh); width: 12vh; height: 12vh; }
+#bossbox .bar { position: relative; }
+#bossbox .bar i { position: absolute; top: 0; bottom: 0; width: 3px; background: #0c1420; }
+#bossname small { color: #ffd23a; }
 #tBrk { right: calc(4vw + 1vh); bottom: calc(8vh + 21vh); width: 13vh; height: 13vh; }
 #tPlace { right: calc(4vw + 16vh); bottom: calc(8vh + 19vh); width: 13vh; height: 13vh; }
 #tTalk { right: calc(4vw + 33vh); bottom: calc(8vh + 15vh); width: 15vh; height: 15vh; background: rgba(40,140,60,.75); }

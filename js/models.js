@@ -240,6 +240,24 @@ export function enemyModel(type) {
       const A = pivot(P.head, sx * 0.25, 0.28, 0); box(A, 0.5, 0.08, 0.1, 0xd8c8a0, sx * 0.3, 0, 0); box(A, 0.12, 0.08, 0.6, 0xd8c8a0, sx * 0.62, 0.05, 0); box(A, 0.42, 0.06, 0.55, 0xc8b890, sx * 0.62, 0.12, 0);
       for (let k = 0; k < 4; k++) box(A, 0.06, 0.24, 0.06, 0xd8c8a0, sx * (0.48 + k * 0.1), 0.26, -0.24 + k * 0.16); }
     box(body, 0.16, 0.2, 0.1, 0x2a1a10, 0, 2.0, 1.18);
+  } else if (type === 'souffleuse') {
+    // souffleuse à neige fâchée : caisse rouge, vis sans fin à l'avant, cheminée qui crache des mottes
+    const body = pivot(g, 0, 0, 0); P.body = body;
+    box(body, 0.9, 0.55, 0.8, 0xd83a1a, 0, 0.55, 0.15); box(body, 0.92, 0.08, 0.82, 0x2a2a2a, 0, 0.3, 0.15); box(body, 0.6, 0.3, 0.5, 0x3a3a3a, 0, 0.95, 0.25);
+    box(body, 1.1, 0.5, 0.36, 0xb02a14, 0, 0.42, -0.4); box(body, 1.0, 0.42, 0.3, 0x1a1a1a, 0, 0.4, -0.5);
+    P.auger = pivot(body, 0, 0.4, -0.52); for (let i = 0; i < 6; i++) box(P.auger, 0.95, 0.07, 0.07, i % 2 ? 0xc9ced6 : 0x8a8e96, 0, Math.cos(i) * 0.15, Math.sin(i) * 0.15);
+    P.chute = pivot(body, 0.25, 0.75, -0.3); box(P.chute, 0.2, 0.6, 0.2, 0xd83a1a, 0, 0.3, 0); box(P.chute, 0.22, 0.2, 0.34, 0xd83a1a, 0, 0.62, -0.1); box(P.chute, 0.16, 0.04, 0.2, 0x111111, 0, 0.62, -0.28);
+    for (const sx of [-1, 1]) { box(body, 0.16, 0.1, 0.02, 0xfff4d0, sx * 0.2, 0.72, -0.26, true); box(body, 0.06, 0.07, 0.02, 0x111111, sx * 0.2, 0.71, -0.27); box(body, 0.2, 0.04, 0.02, 0x111111, sx * 0.2, 0.8, -0.26).rotation.z = sx * 0.3;
+      box(body, 0.16, 0.36, 0.36, 0x161616, sx * 0.5, 0.2, 0.35); box(body, 0.04, 0.6, 0.04, 0x444444, sx * 0.3, 0.95, 0.65); }
+    box(body, 0.64, 0.04, 0.04, 0x444444, 0, 1.25, 0.72); box(body, 0.3, 0.1, 0.02, 0xf2c12e, 0, 0.55, 0.56);
+  } else if (type === 'goeland') {
+    // goéland du Vieux-Port, une frite dans le bec
+    const body = pivot(g, 0, 0, 0); P.body = body;
+    box(body, 0.3, 0.28, 0.62, 0xf4f4f0, 0, 0.3, 0); box(body, 0.28, 0.06, 0.5, 0x9aa4b0, 0, 0.45, 0.06); box(body, 0.2, 0.08, 0.26, 0x2a2a2a, 0, 0.36, 0.4);
+    box(body, 0.24, 0.24, 0.24, 0xf8f8f4, 0, 0.48, -0.36); box(body, 0.08, 0.06, 0.2, 0xf2c12e, 0, 0.44, -0.56); box(body, 0.06, 0.04, 0.04, 0xd82020, 0, 0.42, -0.62);
+    box(body, 0.03, 0.03, 0.22, 0xf0c860, 0.04, 0.43, -0.62).rotation.y = 0.5;
+    for (const sx of [-1, 1]) { box(body, 0.04, 0.04, 0.02, 0x111111, sx * 0.1, 0.52, -0.47); box(body, 0.08, 0.02, 0.02, 0x111111, sx * 0.09, 0.56, -0.47).rotation.z = -sx * 0.4; box(body, 0.04, 0.16, 0.04, 0xf2a03a, sx * 0.08, 0.1, 0.05);
+      const W = P[sx < 0 ? 'wL' : 'wR'] = pivot(body, sx * 0.14, 0.42, 0); box(W, 0.6, 0.04, 0.32, 0x9aa4b0, sx * 0.3, 0, 0); box(W, 0.2, 0.045, 0.24, 0x1a1a1a, sx * 0.62, 0, 0.04); box(W, 0.06, 0.05, 0.05, 0xf4f4f0, sx * 0.7, 0.01, 0.12); }
   } else if (type === 'trou') {
     const body = pivot(g, 0, 0, 0); P.body = body;
     box(body, 2.0, 0.08, 2.0, 0x4a4c50, 0, 0.04, 0); box(body, 1.5, 0.1, 1.5, 0x0a0a0a, 0, 0.06, 0);
@@ -261,6 +279,8 @@ export function animEnemy(e, t, dt) {
   else if (e.type === 'plow') { P.light.visible = Math.sin(t * 14) > -0.2; P.light.rotation.y = t * 8; P.body.position.y = Math.sin(t * 30) * 0.02 * mv; P.blade.position.y = 0.55 + (e.state === 'wind' ? Math.sin(t * 20) * 0.08 : 0); }
   else if (e.type === 'raton') { P.body.position.y = Math.abs(s) * 0.1 * mv; P.tail.rotation.y = Math.sin(t * 6) * 0.4; P.head.rotation.x = e.atkAnim > 0 ? 0.4 : 0; P.poutine.visible = !e.stole; }
   else if (e.type === 'orignal') { const k = Math.min(1.6, Math.hypot(e.vx, e.vz) / 3); P.legs.forEach((L, i) => { L.rotation.x = Math.sin(t * 7 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.5 * k; }); P.head.rotation.x = e.charge && !e.charge.wind ? 0.5 : e.atkAnim > 0 ? 0.6 * Math.sin(e.atkAnim * Math.PI) : 0; P.body.rotation.x = e.charge && e.charge.wind ? Math.sin(t * 30) * 0.03 : 0; }
+  else if (e.type === 'souffleuse') { P.auger.rotation.x = t * (e.state === 'chase' ? 14 : 4); P.body.position.y = Math.sin(t * 40) * 0.015; P.chute.rotation.x = e.atkAnim > 0 ? -0.5 * Math.sin(e.atkAnim * Math.PI) : 0; }
+  else if (e.type === 'goeland') { const fl = e.dive ? -0.5 : e.rec > 0 ? 0.6 + Math.sin(t * 6) * 0.3 : Math.sin(t * 11) * 0.7; P.wL.rotation.z = fl; P.wR.rotation.z = -fl; P.body.rotation.x = e.dive ? 0.5 : 0; }
   else if (e.type === 'mouches') { for (const f of P.flies) { const ph = f.userData.ph + t * (5 + f.userData.r * 3), r = f.userData.r; f.position.set(Math.cos(ph) * r, 1.1 + Math.sin(ph * 1.7) * 0.4, Math.sin(ph * 1.3) * r); } }
   else if (e.type === 'trou') { const open = e.state === 'chase' || e.atkAnim > 0 ? 1 : 0; e.jawT = (e.jawT || 0) + (open - (e.jawT || 0)) * Math.min(1, dt * 8); P.jaw.position.y = 0.08 + e.jawT * (0.15 + (e.atkAnim > 0 ? Math.sin(e.atkAnim * Math.PI) * 0.4 : Math.abs(Math.sin(t * 8)) * 0.1)); P.eyes.visible = e.jawT > 0.3; P.eyes.position.y = 0.2 + e.jawT * 0.3; }
 }

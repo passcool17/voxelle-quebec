@@ -35,6 +35,8 @@ export const ENEMIES = {
   mouches: { name: 'Mouches noires', hp: 14, dmg: 2, spd: 4.4, range: 1.2, cd: 0.6, xp: 12, cash: [1, 3], aggro: 13, hw: 0.4, h: 1.2, fly: true },
   trou: { name: 'Nid-de-poule', hp: 46, dmg: 12, spd: 1.2, range: 1.8, cd: 1.4, xp: 32, cash: [4, 10], aggro: 5, hw: 0.9, h: 0.5 },
   orignal: { name: 'Orignal de mauvaise humeur', hp: 120, dmg: 15, spd: 4.0, range: 2.4, cd: 2.6, xp: 70, cash: [6, 14], aggro: 17, hw: 0.8, h: 2.6, charge: true },
+  souffleuse: { name: 'Souffleuse à neige enragée', hp: 70, dmg: 11, spd: 2.2, range: 15, cd: 3.0, xp: 48, cash: [5, 12], aggro: 21, hw: 0.6, h: 1.2, lob: true },
+  goeland: { name: 'Goéland voleur de frites', hp: 26, dmg: 6, spd: 7, range: 1.4, cd: 2.6, xp: 28, cash: [2, 6], aggro: 22, hw: 0.45, h: 0.7, fly: true, dive: true },
   supreme: { name: 'Le Cône Suprême', hp: 650, dmg: 20, spd: 3.0, range: 3.6, cd: 1.6, xp: 600, cash: [120, 160], aggro: 26, hw: 1.0, h: 3.8, boss: true },
 };
 export const NPCS = {

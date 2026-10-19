@@ -94,6 +94,12 @@ export class Audio {
       case 'paper': this.nz(t, 0.15, 0.2 * v, 'highpass', 3000); break;
       case 'chomp': tone('square', 140, 60, 0.15, 0.15); this.nz(t, 0.06, 0.25 * v, 'lowpass', 700); break;
       case 'die': tone('square', 300, 60, 0.6, 0.12); break;
+      case 'roll': { const f = this.nz(t, 0.25, 0.22 * v, 'bandpass', 500, S, 1.2); f.frequency.exponentialRampToValueAtTime(1500, t + 0.22); break; }
+      case 'crit': tone('square', 1200, 600, 0.1, 0.08); tone('triangle', 1800, 0, 0.15, 0.06, 0.02); break;
+      case 'boom': this.kick(t, 0.9 * v, S); this.nz(t, 0.35, 0.35 * v, 'lowpass', 400); tone('sine', 70, 35, 0.4, 0.3); break;
+      case 'charge': tone('square', 220, 880, 0.3, 0.06); tone('triangle', 330, 1320, 0.3, 0.05); break;
+      case 'gull': tone('square', 1500, 900, 0.12, 0.05); tone('square', 1700, 1000, 0.14, 0.05, 0.14); break;
+      case 'blower': this.nz(t, 0.4, 0.2 * v, 'bandpass', 300, S, 2); tone('sawtooth', 70, 90, 0.4, 0.05); break;
       case 'ui': tone('square', 660, 0, 0.04, 0.05); break;
       case 'deny': tone('square', 200, 150, 0.15, 0.08); break;
     }
