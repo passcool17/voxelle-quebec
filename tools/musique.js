@@ -27,7 +27,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   // fondu : le gain du village monte pendant que celui du combat descend
   // Charlevoix
   await ev(() => __game.travel('charlevoix')); await arrive(); await W(1000); res.charlevoix = await snap();
-  res.fondu = await ev(async () => { const L = __game.audio.layers, a = __game.audio; a.setTheme('gaspesie'); await new Promise(r => setTimeout(r, 1300)); const mid = { charlevoix: +L.charlevoix.g.gain.value.toFixed(2), gaspesie: +L.gaspesie.g.gain.value.toFixed(2) }; a.setTheme('charlevoix'); return mid; });
+  res.fondu = await ev(async () => { const L = __game.audio.layers, a = __game.audio; a.setTheme('gaspesie'); let mid = null; for (let k = 0; k < 80 && !mid; k++) { await new Promise(r => setTimeout(r, 100)); const c = L.charlevoix.g.gain.value, g = L.gaspesie.g.gain.value; if (c > 0.1 && c < 0.95 && g > 0.05 && g < 0.9) mid = { charlevoix: +c.toFixed(2), gaspesie: +g.toFixed(2), cible: L.gaspesie.v }; } mid = mid || { charlevoix: 1, gaspesie: 0 }; a.setTheme('charlevoix'); return mid; });
   // Montréal et égouts
   await ev(() => __game.travel('montreal')); await arrive(); await W(1000); res.montreal = await snap();
   await ev(() => { const s = __game.gen.reg.places.egout, P = __game.G.P; P.x = s.x + 0.5; P.z = s.z + 3.2; P.y = __game.gen.heightAt(P.x, P.z) + 2; }); await arrive();
