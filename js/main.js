@@ -39,7 +39,7 @@ const audio = new Audio(); audio.setVol(OPT.vol); audio.setMusic(OPT.mus);
 let world = null;
 
 // ---------- état ----------
-const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], hitstop: 0, shake: 0, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
+const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
     weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
@@ -257,7 +257,7 @@ function melee(st, o = {}) {
     if (!o.all && da > W.arc / 2 && d > 1.1) continue;
     damageEnemy(e, st.dmg * (o.mult || 1), dx / (d || 1), dz / (d || 1), (W.kb || 6) * (o.kbm || 1), { src: 'p', heavy: o.heavy }); n++;
   }
-  if (n && o.fin) { floatTxt(P.x, P.y + 2.6, P.z, 'COMBO!', '#ffd23a'); G.shake = Math.max(G.shake, 0.35); }
+  if (n && o.fin) { G.dbg.fin++; floatTxt(P.x, P.y + 2.6, P.z, 'COMBO!', '#ffd23a'); G.shake = Math.max(G.shake, 0.35); }
   if (n) audio.fx(n && G.enemies.some(e => e.type === 'cone') ? 'bonk' : 'hit');
 }
 function breakBlock() {
@@ -415,12 +415,12 @@ const PHASES = ['', 'Inspection de chantier', 'Zone de travaux élargie', 'Heure
 function bossTitle(e) { $('bossname').innerHTML = e.T.name + ' (niv. ' + e.lvl + ') <small>· phase ' + e.phase + ' : ' + PHASES[e.phase] + '</small>'; }
 function damageEnemy(e, dmg, nx, nz, kb, o = {}) {
   const crit = Math.random() < 0.12, d = Math.round(dmg * (0.88 + Math.random() * 0.24) * (crit ? 1.7 : 1));
-  e.hp -= d; e.hurtT = 0.15; e.flashT = 0.09; e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
+  e.hp -= d; e.hurtT = 0.15; e.flashT = 0.09; if (G.dbg.log) G.dbg.log.push(e.type + ":" + d); e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
   if (!e.T.boss && e.type !== 'trou') { e.vx += nx * kb; e.vz += nz * kb; e.vy = Math.max(e.vy, 3.5); e.stunT = o.heavy ? 0.5 : 0.28; if (e.dive) { e.dive = null; e.rec = 1.2; } }
   else if (e.T.boss && o.heavy) { e.vx += nx * 2; e.vz += nz * 2; }
   floatTxt(e.x, e.y + e.T.h + 0.4, e.z, (crit ? 'CRITIQUE! ' : '') + d, crit ? '#ffd23a' : o.heavy ? '#ffb04a' : '#ffffff');
   burst(e.x, e.y + e.T.h * 0.6, e.z, FOE_COL[e.type], crit || o.heavy ? 9 : 5, crit || o.heavy ? 5 : 3);
-  if (o.src === 'p') { burst(e.x - nx * e.T.hw, e.y + e.T.h * 0.55, e.z - nz * e.T.hw, 0xfff0a0, 3, 6); G.hitstop = Math.max(G.hitstop, o.light ? 0.02 : crit || o.heavy ? 0.09 : 0.05); G.shake = Math.max(G.shake, crit || o.heavy ? 0.28 : o.light ? 0.04 : 0.12); if (crit) audio.fx('crit'); }
+  if (o.src === 'p') { burst(e.x - nx * e.T.hw, e.y + e.T.h * 0.55, e.z - nz * e.T.hw, 0xfff0a0, 3, 6); G.hitstop = Math.max(G.hitstop, o.light ? 0.02 : crit || o.heavy ? 0.09 : 0.05); G.dbg.hs = Math.max(G.dbg.hs, G.hitstop); G.shake = Math.max(G.shake, crit || o.heavy ? 0.28 : o.light ? 0.04 : 0.12); if (crit) audio.fx('crit'); }
   if (e.T.boss) { const ph = e.hp < e.hpMax * 0.33 ? 3 : e.hp < e.hpMax * 0.66 ? 2 : 1;
     if (ph > e.phase && e.hp > 0) { e.phase = ph; bossTitle(e); e.skT = 1.5; G.shake = 0.6; audio.fx('boom'); audio.fx('horn'); banner('PHASE ' + ph + ' : ' + PHASES[ph].toUpperCase(), ph === 2 ? 'Il tape du pied : saute ou roule (C) pour éviter l’onde!' : 'Il fonce sur toi! Roule sur le côté au dernier moment.'); ring(e.x, e.y + 0.1, e.z, 1, 9, 0.6, 0xff3a1a); } }
   if (e.type === 'souffleuse') audio.fx('blower', 0.5); if (e.type === 'goeland') audio.fx('gull', 0.7);
@@ -815,7 +815,7 @@ let hudT = 0;
 function hudUpdate(dt) {
   const P = G.P, st = stats();
   hudT -= dt; if (hudT > 0 && !G.dirtyHot && !G.dirtyQ) return; hudT = 0.12;
-  $('hpbar').querySelector('.fill').style.width = Math.max(0, P.hp / st.hpMax * 100) + '%'; $('hpbar').querySelector('span').textContent = Math.ceil(Math.max(0, P.hp)) + ' / ' + st.hpMax;
+  $('hpbar').querySelector('.fill').style.width = Math.max(0, Math.min(100, P.hp / st.hpMax * 100)) + '%'; $('hpbar').querySelector('span').textContent = Math.ceil(Math.max(0, P.hp)) + ' / ' + st.hpMax;
   $('stbar').querySelector('.fill').style.width = P.stam * 100 + '%';
   $('xpbar').querySelector('.fill').style.width = Math.min(100, S.xp / xpNext(S.lvl) * 100) + '%';
   $('lvl').textContent = 'NIV. ' + S.lvl + '  ·  ' + S.xp + ' / ' + xpNext(S.lvl) + ' XP';

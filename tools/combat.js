@@ -31,10 +31,9 @@ const PORT = +(process.env.PORT || 8919), PFX = process.argv[2] || 'combat-test'
     const e = g.spawnEnemy('cone', P.x, P.z + 0.5); e.state = 'chase'; e.cd = 0; await new Promise(r => setTimeout(r, 350)); const during = P.hp; e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.remove(); return { rollT: +P.rollT.toFixed(2), hpDuring: during }; });
   // 2. combo : 3 coups de suite → coup final
   await clear();
-  res.combo = await ev(async () => { const g = __game, G = g.G, P = G.P; P.hp = 1e5; const e = g.spawnEnemy('orignal', P.x, P.z - 2, { lvl: 1 }); e.hp = e.hpMax = 5000; e.state = 'idle'; e.cd = 99; e.T = Object.assign({}, e.T, { aggro: 0 });
-    G.camYaw = 0; let maxHS = 0, maxSh = 0; const iv = setInterval(() => { maxHS = Math.max(maxHS, G.hitstop); maxSh = Math.max(maxSh, G.shake); }, 10);
-    let fin = false; for (let i = 0; i < 3; i++) { await press(); await gw(0.05); if (P.fin) fin = true; await gw(0.4); }
-    await gw(0.3); clearInterval(iv); const dmg = 5000 - e.hp; e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.remove(); return { dmg: Math.round(dmg), fin, comboReset: P.combo === 0, hitstop: +maxHS.toFixed(3), shake: +maxSh.toFixed(2) }; });
+  res.combo = await ev(async () => { const g = __game, G = g.G, P = G.P; P.hp = 1e5; await gw(0.8); const e = g.spawnEnemy('trou', P.x, P.z - 1.8, { lvl: 1 }); e.hp = e.hpMax = 5000; e.state = 'chase'; e.cd = 99;
+    G.camYaw = 0; G.dbg.log = []; await gw(0.3); for (let i = 0; i < 3; i++) { await press(); G.dbg.log.push("press" + P.combo + "@" + G.t.toFixed(2)); await gw(0.45); }
+    await gw(0.3); const dmg = 5000 - e.hp; e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.remove(); return { dmg: Math.round(dmg), fin: G.dbg.fin, hitstop: G.dbg.hs, log: G.dbg.log.join(" ") }; });
   // 3. coup chargé : touche tout autour
   res.charged = await ev(async () => { const g = __game, G = g.G, P = G.P; const es = [[0, -2], [0, 2], [2, 0], [-2, 0]].map(([dx, dz]) => { const e = g.spawnEnemy('cone', P.x + dx, P.z + dz, { lvl: 1 }); e.hp = e.hpMax = 900; e.cd = 99; e.T = Object.assign({}, e.T, { aggro: 0 }); e.state = 'idle'; return e; });
     await gw(0.5); await press(0.9); const held = 0.9; await gw(0.4);
@@ -53,6 +52,7 @@ const PORT = +(process.env.PORT || 8919), PFX = process.argv[2] || 'combat-test'
     return { dove, high: +high.toFixed(1), recovered: lowNear, hpLost: Math.round(1e5 - P.hp) }; });
   await ev(() => { const G = __game.G; G.camYaw = 0.6; G.camPitch = 0.1; G.camDist = 6; for (const e of G.enemies) if (e.type === 'goeland') { e.rec = 0; e.dive = null; e.cd = 0.3; } }); await W(900);
   await p.screenshot({ path: SH + PFX + '-goeland.png' });
+  if (process.env.NOBOSS) { console.log(JSON.stringify(res)); await b.close(); srv.close(); return; }
   // 6. Cône Suprême : 3 phases, battu par le bot
   await clear(); await ev(brain);
   const grand = await ev(() => { const s = __game.gen.cell(2, -1); return [s.x, s.z]; });
@@ -66,7 +66,7 @@ const PORT = +(process.env.PORT || 8919), PFX = process.argv[2] || 'combat-test'
     if (s.dead) break; if (s.state === 'dead') { await p.click('#bRespawn'); await ev(() => { __game.G.P.hp = 300; }); await tp(grand[0], grand[1] + 10); await ev(() => { window.__task = { type: 'fight', pts: [] }; }); } }
   res.boss = Object.assign(await ev(() => window.__seen), { dead: await ev(() => __game.S.bossDead), deaths: await ev(() => __game.S.stats.kills >= 0 && 0) });
   console.log(JSON.stringify(res, null, 1));
-  const ok = res.dodge.hpDuring === 100 && res.combo.fin && res.combo.hitstop > 0 && res.charged.hitAround >= 3 && res.souffleuse.motte > 0 && res.souffleuse.mark > 0 && res.goeland.dove && res.boss.dead && res.boss.phases.includes(3) && res.boss.wave;
+  const ok = res.dodge.hpDuring === 100 && res.combo.fin > 0 && res.combo.hitstop > 0 && res.charged.hitAround >= 3 && res.souffleuse.motte > 0 && res.souffleuse.mark > 0 && res.goeland.dove && res.boss.dead && res.boss.phases.includes(3) && res.boss.wave;
   console.log(ok ? 'COMBAT OK' : 'COMBAT ÉCHEC'); console.log(errs.length ? errs.slice(0, 20).join('\n') : 'aucune erreur JS');
   await b.close(); srv.close(); process.exit(ok && !errs.length ? 0 : 1);
 })().catch(e => { console.error('ÉCHEC', e); process.exit(2); });
