@@ -35,7 +35,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     const c = await ev(() => { const P = __game.G.P, c = __game.pickups.filter(p => p.kind === 'coffre').sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))[0]; return c && { x: c.x, y: c.y, z: c.z, key: c.key }; });
     const cash0 = await ev(() => __game.S.cash);
     if (c) { await ev(c => { const P = __game.G.P; P.x = c.x; P.z = c.z; P.y = c.y; P.vx = P.vz = P.vy = 0; }, c); await W(900); }
-    o.coffre = c ? await ev(([k, c0]) => ({ pris: !!__game.S.taken[k], gain: __game.S.cash - c0 }), [c.key, cash0]) : 'aucun';
+    o.coffre = c ? await ev(([k, c0, c]) => ({ pris: !!__game.S.taken[k], gain: __game.S.cash - c0, c, st: __game.G.state, P: [__game.G.P.x, __game.G.P.y, __game.G.P.z].map(v => +v.toFixed(1)), hp: __game.G.P.hp }), [c.key, cash0, c]) : 'aucun';
     // piège : on se tient dessus pendant un cycle
     o.piege = await ev(async fy => { const g = __game, G = g.G, P = G.P, t = [...G.traps.values()].filter(t => Math.abs(t.y - fy) < 1)[0]; if (!t) return 'aucun';
       P.hp = 100; P.iT = 0; P.x = t.x; P.z = t.z; P.y = t.y + 0.05; P.vx = P.vz = P.vy = 0; const h0 = P.hp; for (let k = 0; k < 40 && P.hp === h0; k++) { P.x = t.x; P.z = t.z; await new Promise(r => setTimeout(r, 100)); } return { kind: t.kind, hpPerdu: h0 - P.hp }; }, s.fy);
@@ -54,7 +54,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     await ev(() => { const g = __game; for (const e of [...g.G.enemies]) g.damageEnemy(e, 1e7, 0, 1, 0); }); await W(600);
     // sortie par l'échelle
     await ev(k => { const g = __game, s = g.gen.reg.places[k], e = g.dunPlan(s).ent, P = g.G.P; P.x = e.x - e.hr + 1.5; P.z = e.z - e.hr + 1.5; P.y = s.fy + 0.05; P.vx = P.vz = P.vy = 0; }, key); await W(700);
-    o.echelle = await ev(() => __game.G.door && !__game.G.door.down); await p.keyboard.press('KeyE'); await W(2000);
+    o.echelle = await ev(() => __game.G.door && !__game.G.door.down); o.echDiag = await ev(() => ({ st: __game.G.state, dun: !!__game.dun, P: [__game.G.P.x, __game.G.P.y, __game.G.P.z].map(v => +v.toFixed(1)) })); await p.keyboard.press('KeyE'); await W(2000);
     o.dehors = await ev(() => !__game.dun && __game.sky.under < 0.3);
     return o;
   };

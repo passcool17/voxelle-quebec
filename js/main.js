@@ -25,7 +25,7 @@ const SEED = 20261018, SAVE_KEY = 'voxelle-quebec-v2', OLD_SAVE_KEY = 'voxelle-q
 const DAY_LEN = 600;
 
 // ---------- options ----------
-const OPT = Object.assign({ view: mobile ? 4 : 7, qual: 'auto', vol: 0.7, mus: 0.6, sens: 1, inv: false }, JSON.parse(localStorage.getItem(OPT_KEY) || '{}'));
+const OPT = Object.assign({ view: mobile ? 4 : 7, qual: 'auto', vol: 0.7, mus: 0.6, sfx: 0.8, sens: 1, inv: false }, JSON.parse(localStorage.getItem(OPT_KEY) || '{}'));
 function saveOpts() { localStorage.setItem(OPT_KEY, JSON.stringify(OPT)); }
 
 // ---------- rendu ----------
@@ -39,7 +39,7 @@ const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 10
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 const sky = new Sky(scene, mobile);
 const gen = createGen(SEED);
-const audio = new Audio(); audio.setVol(OPT.vol); audio.setMusic(OPT.mus);
+const audio = new Audio(); audio.setVol(OPT.vol); audio.setMusic(OPT.mus); audio.setSfx(OPT.sfx);
 let world = null;
 const amb = new Ambiance(scene, mobile);
 // ombre ronde sous les personnages quand les ombres portées sont coupées (mobile, qualité basse)
@@ -690,6 +690,16 @@ function dunUpdate(dt) {
     if (on && c > 0.12 && d < 0.95 && Math.abs(P.y - t.y) < 1.2) hurtPlayer(t.kind === 'pics' ? 14 : 10, null, t.kind === 'pics' ? 'Des pics rouillés' : 'Un jet de vapeur');
   }
 }
+// musique et ambiance selon le lieu (fondus enchaînés dans audio.js)
+const REG_THEME = { charlevoix: 'charlevoix', baie: 'charlevoix', belvcharl: 'charlevoix', gaspesie: 'gaspesie', perce: 'gaspesie', rocher: 'gaspesie', phare: 'gaspesie', montreal: 'montreal', mtl: 'montreal', egout: 'montreal', mine: 'charlevoix' };
+function soundScape() {
+  const P = G.P, col = gen.column(Math.floor(P.x), Math.floor(P.z)), rk = gen.nord.region(P.x, P.z), day = sky.dayF;
+  let th = G.dun ? G.dun.kind : REG_THEME[rk] || (col.reg === 'montreal' ? 'montreal' : col.reg === 'charlevoix' ? 'charlevoix' : col.reg === 'gaspesie' ? 'gaspesie' : P.z < -480 ? 'boreal' : 'village');
+  audio.setTheme(th); G.theme = th;
+  const city = !G.dun && (th === 'montreal' || col.biome === BIOME.VILLE) ? (th === 'montreal' ? 1 : 0.35) : 0;
+  const wd = col.W != null && col.d != null ? Math.max(0, 1 - Math.max(0, col.d - col.W) / 45) : 0, alt = Math.max(0, (P.y - SEA - 20) / 40);
+  audio.setAmbience(G.dun ? { wind: 0, water: G.dun.kind === 'egout' ? 0.5 : 0, birds: 0, city: 0, cave: 1 } : { wind: Math.min(1, 0.25 + alt + sky.snow * 0.5 + sky.rain * 0.3), water: Math.min(1, wd + sky.rain * 0.4), birds: city > 0.5 || sky.rain > 0.4 || sky.snow > 0.4 ? 0 : day * (col.biome === BIOME.ERABLIERE || col.biome === BIOME.BOREALE || col.biome === BIOME.CAMPAGNE ? 1 : 0.4), city, cave: 0 });
+}
 function openChest(p) {
   const gold = p.kind === 'coffre_or', s = G.dun, lv = s ? DUN[s.kind].lvl : 3; S.taken[p.key] = 1; S.stats.chests = (S.stats.chests || 0) + 1;
   const cash = (gold ? 60 : 12) + ((Math.random() * (gold ? 60 : 20)) | 0) + lv * 3; S.cash += cash; audio.fx('quest'); burst(p.x, p.y + 0.4, p.z, 0xffd34a, 16, 4);
@@ -715,7 +725,7 @@ function npcsUpdate(dt) {
       G.npcs.set(key, npc);
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
-    m.items.forEach((it, k) => { const key = 'c' + s.i + ',' + s.j + ':' + k; if (S.taken[key] || G.pickups.some(p => p.key === key)) return; dropPickup(it.kind, it.x, world.ground(it.x, it.z, it.y) + 0.4, it.z, { key, still: true }); });
+    m.items.forEach((it, k) => { const key = 'c' + s.i + ',' + s.j + ':' + k; if (S.taken[key] || G.pickups.some(p => p.key === key) || (it.y != null && !world.loadedAround(it.x, it.z, 0))) return; dropPickup(it.kind, it.x, world.ground(it.x, it.z, it.y) + 0.4, it.z, { key, still: true }); });
     if (m.traps) m.traps.forEach((t, k) => { const key = 't' + s.i + ',' + s.j + ':' + k; if (!G.traps.has(key)) G.traps.set(key, trapMake(t, key)); });
   }
   let talk = null, td = 2.6;
@@ -1155,6 +1165,7 @@ function bindOpts() {
   $('oQual').value = OPT.qual; $('oQual').onchange = () => { OPT.qual = $('oQual').value; applyQuality(); saveOpts(); };
   $('oVol').value = OPT.vol; $('oVol').oninput = () => { OPT.vol = +$('oVol').value; audio.setVol(OPT.vol); saveOpts(); };
   $('oMus').value = OPT.mus; $('oMus').oninput = () => { OPT.mus = +$('oMus').value; audio.setMusic(OPT.mus); saveOpts(); };
+  $('oSfx').value = OPT.sfx; $('oSfx').oninput = () => { OPT.sfx = +$('oSfx').value; audio.setSfx(OPT.sfx); saveOpts(); audio.fx('coin'); };
   $('oSens').value = OPT.sens; $('oSens').oninput = () => { OPT.sens = +$('oSens').value; saveOpts(); };
   $('oInv').checked = OPT.inv; $('oInv').onchange = () => { OPT.inv = $('oInv').checked; saveOpts(); };
   $('bReset').onclick = () => { if (confirm('Effacer la sauvegarde? Ta partie sera perdue.')) { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(OLD_SAVE_KEY); location.reload(); } };
@@ -1289,7 +1300,8 @@ function frame(now) {
           else if (avg > 0.034 && world.view > 3) world.view--; else if (avg < 0.019 && world.view < G.viewCap) world.view++; } }
       const chasing = G.enemies.some(e => e.state === 'chase' && Math.hypot(e.x - P.x, e.z - P.z) < 22);
       audio.combat += ((chasing ? 1 : 0) - audio.combat) * Math.min(1, dt * 0.8);
-      audio.mode = sky.dayF < 0.3 ? 'night' : 'day';
+      audio.mode = sky.dayF < 0.3 ? 'night' : 'day'; audio.boss = G.boss ? 1 : 0;
+      G.sndT = (G.sndT || 0) - dt; if (G.sndT <= 0) { G.sndT = 0.5; soundScape(); }
     } else { for (const e of G.enemies) e.label.style.display = 'none'; }
     world.update(P.x, P.z, 3);
     camUpdate(dt); partsUpdate(dt); ringsUpdate(dt); G.shake *= Math.pow(0.004, dt);
@@ -1348,5 +1360,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;

@@ -67,8 +67,10 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   await ev(() => { __game.sky.t = 0.4; });
   // flambeau posé depuis la barre
   await aim(); await p.waitForTimeout(500);
+  for (let k = 0; k < 4; k++) {
   res.flambeauPose = await ev(async () => { const g = __game, S = g.S, G = g.G; S.hot = g.hotList().indexOf(g.B.TORCH); G.dirtyHot = true; await new Promise(r => setTimeout(r, 300)); const t = G.target; if (!t) return 'pas de cible';
     const x = t.x + t.n[0], y = t.y + t.n[1], z = t.z + t.n[2], n0 = S.blocks[g.B.TORCH]; g.input.rmbP = true; await new Promise(r => setTimeout(r, 400)); return { b: g.world.get(x, y, z) === g.B.TORCH, moins1: S.blocks[g.B.TORCH] === n0 - 1, pos: [x, y, z] }; });
+    if (res.flambeauPose && res.flambeauPose.pos) break; await aim(); await p.waitForTimeout(800); }
   // sauvegarde, puis rechargement comme une ancienne sauvegarde (sans les champs ajoutés)
   const snap = await ev(() => { const g = __game; g.writeSave(); const s = JSON.parse(localStorage.getItem('voxelle-quebec-v2')); delete s.stats.crafted; delete s.stats.mined; localStorage.setItem('voxelle-quebec-v2', JSON.stringify(s)); return { bench: g.S.blocks[g.B.BENCH] || 0, torch: g.S.blocks[g.B.TORCH], outils: g.S.inv.filter(i => g.ITEMS[i.id].slot === 'outil').length, edits: Object.keys(g.S.edits).length }; });
   await p.reload(); await p.waitForTimeout(3000); await p.click('#bCont'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
