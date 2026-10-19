@@ -643,7 +643,7 @@ function npcsUpdate(dt) {
   else { pr.classList.add('hidden'); $('tTalk').classList.add('hidden'); }
 }
 const pick = a => a[(Math.random() * a.length) | 0];
-function say(n, txt) { n.sayEl.textContent = txt; n.sayEl.style.display = ''; n.sayUntil = G.t + 4.5; }
+function say(n, txt) { n.sayEl.textContent = txt; n.sayEl.style.display = 'block'; n.sayUntil = G.t + 4.5; }
 // ---------- animaux d'ambiance : écureuils (fuient), chats de ruelle (en ville et au village), volée d'oies (le jour) ----------
 function critterSpawn(kind, x, z) { const M = critterModel(kind); scene.add(M.g); const c = { kind, M, x, z, y: world.ground(x, z), vx: 0, vz: 0, t: Math.random() * 9, yaw: Math.random() * 6.28, hopT: 0, pause: Math.random() * 2 }; G.critters.push(c); return c; }
 function crittersUpdate(dt) {
@@ -653,7 +653,7 @@ function crittersUpdate(dt) {
     const a = Math.random() * 6.28, r = 14 + Math.random() * 16, x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
     if (world.loadedAround(x, z, 0)) { const col = gen.column(Math.floor(x), Math.floor(z)), y = world.ground(x, z), wet = world.get(x, y - 0.25, z) === B.WATER;
       const town = col.st && col.w > 0.35 && ['ville', 'village', 'chicoutimi', 'etape', 'cabane'].includes(col.st.type), nE = G.critters.filter(c => c.kind === 'ecureuil').length, nC = G.critters.filter(c => c.kind === 'chat').length;
-      if (!wet && Math.abs(y - P.y) < 8) { if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && col.biome !== BIOME.RIVE && col.biome !== BIOME.COLLINES && nE < (mobile ? 3 : 5)) critterSpawn('ecureuil', x, z); } } }
+      if (!wet && Math.abs(y - P.y) < 8) { if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && col.biome !== BIOME.RIVE && nE < (mobile ? 3 : 5)) critterSpawn('ecureuil', x, z); } } }
   // volée d'oies en V, le jour
   G.flockT -= dt;
   if (!G.flock && G.flockT <= 0 && sky.dayF > 0.5) { G.flockT = 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + 28 + Math.random() * 10, birds = [];
@@ -667,7 +667,7 @@ function crittersUpdate(dt) {
     if (d > 55) { scene.remove(c.M.g); G.critters.splice(i, 1); continue; }
     if (!world.loadedAround(c.x, c.z, 0)) continue;
     c.t += dt; let sp = 0;
-    if (c.kind === 'ecureuil') { if (d < 5) { c.yaw = Math.atan2(-dx, -dz) + Math.PI; sp = 6; c.pause = 0.8; } else if (c.pause > 0) { c.pause -= dt; } else { c.hopT -= dt; sp = 3.2; if (c.hopT <= 0) { c.hopT = 0.4 + Math.random() * 0.8; c.yaw += (Math.random() - 0.5) * 2.5; if (Math.random() < 0.3) c.pause = 1 + Math.random() * 2; } } }
+    if (c.kind === 'ecureuil') { if (d < 5) { c.yaw = Math.atan2(-dx, -dz); sp = 6; c.pause = 0.8; } else if (c.pause > 0) { c.pause -= dt; } else { c.hopT -= dt; sp = 3.2; if (c.hopT <= 0) { c.hopT = 0.4 + Math.random() * 0.8; c.yaw += (Math.random() - 0.5) * 2.5; if (Math.random() < 0.3) c.pause = 1 + Math.random() * 2; } } }
     else { if (d < 2.4 && !(c.meow > G.t)) { c.meow = G.t + 8; audio.fx('miaou', 0.6); floatTxt(c.x, c.y + 0.8, c.z, 'miaou', '#ffd23a'); } if (c.pause > 0) c.pause -= dt; else { sp = 1.1; c.hopT -= dt; if (c.hopT <= 0) { c.hopT = 1 + Math.random() * 2; c.yaw += (Math.random() - 0.5) * 2; if (Math.random() < 0.4) c.pause = 2 + Math.random() * 4; } } }
     const nx = c.x - Math.sin(c.yaw) * sp * dt, nz = c.z - Math.cos(c.yaw) * sp * dt, ny = world.ground(nx, nz, c.y + 1);
     if (Math.abs(ny - c.y) < 0.6 && world.get(nx, ny - 0.25, nz) !== B.WATER) { c.x = nx; c.z = nz; c.y = ny; } else c.yaw += 2;
