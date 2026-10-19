@@ -153,9 +153,19 @@ function camUpdate(dt) {
   const cp = Math.cos(G.camPitch), dir = tmpV.set(Math.sin(G.camYaw) * cp, Math.sin(G.camPitch), Math.cos(G.camYaw) * cp);
   let d = G.camDist + (P.gliding ? 1.5 : 0);
   const hit = world.ray(tmpV2.set(tx, ty, tz), dir, d + 0.3); if (hit) d = Math.max(0.6, hit.t - 0.35);
+  for (const e of G.enemies) { if (!(e.T.boss || e.T.hw >= 0.8) || e.hp <= 0) continue; const pad = e.T.boss ? 0.9 : 0.4; const t = rayBox(tx, ty, tz, dir, e.x, e.y + e.T.h / 2, e.z, e.T.hw + pad, e.T.h / 2 + pad * 0.5); if (t != null && t < d) d = Math.max(0.6, t - 0.25); }
+  // caméra repoussée contre le joueur (mur ou boss juste derrière) : elle serait dans sa tête, on cache son modèle
+  if (!G.drive) P.model.g.visible = d > 1.1;
   camera.position.set(tx + dir.x * d, ty + dir.y * d, tz + dir.z * d);
   camera.lookAt(tx, ty + 0.25, tz);
   if (G.shake > 0.01) { const k = G.shake * 0.5; camera.position.x += (Math.random() - 0.5) * k; camera.position.y += (Math.random() - 0.5) * k; camera.position.z += (Math.random() - 0.5) * k; camera.rotation.z += (Math.random() - 0.5) * k * 0.08; }
+}
+// entrée d'un rayon (origine o, direction dir) dans une boîte centrée (cx, cy, cz) ; null si raté ou si l'origine est dedans
+function rayBox(ox, oy, oz, dir, cx, cy, cz, hw, hh) {
+  let t0 = 0, t1 = 1e9; const O = [ox, oy, oz], D = [dir.x, dir.y, dir.z], C = [cx, cy, cz], H = [hw, hh, hw];
+  for (let a = 0; a < 3; a++) { if (Math.abs(D[a]) < 1e-6) { if (Math.abs(O[a] - C[a]) > H[a]) return null; continue; }
+    let u = (C[a] - H[a] - O[a]) / D[a], v = (C[a] + H[a] - O[a]) / D[a]; if (u > v) [u, v] = [v, u]; t0 = Math.max(t0, u); t1 = Math.min(t1, v); if (t0 > t1) return null; }
+  return t0 > 0 ? t0 : null;
 }
 function moveInput() {
   let mx = 0, mz = 0;
@@ -392,13 +402,15 @@ const projV = new THREE.Vector3();
 function placeLabel(el, x, y, z, maxD = 34) {
   const d = Math.hypot(x - camera.position.x, z - camera.position.z);
   projV.set(x, y, z).project(camera);
-  if (projV.z > 1 || d > maxD || Math.abs(projV.x) > 1.2 || Math.abs(projV.y) > 1.2) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
+  if (projV.z > 1 || d > maxD || !sameFloor(y) || Math.abs(projV.x) > 1.2 || Math.abs(projV.y) > 1.2) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
   el.style.display = '';
   const sx = (projV.x * 0.5 + 0.5) * innerWidth, sy = (-projV.y * 0.5 + 0.5) * innerHeight;
   el.style.transform = `translate(${sx | 0}px,${sy | 0}px) translate(-50%,-100%)`;
 }
+// sous terre, une étiquette (ou un texte flottant) d'un autre étage que le joueur est derrière le roc : on la cache
+function sameFloor(y) { return !G.dun || (y > G.dun.fy - 1 && y < G.dun.fy + 8); }
 function floatTxt(x, y, z, t, col) {
-  projV.set(x, y, z).project(camera); if (projV.z > 1) return;
+  projV.set(x, y, z).project(camera); if (projV.z > 1 || !sameFloor(y)) return;
   const d = document.createElement('div'); d.textContent = t; d.style.color = col || '#fff';
   d.style.left = ((projV.x * 0.5 + 0.5) * innerWidth) + 'px'; d.style.top = ((-projV.y * 0.5 + 0.5) * innerHeight) + 'px';
   $('floats').appendChild(d); setTimeout(() => d.remove(), 1000);
@@ -732,7 +744,7 @@ function npcsUpdate(dt) {
   for (const [k, n] of G.npcs) {
     const dx = P.x - n.x, dz = P.z - n.z, d = Math.hypot(dx, dz);
     if (d > 140) { scene.remove(n.model.g); n.label.remove(); G.npcs.delete(k); continue; }
-    if (!world.loadedAround(n.x, n.z, 0)) continue;
+    if (!world.loadedAround(n.x, n.z, 0)) { if (n.label.style.display !== 'none') n.label.style.display = 'none'; continue; }
     n.t += dt; let tvx = 0, tvz = 0;
     const fixed = n.role !== 'villageois' || (n.act && n.act !== 'marche');
     if (d < 4) { const ty = Math.atan2(-dx, -dz); n.yaw += Math.atan2(Math.sin(ty - n.yaw), Math.cos(ty - n.yaw)) * Math.min(1, dt * 6); }
@@ -753,7 +765,7 @@ function npcsUpdate(dt) {
     if (n.waveT > 0) { n.waveT -= dt; A.armR.rotation.x = 2.7; A.armR.rotation.z = 0.35 + Math.sin(n.t * 14) * 0.35; }
     if (n.sayEl.style.display !== 'none' && G.t > n.sayUntil) n.sayEl.style.display = 'none';
     const mk = npcMark(n); n.mkEl.textContent = mk === 'ready' ? '?' : mk === 'avail' ? '!' : ''; n.mkEl.className = 'mk' + (mk === 'ready' ? ' rdy' : '');
-    if (G.dun && Math.abs(n.y - G.P.y) > 5) n.label.style.display = 'none'; else placeLabel(n.label, n.x, n.y + 2.3, n.z, 30);
+    placeLabel(n.label, n.x, n.y + 2.3, n.z, 30);
     if (d < td && Math.abs(P.y - n.y) < 2.5) { td = d; talk = n; }
   }
   if (G.drive) talk = null;
@@ -1360,5 +1372,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;
