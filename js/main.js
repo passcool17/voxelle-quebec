@@ -14,6 +14,7 @@ import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, 
 import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
 import { DUN, dunPlan, dunInside, dunRoomAt } from './donjons.js';
+import * as FS from './fullscreen.js';
 
 const $ = id => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -25,7 +26,7 @@ const SEED = 20261018, SAVE_KEY = 'voxelle-quebec-v2', OLD_SAVE_KEY = 'voxelle-q
 const DAY_LEN = 600;
 
 // ---------- options ----------
-const OPT = Object.assign({ view: mobile ? 4 : 7, qual: 'auto', vol: 0.7, mus: 0.6, sfx: 0.8, sens: 1, inv: false }, JSON.parse(localStorage.getItem(OPT_KEY) || '{}'));
+const OPT = Object.assign({ view: mobile ? 4 : 7, qual: 'auto', vol: 0.7, mus: 0.6, sfx: 0.8, sens: 1, inv: false, fsAuto: true }, JSON.parse(localStorage.getItem(OPT_KEY) || '{}'));
 function saveOpts() { localStorage.setItem(OPT_KEY, JSON.stringify(OPT)); }
 
 // ---------- rendu ----------
@@ -36,7 +37,11 @@ $('app').appendChild(renderer.domElement);
 const canvas = renderer.domElement;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 1000);
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+// redimensionnement : fenêtre, plein écran, rotation, barre d'adresse mobile (visualViewport)
+let resizeN = 0;
+function onResize() { const w = innerWidth, h = innerHeight; const c = renderer.getSize(new THREE.Vector2()); if (c.x === w && c.y === h) return; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); resizeN++; }
+addEventListener('resize', onResize); addEventListener('orientationchange', () => setTimeout(onResize, 200));
+if (window.visualViewport) visualViewport.addEventListener('resize', onResize);
 const sky = new Sky(scene, mobile);
 const gen = createGen(SEED);
 const audio = new Audio(); audio.setVol(OPT.vol); audio.setMusic(OPT.mus); audio.setSfx(OPT.sfx);
@@ -1365,8 +1370,15 @@ $('bPersoBack').onclick = () => { hide('perso'); show('title'); };
 $('bPerso').onclick = () => openPerso('change');
 persoLabel();
 // boutons
-$('bCont').onclick = () => startGame(false);
-$('bNew').onclick = () => { if (loadSave() && !confirm('Commencer une nouvelle partie? L’ancienne sauvegarde sera remplacée.')) return; openPerso('new'); };
+// plein écran : bouton icône sur tactile (titre + HUD), bouton dans les options partout où c'est possible
+let fsHintT = 0;
+function fsHint(t) { const h = $('fshint'); h.textContent = t; h.classList.remove('hidden'); clearTimeout(fsHintT); fsHintT = setTimeout(() => h.classList.add('hidden'), 4200); }
+FS.setup(isTouch ? [$('fsTitle'), $('tFs'), $('bFs')] : [$('bFs')], { hint: fsHint, onChange: onResize });
+if (isTouch && FS.mode === 'api') { $('oFsAutoL').classList.remove('hidden'); $('oFsAuto').checked = OPT.fsAuto; $('oFsAuto').onchange = () => { OPT.fsAuto = $('oFsAuto').checked; saveOpts(); }; }
+let fsAsked = false; // une fois par session, sur le premier « jouer » (geste de l'utilisateur)
+function fsAuto() { if (fsAsked || !isTouch || FS.mode !== 'api' || !OPT.fsAuto) return; fsAsked = true; FS.enter(); }
+$('bCont').onclick = () => { fsAuto(); startGame(false); };
+$('bNew').onclick = () => { fsAuto(); if (loadSave() && !confirm('Commencer une nouvelle partie? L’ancienne sauvegarde sera remplacée.')) return; openPerso('new'); };
 $('bHelp').onclick = () => { G.prevScreen = 'title'; hide('title'); show('help'); };
 $('bOpts').onclick = () => { G.prevScreen = 'title'; hide('title'); show('opts'); };
 $('bResume').onclick = () => resume();
@@ -1381,5 +1393,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;

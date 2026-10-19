@@ -5,8 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Voxelle-Québec</title>
 <meta name="theme-color" content="#14243a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Voxelle-Québec">
+<meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="stylesheet" href="style.css">
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
 </head>
@@ -42,10 +48,11 @@
   <button class="tb hidden" id="tTalk">PARLE</button>
   <button class="tb sm" id="tEat">MANGE</button>
   <button class="tb sm" id="tSwap">ARME</button>
-  <div id="tTop"><button class="tb sm" id="tInv">SAC</button><button class="tb sm" id="tQuest">QUÊTES</button><button class="tb sm" id="tMap">CARTE</button><button class="tb sm" id="tCraft">ATELIER</button><button class="tb sm" id="tPause">II</button></div>
+  <div id="tTop"><button class="tb sm" id="tInv">SAC</button><button class="tb sm" id="tQuest">QUÊTES</button><button class="tb sm" id="tMap">CARTE</button><button class="tb sm" id="tCraft">ATELIER</button><button class="tb sm" id="tPause">II</button><button class="tb sm fsb hidden" id="tFs" aria-label="Plein écran"></button></div>
 </div>
 
 <section id="title" class="screen">
+  <button class="fsb hidden" id="fsTitle" aria-label="Plein écran"></button>
   <div class="logo"><div class="l1">VOXELLE</div><div class="l2">QUÉBEC</div><div class="sub">Tuques, cônes et nids-de-poule</div></div>
   <div class="menu">
     <button class="btn big" id="bCont">CONTINUER</button>
@@ -101,6 +108,8 @@
     <label>Bruitages <input type="range" id="oSfx" min="0" max="1" step="0.05"></label>
     <label>Sensibilité <input type="range" id="oSens" min="0.3" max="2.5" step="0.1"></label>
     <label class="chk"><input type="checkbox" id="oInv"> Inverser l’axe vertical</label>
+    <label class="chk hidden" id="oFsAutoL"><input type="checkbox" id="oFsAuto"> Plein écran en lançant la partie</label>
+    <button class="btn hidden" id="bFs">PLEIN ÉCRAN</button>
     <div class="row2"><button class="btn" data-close>RETOUR</button><button class="btn danger" id="bReset">EFFACER LA SAUVEGARDE</button></div>
   </div>
 </section>
@@ -114,6 +123,7 @@
 <section id="map" class="screen hidden overlay"><div class="panel wide"><h1>CARTE</h1><canvas id="bigmap" width="480" height="480"></canvas><div id="maplegend"></div><button class="btn" data-close>FERMER (M)</button></div></section>
 <section id="dead" class="screen hidden"><div class="panel"><h1 class="red">TU T’ES FAIT RAMASSER!</h1><p id="deadtxt"></p><button class="btn big" id="bRespawn">REVENIR À LA VIEILLE-VILLE</button></div></section>
 <div id="floats"></div>
+<div id="fshint" class="hidden"></div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

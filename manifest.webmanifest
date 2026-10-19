@@ -1,1 +1,20 @@
-{ "name": "Voxelle-Québec", "short_name": "Voxelle-Québec", "start_url": "./", "display": "fullscreen", "orientation": "landscape", "background_color": "#14243a", "theme_color": "#14243a", "icons": [{ "src": "assets/icon192.png", "sizes": "192x192", "type": "image/png" }, { "src": "assets/icon512.png", "sizes": "512x512", "type": "image/png" }] }
+{
+  "id": "./",
+  "name": "Voxelle-Québec",
+  "short_name": "Voxelle",
+  "description": "Aventure en voxels au Québec : tuques, cônes et nids-de-poule.",
+  "lang": "fr-CA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#14243a",
+  "theme_color": "#14243a",
+  "icons": [
+    { "src": "assets/icon192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-maskable512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
