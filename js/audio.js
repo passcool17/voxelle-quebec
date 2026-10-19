@@ -100,6 +100,9 @@ export class Audio {
       case 'charge': tone('square', 220, 880, 0.3, 0.06); tone('triangle', 330, 1320, 0.3, 0.05); break;
       case 'gull': tone('square', 1500, 900, 0.12, 0.05); tone('square', 1700, 1000, 0.14, 0.05, 0.14); break;
       case 'blower': this.nz(t, 0.4, 0.2 * v, 'bandpass', 300, S, 2); tone('sawtooth', 70, 90, 0.4, 0.05); break;
+      case 'honk': tone('square', 420, 330, 0.16, 0.05); tone('square', 400, 310, 0.18, 0.05, 0.22); break;
+      case 'miaou': tone('triangle', 700, 1100, 0.12, 0.06); tone('triangle', 1100, 600, 0.25, 0.06, 0.12); break;
+      case 'thunder': this.nz(t, 1.6, 0.5 * v, 'lowpass', 220); this.kick(t, 0.6 * v, S); break;
       case 'ui': tone('square', 660, 0, 0.04, 0.05); break;
       case 'deny': tone('square', 200, 150, 0.15, 0.08); break;
     }

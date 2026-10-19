@@ -28,7 +28,7 @@ const SCENES = [
     await p.evaluate(sc => { const g = __game, G = g.G, P = G.P; G.state = 'play'; document.getElementById('hud').style.visibility = 'hidden';
       const tc = document.getElementById('touch'); if (tc) tc.style.visibility = 'hidden';
       for (const e of G.enemies) { e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.style.display = 'none'; }
-      G.spawnT = 1e9; G.weatherT = 1e9; g.sky.snowT = 0; g.sky.snow = 0;
+      G.spawnT = 1e9; G.weatherT = 1e9; g.sky.snowT = 0; g.sky.snow = 0; g.sky.rainT = 0; g.sky.rain = 0;
       let z = sc.z; if (z === 'shore') z = g.gen.riverZ(sc.x) + g.gen.riverW(sc.x) + 5;
       P.x = sc.x; P.z = z; P.y = g.gen.heightAt(sc.x, z) + 6; P.vx = P.vy = P.vz = 0; P.hp = 1e6; window.__sc = { x: sc.x, z }; }, sc);
     await p.waitForFunction(() => __game.world.loadedAround(__sc.x, __sc.z, 2) && __game.world.loadedFrac() > 0.9, null, { timeout: 120000 }).catch(() => console.log('chargement incomplet', sc.n));

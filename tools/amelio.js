@@ -18,7 +18,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   res.titre = await fps(); await p.screenshot({ path: SH + PFX + '-titre.png' });
   await p.click('#bNew'); await p.click('#bPersoGo'); await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   const go = async (x, z) => { await ev(([x, z]) => { const g = __game, G = g.G, P = G.P; for (const e of G.enemies) { e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.style.display = 'none'; }
-      G.spawnT = 1e9; G.weatherT = 1e9; g.sky.snowT = 0; g.sky.snow = 0; P.x = x; P.z = z; P.y = g.gen.heightAt(x, z) + 4; P.vx = P.vy = P.vz = 0; P.hp = 1e6; G.godT = 1; window.__sc = [x, z]; }, [x, z]);
+      G.spawnT = 1e9; G.weatherT = 1e9; g.sky.snowT = 0; g.sky.snow = 0; g.sky.rainT = 0; g.sky.rain = 0; P.x = x; P.z = z; P.y = g.gen.heightAt(x, z) + 4; P.vx = P.vy = P.vz = 0; P.hp = 1e6; G.godT = 1; window.__sc = [x, z]; }, [x, z]);
     await p.waitForFunction(() => __game.world.loadedAround(__sc[0], __sc[1], 2) && __game.world.loadedFrac() > 0.9, null, { timeout: 120000 }).catch(() => console.log('chargement incomplet'));
     await ev(() => { const g = __game, P = g.G.P; P.y = g.world.ground(P.x, P.z, 120); P.vy = 0; }); };
   const cam = (yaw, pitch, dist, t) => ev(([yaw, pitch, dist, t]) => { const g = __game, G = g.G; G.camYaw = yaw; G.camPitch = pitch; G.camDist = dist; g.sky.t = t; }, [yaw, pitch, dist, t]);

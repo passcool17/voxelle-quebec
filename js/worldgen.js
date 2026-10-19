@@ -344,14 +344,16 @@ export function layout(s) {
     const shop = m.houses[0]; if (shop) { const sx = shop.x + shop.w / 2, sz = shop.z + shop.d / 2; m.npcs.push({ role: 'commercant', x: s.x + (sx - s.x) * 0.55, z: s.z + (sz - s.z) * 0.55 }); }
     for (let k = 0; k < 3; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 16, z: s.z + (r() - 0.5) * 16 });
     if (s.i === -1 && s.j === 0) m.npcs.push({ role: 'ginette', x: s.x - 3, z: s.z + 3 });
+    const r2 = mulberry(s.seed + 7); for (let k = 0; k < 3; k++) { const a = r2() * 6.283, d = 3 + r2() * 4; m.npcs.push({ role: 'villageois', x: s.x + Math.cos(a) * d, z: s.z + Math.sin(a) * d }); }
   } else if (s.type === 'ville') {
     m.npcs.push({ role: 'gaston', x: s.x + 4.5, z: s.z + 8.5 }, { role: 'lapaperasse', x: s.x - 5.5, z: s.z - 7.5 }, { role: 'commercant', x: s.x + 12.5, z: s.z + 14.5 });
     for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 50, z: s.z + 8 + r() * 20 });
+    { const r2 = mulberry(s.seed + 7); for (let k = 0; k < 4; k++) m.npcs.push({ role: 'villageois', x: s.x + (r2() - 0.5) * 30, z: s.z + 4 + r2() * 14 }); }
     m.npcs.push({ role: 'garde', x: s.x + 3, z: s.z - s.R + 3 }, { role: 'garde', x: s.x - 3, z: s.z + s.R - 3 });
     m.npcs.push({ role: 'chauffeur', x: s.x + 6.5, z: s.z - 34 - 6.5, stop: 'ville' });
     m.gates.push({ x: s.x, z: s.z - 34 - 3 }, { x: s.x, z: s.z + 34 + 3 });
   } else if (s.type === 'cabane') {
-    m.npcs.push({ role: s.i === 1 && s.j === 0 ? 'pepere' : 'acericulteur', x: s.x + 1.5, z: s.z + 5 });
+    m.npcs.push({ role: s.i === 1 && s.j === 0 ? 'pepere' : 'acericulteur', x: s.x + 1.5, z: s.z + 5 }, { role: 'villageois', x: s.x - 2.5, z: s.z + 7 });
     for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283 + 0.3; m.items.push({ kind: 'chaudiere', x: s.x + Math.cos(a) * 13 + 0.5, z: s.z + Math.sin(a) * 13 + 0.5 + 1.2 }); }
   } else if (s.type === 'chantier' || s.type === 'grand') {
     const n = s.type === 'grand' ? 7 : 6;

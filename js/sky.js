@@ -5,7 +5,7 @@ const C = (h) => new THREE.Color(h);
 const DAY_TOP = C(0x3f86e0), DAY_HOR = C(0xc4e2ff), SET_HOR = C(0xff9a5a), SET_TOP = C(0x5a5aa8), NIGHT_TOP = C(0x020512), NIGHT_HOR = C(0x0b1838), SNOW_HOR = C(0xc8d0d8), SNOW_TOP = C(0x8f9aa8);
 export class Sky {
   constructor(scene, mobile) {
-    this.scene = scene; this.t = 0.3; this.dayF = 1; this.snow = 0; this.snowT = 0;
+    this.scene = scene; this.t = 0.3; this.dayF = 1; this.snow = 0; this.snowT = 0; this.rain = 0; this.rainT = 0; this.flash = 0; this.thunder = 0;
     this.u = { top: { value: C(0) }, hor: { value: C(0) }, sun: { value: new THREE.Vector3() }, dayF: { value: 1 } };
     const sm = new THREE.ShaderMaterial({ uniforms: this.u, side: THREE.BackSide, depthWrite: false, fog: false,
       vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
@@ -49,6 +49,12 @@ export class Sky {
     const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: mobile ? 0.16 : 0.12, transparent: true, opacity: 0, depthWrite: false });
     this.snowPts = new THREE.Points(ng, this.snowMat); this.snowPts.frustumCulled = false; scene.add(this.snowPts);
+    // pluie : traits verticaux autour de la caméra
+    const RN = mobile ? 350 : 900, rp = new Float32Array(RN * 6);
+    for (let i = 0; i < RN; i++) { const x = (Math.random() - 0.5) * 44, y = (Math.random() - 0.5) * 36, z = (Math.random() - 0.5) * 44; rp.set([x, y, z, x - 0.05, y - 0.9, z], i * 6); }
+    const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.BufferAttribute(rp, 3));
+    this.rainMat = new THREE.LineBasicMaterial({ color: 0xa8c0d8, transparent: true, opacity: 0, depthWrite: false });
+    this.rainL = new THREE.LineSegments(rg, this.rainMat); this.rainL.frustumCulled = false; this.rainL.visible = false; scene.add(this.rainL);
     // lumières
     this.sun = new THREE.DirectionalLight(0xffffff, 2); this.shadowR = 38; this.hemi = new THREE.HemisphereLight(0xbfe0ff, 0x5a4a30, 1); scene.add(this.sun, this.hemi, this.sun.target);
     this.fog = new THREE.Fog(0xc4e2ff, 60, 120); scene.fog = this.fog;
@@ -59,11 +65,14 @@ export class Sky {
     const sd = new THREE.Vector3(Math.cos(a), el, 0.35).normalize(); this.u.sun.value.copy(sd);
     const dayF = smooth(-0.12, 0.18, el), setF = Math.max(0, 1 - Math.abs(el) / 0.35) * smooth(-0.2, 0.05, el);
     this.dayF = dayF; this.u.dayF.value = dayF;
-    const tgt = Math.max(this.snowT, snowLocal || 0); this.snow += (tgt - this.snow) * Math.min(1, dt * 0.4);
+    const tgt = Math.max(this.snowT, snowLocal ? snowLocal * Math.max(this.snowT, this.rainT, 0.85) : 0); this.snow += (tgt - this.snow) * Math.min(1, dt * 0.4);
+    const rt = this.rainT * (1 - (snowLocal || 0)); this.rain += (rt - this.rain) * Math.min(1, dt * 0.4);
+    this.flash = Math.max(0, this.flash - dt * 3); if (this.rain > 0.6 && Math.random() < dt * 0.05) { this.flash = 1; this.thunder = 1.2 + Math.random() * 1.5; }
     this.top.copy(NIGHT_TOP).lerp(DAY_TOP, dayF).lerp(SET_TOP, setF * 0.5); this.hor.copy(NIGHT_HOR).lerp(DAY_HOR, dayF).lerp(SET_HOR, setF * 0.7);
+    const GRAY = C(0x7a8490).multiplyScalar(0.25 + dayF * 0.75), rn = this.rain * 0.7; this.top.lerp(GRAY, rn); this.hor.lerp(GRAY.clone().multiplyScalar(1.2), rn * 0.8);
     const sn = this.snow * 0.75; this.top.lerp(SNOW_TOP.clone().multiplyScalar(0.25 + dayF * 0.75), sn); this.hor.lerp(SNOW_HOR.clone().multiplyScalar(0.2 + dayF * 0.8), sn);
     this.u.top.value.copy(this.top); this.u.hor.value.copy(this.hor);
-    this.fog.color.copy(this.hor); this.fog.far = viewDist * (1 - this.snow * 0.45); this.fog.near = this.fog.far * (0.38 - this.snow * 0.25);
+    this.fog.color.copy(this.hor); this.fog.far = viewDist * (1 - this.snow * 0.45 - this.rain * 0.3); this.fog.near = this.fog.far * (0.38 - this.snow * 0.25);
     this.dome.position.copy(camPos); this.stars.position.copy(camPos); this.aurora.position.set(camPos.x, camPos.y * 0.3, camPos.z);
     this.starMat.opacity = (1 - dayF) * (1 - this.snow * 0.9) * 0.9; this.stars.rotation.y = now * 0.002;
     this.au.t.value = now; this.au.a.value = (1 - smooth(-0.25, 0.05, el)) * (1 - this.snow * 0.85) * 0.8; this.aurora.visible = this.au.a.value > 0.01;
@@ -74,8 +83,8 @@ export class Sky {
       this.sun.position.set(tx + sd.x * 100 * (el > 0 ? 1 : -1), ty + Math.abs(sd.y) * 100 + 20, tz + sd.z * 100); this.sun.target.position.set(tx, ty, tz); }
     else this.sun.target.position.copy(camPos);
     this.sun.color.set(0xffffff).lerp(C(0xffb070), setF).lerp(C(0x8fa8ff), 1 - dayF);
-    this.sun.intensity = (2.6 * dayF + 0.85 * moonUp * (1 - dayF)) * (1 - this.snow * 0.4);
-    this.hemi.intensity = 0.75 + 0.4 * dayF; this.hemi.color.copy(this.hor).lerp(C(0xffffff), 0.3); this.hemi.groundColor.set(0x4a3a28).multiplyScalar(0.4 + dayF * 0.6);
+    this.sun.intensity = (2.6 * dayF + 0.85 * moonUp * (1 - dayF)) * (1 - this.snow * 0.4 - this.rain * 0.45);
+    this.hemi.intensity = 0.75 + 0.4 * dayF + this.flash * 2.5; this.hemi.color.copy(this.hor).lerp(C(0xffffff), 0.3); this.hemi.groundColor.set(0x4a3a28).multiplyScalar(0.4 + dayF * 0.6);
     // nuages
     this.clouds.position.set(0, 112, 0); this.cloudMat.color.set(0xffffff).lerp(this.hor, 0.25).multiplyScalar(0.35 + dayF * 0.65); this.cloudMat.opacity = 0.12 + 0.73 * dayF;
     for (const c of this.clouds.children) { c.position.x += dt * 2; if (c.position.x - camPos.x > 260) c.position.x -= 520; if (c.position.x - camPos.x < -260) c.position.x += 520; if (c.position.z - camPos.z > 260) c.position.z -= 520; if (c.position.z - camPos.z < -260) c.position.z += 520; }
@@ -84,6 +93,10 @@ export class Sky {
     if (this.snowPts.visible) { const p = this.snowPts.geometry.attributes.position, A = p.array; for (let i = 0; i < A.length; i += 3) { A[i + 1] -= dt * (2 + (i % 7) * 0.25); A[i] += Math.sin(now + i) * dt * 0.4; if (A[i + 1] < -20) A[i + 1] += 40; } p.needsUpdate = true; this.snowPts.position.set(Math.floor(camPos.x / 50) * 50, camPos.y, Math.floor(camPos.z / 50) * 50);
       // recadrer autour de la caméra
       for (let i = 0; i < A.length; i += 3) { const wx = A[i] + this.snowPts.position.x - camPos.x; if (wx > 25) A[i] -= 50; else if (wx < -25) A[i] += 50; const wz = A[i + 2] + this.snowPts.position.z - camPos.z; if (wz > 25) A[i + 2] -= 50; else if (wz < -25) A[i + 2] += 50; } }
+    // pluie
+    this.rainMat.opacity = Math.min(1, this.rain * 1.4) * 0.55; this.rainL.visible = this.rain > 0.02;
+    if (this.rainL.visible) { const p = this.rainL.geometry.attributes.position, A = p.array, dy = dt * 24;
+      for (let i = 0; i < A.length; i += 6) { A[i + 1] -= dy; A[i + 4] -= dy; if (A[i + 1] < -18) { A[i + 1] += 36; A[i + 4] += 36; } } p.needsUpdate = true; this.rainL.position.copy(camPos); }
     return { dayF, el };
   }
   setShadows(on, size) {

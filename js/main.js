@@ -6,8 +6,8 @@ import { World, moveBody, boxHit } from './world.js';
 import { B, CSM as CS, SEA, NAME, PLACEABLE, DROP, SOLID, COL, LEAF, VS } from './blocks.js';
 import { Sky } from './sky.js';
 import { Audio } from './audio.js';
-import { human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel } from './models.js';
-import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS } from './data.js';
+import { human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel, critterModel } from './models.js';
+import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS, AMBIENT } from './data.js';
 import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
 
@@ -39,7 +39,7 @@ const audio = new Audio(); audio.setVol(OPT.vol); audio.setMusic(OPT.mus);
 let world = null;
 
 // ---------- état ----------
-const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
+const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
     weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, bossDead: false, time: 0.32, edits: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0 }, glider: true };
@@ -163,7 +163,7 @@ function playerUpdate(dt) {
     if (P.ground || inWater || jumpP || pressed.has('KeyG')) { P.gliding = false; P.gl.visible = false; if (!P.ground) audio.fx('jump', 0.5); }
     audio.wind(Math.hypot(P.vx, P.vz) / 14);
   } else {
-    audio.wind(sky.snow * 0.12);
+    audio.wind(sky.snow * 0.12 + sky.rain * 0.22);
     const acc = P.ground ? 14 : inWater ? 5 : 3.2;
     P.vx += (wx * sp - P.vx) * Math.min(1, dt * acc); P.vz += (wz * sp - P.vz) * Math.min(1, dt * acc);
     if (inWater) { P.vy -= 9 * dt; P.vy *= Math.pow(0.2, dt); if (jumpH) P.vy = Math.min(P.vy + 30 * dt, 4.5); }
@@ -597,7 +597,8 @@ function npcsUpdate(dt) {
       const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g);
       const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? (n.shop === 'etape' ? 'Comptoir de L’Étape' : s.nord ? 'Dépanneur du Royaume' : 'Dépanneur') : NPCS[n.role].name;
       const npc = { key, role: n.role, stop: n.stop, shop: n.shop, s, x: n.x, z: n.z, y: world.ground(n.x, n.z), vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, home: { x: n.x, z: n.z }, model, name: nm, t: Math.random() * 9, yaw: Math.random() * 6, wander: Math.random() * 6, walkT: 0, chat: ROLE_CHAT[n.role] ? ROLE_CHAT[n.role][(s.seed + k) % ROLE_CHAT[n.role].length] : CHATTER[(s.seed + k * 7) % CHATTER.length] };
-      npc.label = makeLabel('npc', `<div class="mk"></div><div class="nm">${nm}</div>`); npc.mkEl = npc.label.querySelector('.mk');
+      if (n.role === 'villageois') { npc.act = ['marche', 'marche', 'pelle', 'jase', 'hockey'][(s.seed + k * 13) % 5]; if (npc.act === 'pelle') setWeapon(model, 'pelle'); if (npc.act === 'hockey') setWeapon(model, 'baton'); }
+      npc.label = makeLabel('npc', `<div class="say"></div><div class="mk"></div><div class="nm">${nm}</div>`); npc.mkEl = npc.label.querySelector('.mk'); npc.sayEl = npc.label.querySelector('.say');
       G.npcs.set(key, npc);
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
@@ -609,7 +610,7 @@ function npcsUpdate(dt) {
     if (d > 140) { scene.remove(n.model.g); n.label.remove(); G.npcs.delete(k); continue; }
     if (!world.loadedAround(n.x, n.z, 0)) continue;
     n.t += dt; let tvx = 0, tvz = 0;
-    const fixed = n.role !== 'villageois';
+    const fixed = n.role !== 'villageois' || (n.act && n.act !== 'marche');
     if (d < 4) { const ty = Math.atan2(-dx, -dz); n.yaw += Math.atan2(Math.sin(ty - n.yaw), Math.cos(ty - n.yaw)) * Math.min(1, dt * 6); }
     else if (!fixed || Math.hypot(n.home.x - n.x, n.home.z - n.z) > 1.5) {
       n.wander += (Math.random() - 0.5) * dt * 1.5; const hx = n.home.x - n.x, hz = n.home.z - n.z, far = Math.hypot(hx, hz) > (fixed ? 1 : 7);
@@ -617,17 +618,61 @@ function npcsUpdate(dt) {
     }
     n.vx = tvx; n.vz = tvz; n.vy -= 26 * dt; moveBody(world, n, dt, true); if (n.hitWall && n.ground) n.vy = 7;
     n.walkT += dt * Math.hypot(tvx, tvz) / 3;
+    // activités : pelleter, jaser (face au voisin), jouer au hockey ; saluer le joueur qui passe
+    if (n.act === 'jase' && d >= 4) { let o = null, od = 6; for (const [, q] of G.npcs) if (q !== n && Math.hypot(q.x - n.x, q.z - n.z) < od) { od = Math.hypot(q.x - n.x, q.z - n.z); o = q; } if (o) { const ty = Math.atan2(n.x - o.x, n.z - o.z); n.yaw += Math.atan2(Math.sin(ty - n.yaw), Math.cos(ty - n.yaw)) * Math.min(1, dt * 4); } }
     n.model.g.position.set(n.x, n.y, n.z); n.model.g.rotation.y = n.yaw; animHuman(n.model, n.walkT, Math.hypot(tvx, tvz) > 0.2 ? 0.6 : 0, 0, false, false);
+    const A = n.model.P;
+    if (n.act === 'pelle' && d >= 4) { const k = Math.sin(n.t * 2.6); A.armR.rotation.x = 0.7 + k * 0.5; A.armL.rotation.x = 0.9 + k * 0.4; A.torso.rotation.x = 0.25 + k * 0.15; if (k > 0.98 && Math.random() < 0.3 && d < 25) burst(n.x - Math.sin(n.yaw) * 1.2, n.y + 0.4, n.z - Math.cos(n.yaw) * 1.2, 0xf8fbff, 3, 2.5); }
+    else if (n.act === 'hockey' && d >= 4) { const k = Math.sin(n.t * 4); A.armR.rotation.x = 0.5 + k * 0.35; A.armL.rotation.x = 0.6 + k * 0.3; A.torso.rotation.y = k * 0.3; }
+    else if (n.act === 'jase' && d >= 4) { if (Math.sin(n.t * 0.9) > 0.3) { A.armL.rotation.x = 0.8 + Math.sin(n.t * 5) * 0.4; A.armL.rotation.z = -0.2; } }
+    if (n.role === 'villageois' && d < 7 && d > 2.6 && !(G.t - (n.greetT ?? -99) < 90) && G.state === 'play') { n.greetT = G.t; n.waveT = 1.6; say(n, pick(sky.dayF < 0.3 ? AMBIENT.nuit : AMBIENT.salut)); }
+    if (n.waveT > 0) { n.waveT -= dt; A.armR.rotation.x = 2.7; A.armR.rotation.z = 0.35 + Math.sin(n.t * 14) * 0.35; }
+    if (n.sayEl.style.display !== 'none' && G.t > n.sayUntil) n.sayEl.style.display = 'none';
     const mk = npcMark(n); n.mkEl.textContent = mk === 'ready' ? '?' : mk === 'avail' ? '!' : ''; n.mkEl.className = 'mk' + (mk === 'ready' ? ' rdy' : '');
     placeLabel(n.label, n.x, n.y + 2.3, n.z, 30);
     if (d < td && Math.abs(P.y - n.y) < 2.5) { td = d; talk = n; }
   }
   if (G.drive) talk = null;
   G.talkTo = talk;
+  // bavardage ambiant : de temps en temps, quelqu'un près de toi dit quelque chose
+  G.sayT -= dt; if (G.sayT <= 0 && G.state === 'play') { G.sayT = 5 + Math.random() * 6; const near = [...G.npcs.values()].filter(n => Math.hypot(n.x - P.x, n.z - P.z) < 15 && n !== talk && !(G.t < n.sayUntil));
+    if (near.length) { const n = near[(Math.random() * near.length) | 0]; const pool = sky.rain > 0.4 ? AMBIENT.pluie : sky.snow > 0.4 ? AMBIENT.neige : n.act && AMBIENT[n.act] ? AMBIENT[n.act] : n.role === 'villageois' ? CHATTER : ROLE_CHAT[n.role] || AMBIENT.salut; say(n, pick(pool)); } }
   const C = G.car; G.nearCar = !!(C && !G.drive && !P.gliding && Math.hypot(C.x - P.x, C.z - P.z) < 3.4 && Math.abs(C.y - P.y) < 2.5);
   const pr = $('prompt'), ptxt = talk ? 'Parler à ' + talk.name : G.drive ? 'Sortir du bazou' : G.nearCar ? 'Conduire le bazou' : '';
   if (ptxt && G.state === 'play') { pr.innerHTML = (isTouch ? '' : '<kbd>E</kbd> ') + ptxt; pr.classList.remove('hidden'); $('tTalk').classList.remove('hidden'); $('tTalk').textContent = talk ? 'PARLE' : G.drive ? 'SORS' : 'AUTO'; }
   else { pr.classList.add('hidden'); $('tTalk').classList.add('hidden'); }
+}
+const pick = a => a[(Math.random() * a.length) | 0];
+function say(n, txt) { n.sayEl.textContent = txt; n.sayEl.style.display = ''; n.sayUntil = G.t + 4.5; }
+// ---------- animaux d'ambiance : écureuils (fuient), chats de ruelle (en ville et au village), volée d'oies (le jour) ----------
+function critterSpawn(kind, x, z) { const M = critterModel(kind); scene.add(M.g); const c = { kind, M, x, z, y: world.ground(x, z), vx: 0, vz: 0, t: Math.random() * 9, yaw: Math.random() * 6.28, hopT: 0, pause: Math.random() * 2 }; G.critters.push(c); return c; }
+function crittersUpdate(dt) {
+  const P = G.P;
+  G.critT = (G.critT || 0) - dt;
+  if (G.critT <= 0) { G.critT = 2;
+    const a = Math.random() * 6.28, r = 14 + Math.random() * 16, x = P.x + Math.cos(a) * r, z = P.z + Math.sin(a) * r;
+    if (world.loadedAround(x, z, 0)) { const col = gen.column(Math.floor(x), Math.floor(z)), y = world.ground(x, z), wet = world.get(x, y - 0.25, z) === B.WATER;
+      const town = col.st && col.w > 0.35 && ['ville', 'village', 'chicoutimi', 'etape', 'cabane'].includes(col.st.type), nE = G.critters.filter(c => c.kind === 'ecureuil').length, nC = G.critters.filter(c => c.kind === 'chat').length;
+      if (!wet && Math.abs(y - P.y) < 8) { if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && col.biome !== BIOME.RIVE && col.biome !== BIOME.COLLINES && nE < (mobile ? 3 : 5)) critterSpawn('ecureuil', x, z); } } }
+  // volée d'oies en V, le jour
+  G.flockT -= dt;
+  if (!G.flock && G.flockT <= 0 && sky.dayF > 0.5) { G.flockT = 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + 28 + Math.random() * 10, birds = [];
+    for (let i = 0; i < 9; i++) { const M = critterModel('oie'), row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; scene.add(M.g); birds.push({ M, ox: -dz * side * row * 2.2 - dx * row * 2.4, oz: dx * side * row * 2.2 - dz * row * 2.4, ph: Math.random() * 6 }); }
+    G.flock = { x: P.x - dx * 160, z: P.z - dz * 160, y, dx, dz, birds, t: 0, honk: 0 }; }
+  if (G.flock) { const F = G.flock; F.t += dt; F.x += F.dx * 10 * dt; F.z += F.dz * 10 * dt; F.honk -= dt;
+    if (F.honk <= 0 && Math.hypot(F.x - P.x, F.z - P.z) < 70) { F.honk = 1.5 + Math.random() * 2; audio.fx('honk', 0.5); }
+    for (const b of F.birds) { b.M.g.position.set(F.x + b.ox, F.y + Math.sin(F.t * 1.3 + b.ph) * 0.3, F.z + b.oz); b.M.g.rotation.y = Math.atan2(-F.dx, -F.dz); const f = Math.sin(F.t * 7 + b.ph) * 0.5; b.M.P.wL.rotation.z = f; b.M.P.wR.rotation.z = -f; }
+    if (F.t > 34) { for (const b of F.birds) scene.remove(b.M.g); G.flock = null; } }
+  for (let i = G.critters.length - 1; i >= 0; i--) { const c = G.critters[i], dx = c.x - P.x, dz = c.z - P.z, d = Math.hypot(dx, dz);
+    if (d > 55) { scene.remove(c.M.g); G.critters.splice(i, 1); continue; }
+    if (!world.loadedAround(c.x, c.z, 0)) continue;
+    c.t += dt; let sp = 0;
+    if (c.kind === 'ecureuil') { if (d < 5) { c.yaw = Math.atan2(-dx, -dz) + Math.PI; sp = 6; c.pause = 0.8; } else if (c.pause > 0) { c.pause -= dt; } else { c.hopT -= dt; sp = 3.2; if (c.hopT <= 0) { c.hopT = 0.4 + Math.random() * 0.8; c.yaw += (Math.random() - 0.5) * 2.5; if (Math.random() < 0.3) c.pause = 1 + Math.random() * 2; } } }
+    else { if (d < 2.4 && !(c.meow > G.t)) { c.meow = G.t + 8; audio.fx('miaou', 0.6); floatTxt(c.x, c.y + 0.8, c.z, 'miaou', '#ffd23a'); } if (c.pause > 0) c.pause -= dt; else { sp = 1.1; c.hopT -= dt; if (c.hopT <= 0) { c.hopT = 1 + Math.random() * 2; c.yaw += (Math.random() - 0.5) * 2; if (Math.random() < 0.4) c.pause = 2 + Math.random() * 4; } } }
+    const nx = c.x - Math.sin(c.yaw) * sp * dt, nz = c.z - Math.cos(c.yaw) * sp * dt, ny = world.ground(nx, nz, c.y + 1);
+    if (Math.abs(ny - c.y) < 0.6 && world.get(nx, ny - 0.25, nz) !== B.WATER) { c.x = nx; c.z = nz; c.y = ny; } else c.yaw += 2;
+    const hop = c.kind === 'ecureuil' && sp > 0 ? Math.abs(Math.sin(c.t * 14)) * 0.12 : 0;
+    c.M.g.position.set(c.x, c.y + hop, c.z); c.M.g.rotation.y = c.yaw; c.M.P.tail.rotation.x = c.kind === 'chat' ? Math.sin(c.t * 2) * 0.2 : -0.2 + Math.sin(c.t * 8) * 0.15; c.M.P.body.rotation.x = c.kind === 'ecureuil' && sp === 0 ? -0.5 : 0; }
 }
 function questsOf(role) { return Object.entries(QUESTS).filter(([id, q]) => q.giver === role); }
 function questAvailable(id) { const q = QUESTS[id]; if (S.q[id]) return false; return !(q.requires || []).some(r => !S.q[r] || S.q[r].st !== 'done'); }
@@ -824,7 +869,7 @@ function hudUpdate(dt) {
   const place = rk ? REGIONS[rk][0] : col.st && col.w > 0.4 ? col.st.name || { ville: 'Vieille-Ville', village: 'Village', cabane: 'Cabane à sucre', chantier: 'Chantier', grand: 'Grand Chantier' }[col.st.type] : BIOME_NAME[col.biome];
   if (rk !== G.regKey) { if (rk && (!G.regSeen[rk] || G.t - G.regSeen[rk] > 60)) { banner(REGIONS[rk][0].toUpperCase(), REGIONS[rk][1]); G.lastBanner = rk; } G.regKey = rk; }
   if (rk) G.regSeen[rk] = G.t;
-  $('where').textContent = place; $('clock').textContent = sky.clock() + (sky.snow > 0.4 ? ' · neige' : '');
+  $('where').textContent = place; $('clock').textContent = sky.clock() + (sky.snow > 0.4 ? ' · neige' : sky.rain > 0.4 ? ' · pluie' : '');
   if (G.dirtyHot) { G.dirtyHot = false; renderHot(); }
   if (G.dirtyQ || !G.trackT || G.t - G.trackT > 1) { G.dirtyQ = false; G.trackT = G.t; renderTracker(); }
 }
@@ -967,6 +1012,7 @@ function clearEntities() {
   for (const e of G.enemies) { scene.remove(e.model.g); e.label.remove(); } G.enemies = [];
   for (const [, n] of G.npcs) { scene.remove(n.model.g); n.label.remove(); } G.npcs.clear();
   if (G.car) { scene.remove(G.car.m.g); G.car = null; } G.drive = false;
+  for (const c of G.critters) scene.remove(c.M.g); G.critters = []; if (G.flock) { for (const b of G.flock.birds) scene.remove(b.M.g); G.flock = null; }
   for (const p of G.pickups) scene.remove(p.m); G.pickups = []; for (const p of G.projs) scene.remove(p.mesh); G.projs = []; for (const r of G.rings) scene.remove(r.m); G.rings = []; G.camps.clear(); G.boss = null; $('bossbox').classList.add('hidden');
 }
 function startGame(fresh) {
@@ -1037,8 +1083,10 @@ function frame(now) {
     if (st === 'play') {
       const gd = G.hitstop > 0 ? dt * 0.08 : dt; G.hitstop = Math.max(0, G.hitstop - dt); // arrêt sur image à l'impact
       if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); npcsUpdate(dt); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
+      crittersUpdate(dt);
       sky.t = (sky.t + dt / DAY_LEN) % 1;
-      G.weatherT -= dt; if (G.weatherT <= 0) { sky.snowT = Math.random() < 0.35 ? 1 : 0; G.weatherT = 90 + Math.random() * 150; }
+      G.weatherT -= dt; if (G.weatherT <= 0) { const r = Math.random(); sky.snowT = r < 0.28 ? 1 : 0; sky.rainT = r >= 0.28 && r < 0.5 ? 1 : 0; G.weatherT = 90 + Math.random() * 150; }
+      if (sky.thunder > 0) { sky.thunder -= dt; if (sky.thunder <= 0) audio.fx('thunder'); }
       G.saveT += dt; if (G.saveT > 20) { G.saveT = 0; writeSave(); }
       // qualité automatique
       perfAcc += dt; perfN++; perfT += dt;
@@ -1106,5 +1154,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
+const API = { say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
 window.__game = API;

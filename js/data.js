@@ -63,7 +63,19 @@ export const ROLE_CHAT = {
   saguenayen: ['Icitte, on dit « Royaume ». Ça fait plus chic que « région ».', 'Le fjord, c’est de l’eau salée en dessous pis de l’eau douce en dessus. Comme moi le samedi.'],
   guide: ['Le vrai fjord a une centaine de kilomètres. Notre maquette en a trois mètres. On fait ce qu’on peut avec le budget.', 'Les falaises ici ont été creusées par un glacier. Le stationnement, lui, par une pépine.', 'Visite guidée gratuite! La sortie est payante. Non, je niaise.'],
 };
+// répliques d'ambiance (bulles au-dessus des gens)
+export const AMBIENT = {
+  salut: ['Salut!', 'Allô toi!', 'Bonne journée!', 'Attache ta tuque!', 'Pis, ça va-tu?', 'Belle tuque!', 'Fais attention aux cônes!'],
+  nuit: ['Bonne nuit!', 'Barre ta porte, les ratons sortent.', 'Regarde les aurores!', 'Y’é ben tard pour se promener.'],
+  pluie: ['Maudite pluie!', 'Ça mouille, ça mouille…', 'Mon toit coule depuis 1987.', 'Au moins, ça lave les cônes.'],
+  neige: ['Encore de la neige! On est rendus en juin!', 'Ma pelle a pas eu de vacances.', 'Belle bordée!'],
+  pelle: ['Une pelletée pour moi, une pour la déneigeuse qui passera jamais.', 'Le banc de neige du voisin est plus haut que le mien. Inacceptable.', 'Ouf! Mon dos va s’en souvenir.'],
+  hockey: ['Lance pis compte!', 'Ma rondelle est encore dans le banc de neige.', 'Il lance, il compte! Dans la fenêtre du voisin…'],
+  jase: ['… pis là, le cône m’a regardé croche!', 'Paraît que le chantier va finir en 2090.', '… non, non, c’est son beau-frère qui a le permis.', 'T’as-tu vu le prix du sirop?'],
+};
 export const CHATTER = [
+  'Le tramway? Mon arrière-petit-fils va peut-être le prendre.', 'Les goélands m’ont volé une frite. Une seule, mais la meilleure.', 'Une souffleuse m’a lancé une motte en pleine face. Ça m’a réveillé.',
+  'J’ai vu un écureuil voler un muffin au dépanneur.', 'Les oies repassent : l’hiver s’en vient, ou s’en va, je sais pus.', 'Si tu vois un cône avec une couronne, cours!', 'Mon chat dort sur le capot de mon char depuis trois hivers.', 'Le Fleuve, c’est notre autoroute à goélands.',
   'Y fait frette en bonyenne à matin!', 'Les cônes orange, avant, ça restait tranquille. Astheure, ça marche!', 'Coudonc, t’as-tu vu le nid-de-poule sur le rang? Il m’a mangé un pneu.',
   'Mon beau-frère a demandé un permis en 1997. Il attend encore.', 'Les mouches noires, c’est pas des bibittes, c’est des p’tits vampires.', 'Une déneigeuse a passé à 3 h du matin. Dans ma cour. Sans raison.',
   'Si tu montes dans les Laurentides, prends ton cerf-volant. Ça plane en masse!', 'La nuit, regarde le ciel : les aurores dansent au-dessus du fleuve.', 'Le raton a volé ma poutine. Pis le gravy avec!',

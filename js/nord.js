@@ -266,6 +266,7 @@ export function nordLayout(s, m, r) {
   else if (s.type === 'chicoutimi') {
     m.npcs.push({ role: 'chauffeur', x: s.x + 5.5, z: s.z + 14.5, stop: 'chicoutimi' }, { role: 'aubergiste', x: s.x - 4.5, z: s.z + 4.5 }, { role: 'commercant', x: s.x + 6.5, z: s.z - 2.5 });
     for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 24, z: s.z + (r() - 0.5) * 24 });
+    { const r2 = mulberry(s.seed + 7); for (let k = 0; k < 3; k++) m.npcs.push({ role: 'villageois', x: s.x + (r2() - 0.5) * 20, z: s.z + (r2() - 0.5) * 20 }); }
   } else if (s.type === 'port') { m.npcs.push({ role: 'saguenayen', x: s.x - 3.5, z: s.z - 1.5 }, { role: 'villageois', x: s.x + 5, z: s.z + 2 }); }
   else if (s.type === 'musee') { m.npcs.push({ role: 'guide', x: s.x + 0.5, z: s.z + 8.5 }); }
 }

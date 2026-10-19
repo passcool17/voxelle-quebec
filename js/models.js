@@ -285,6 +285,25 @@ export function animEnemy(e, t, dt) {
   else if (e.type === 'trou') { const open = e.state === 'chase' || e.atkAnim > 0 ? 1 : 0; e.jawT = (e.jawT || 0) + (open - (e.jawT || 0)) * Math.min(1, dt * 8); P.jaw.position.y = 0.08 + e.jawT * (0.15 + (e.atkAnim > 0 ? Math.sin(e.atkAnim * Math.PI) * 0.4 : Math.abs(Math.sin(t * 8)) * 0.1)); P.eyes.visible = e.jawT > 0.3; P.eyes.position.y = 0.2 + e.jawT * 0.3; }
 }
 
+// ---------- animaux d'ambiance (inoffensifs) ----------
+export function critterModel(kind) {
+  const g = new THREE.Group(), P = {}, body = pivot(g, 0, 0, 0); P.body = body;
+  if (kind === 'ecureuil') { // écureuil roux
+    box(body, 0.14, 0.14, 0.26, 0xa8521e, 0, 0.12, 0); box(body, 0.1, 0.06, 0.2, 0xf2e2c8, 0, 0.06, -0.01); box(body, 0.13, 0.13, 0.13, 0xb05a22, 0, 0.2, -0.16); box(body, 0.03, 0.05, 0.02, 0x111111, -0.05, 0.22, -0.23); box(body, 0.03, 0.05, 0.02, 0x111111, 0.05, 0.22, -0.23);
+    box(body, 0.04, 0.06, 0.03, 0xa8521e, -0.05, 0.29, -0.14); box(body, 0.04, 0.06, 0.03, 0xa8521e, 0.05, 0.29, -0.14);
+    P.tail = pivot(body, 0, 0.15, 0.12); box(P.tail, 0.13, 0.12, 0.14, 0xb85e26, 0, 0.04, 0.06); box(P.tail, 0.15, 0.2, 0.12, 0xc06a2c, 0, 0.18, 0.13); box(P.tail, 0.13, 0.12, 0.1, 0xd88a4a, 0, 0.3, 0.1);
+  } else if (kind === 'chat') { // chat de ruelle
+    const c = [0xe8902a, 0x2a2a2a, 0x9a9a9a][Math.random() * 3 | 0];
+    box(body, 0.2, 0.18, 0.42, c, 0, 0.22, 0); box(body, 0.2, 0.18, 0.18, c, 0, 0.36, -0.26); box(body, 0.06, 0.06, 0.03, c, -0.06, 0.48, -0.25); box(body, 0.06, 0.06, 0.03, c, 0.06, 0.48, -0.25);
+    box(body, 0.04, 0.04, 0.02, 0x8ad84a, -0.05, 0.38, -0.355, true); box(body, 0.04, 0.04, 0.02, 0x8ad84a, 0.05, 0.38, -0.355, true); box(body, 0.04, 0.03, 0.02, 0xf0a0a0, 0, 0.33, -0.355);
+    for (const [x, z] of [[-0.07, -0.15], [0.07, -0.15], [-0.07, 0.15], [0.07, 0.15]]) box(body, 0.06, 0.14, 0.06, c, x, 0.07, z);
+    P.tail = pivot(body, 0, 0.28, 0.2); box(P.tail, 0.05, 0.36, 0.05, c, 0, 0.17, 0.02);
+  } else { // bernache (oie) : corps brun, long cou noir, joue blanche
+    box(body, 0.34, 0.3, 0.7, 0x7a6a58, 0, 0, 0); box(body, 0.3, 0.12, 0.3, 0xe8e0d0, 0, -0.1, 0.25); box(body, 0.1, 0.1, 0.42, 0x1a1a1a, 0, 0.08, -0.5); box(body, 0.13, 0.12, 0.16, 0x1a1a1a, 0, 0.1, -0.76); box(body, 0.135, 0.06, 0.08, 0xf2f2f2, 0, 0.08, -0.74); box(body, 0.06, 0.05, 0.08, 0x111111, 0, 0.08, -0.88);
+    for (const sx of [-1, 1]) { const W = P[sx < 0 ? 'wL' : 'wR'] = pivot(body, sx * 0.16, 0.06, 0); box(W, 0.7, 0.04, 0.34, 0x6a5a48, sx * 0.35, 0, 0); box(W, 0.3, 0.045, 0.3, 0x3a3028, sx * 0.62, 0, 0.02); }
+  }
+  bake(g); return { g, P, kind };
+}
 // ---------- objets au sol ----------
 export function pickupModel(kind) {
   const g = new THREE.Group();
