@@ -235,8 +235,11 @@ function tryAttack(st) {
   if (st.W.kind === 'ranged') {
     const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
     let vy = Math.sin(-G.camPitch + 0.25) * 0.5 + 0.12;
-    if (best) { const d = Math.hypot(best.x - P.x, best.z - P.z); vy = ((best.y + best.T.h * 0.5) - (P.y + 1.4)) / Math.max(1, d) + d * 0.012; }
-    const v = new THREE.Vector3(fx, vy, fz).normalize().multiplyScalar(st.W.speed);
+    let ax = fx, az = fz;
+    if (best) { // visée avec anticipation (cibles mobiles : goélands, ratons)
+      const tf = Math.hypot(best.x - P.x, best.z - P.z) / st.W.speed, lx = best.x + best.vx * tf - P.x, lz = best.z + best.vz * tf - P.z, d = Math.hypot(lx, lz) || 1, ly = best.y + (best.vy || 0) * tf + best.T.h * 0.5;
+      ax = lx / d; az = lz / d; vy = (ly - (P.y + 1.4)) / Math.max(1, d) + d * 0.012; }
+    const v = new THREE.Vector3(ax, vy, az).normalize().multiplyScalar(st.W.speed);
     spawnProj({ x: P.x + fx * 0.6, y: P.y + 1.4, z: P.z + fz * 0.6 }, v, 'p', st.dmg, 'snow'); audio.fx('throw');
   } else { P.hitAt = 0.11; audio.fx('swing'); P.combo = G.t - P.lastSwing < 0.95 ? P.combo + 1 : 1; P.lastSwing = G.t; if (P.combo >= 3) { P.fin = true; P.combo = 0; P.atkCd *= 1.25; } }
 }

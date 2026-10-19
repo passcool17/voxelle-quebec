@@ -11,7 +11,7 @@ function brain() {
     if (P.hp < st.hpMax * 0.45 && S.inv.some(i => ['poutine', 'sirop', 'tourtiere'].includes(i.id))) api.pressed.add('KeyR');
     // ennemi à combattre
     let foe = null, fd = 1e9;
-    if (T.fight !== false) for (const e of G.enemies) { if (e.dead || e.state === 'hidden' && T.type !== 'fight') continue; const d = Math.hypot(e.x - P.x, e.z - P.z); const lim = T.type === 'fight' ? 40 : (e.state === 'chase' ? 12 : 0); if (d < lim && Math.abs(e.y - P.y) < 6 && d < fd) { fd = d; foe = e; } }
+    if (T.fight !== false) for (const e of G.enemies) { if (e.dead || e.state === 'hidden' && T.type !== 'fight') continue; const d = Math.hypot(e.x - P.x, e.z - P.z); const lim = T.type === 'fight' ? 40 : (e.state === 'chase' ? 12 : 0); if (d < lim && Math.abs(e.y - P.y) < (e.T.fly ? 10 : 6) && d < fd) { fd = d; foe = e; } }
     let tx, tz, want = 0.8;
     if (foe) { tx = foe.x; tz = foe.z; want = (st.W.kind === 'ranged' ? 8 : st.W.range * 0.7 + foe.T.hw); }
     else if (T.type === 'goto' || T.type === 'fight') { const p = T.pts[T.i || 0]; if (!p) { T.done = true; return; } tx = p[0]; tz = p[1]; if (Math.hypot(tx - P.x, tz - P.z) < (p[2] || 1.6)) { T.i = (T.i || 0) + 1; if (T.i >= T.pts.length) { T.done = true; return; } } }
