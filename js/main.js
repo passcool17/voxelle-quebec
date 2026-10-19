@@ -959,7 +959,7 @@ function reward(r) {
   return `<span class="rw">Récompense : ${r.cash || 0} piasses · ${r.xp} XP${r.item ? ' · ' + ITEMS[r.item].name : ''}${r.give ? ' · ' + Object.entries(r.give).map(([k, v]) => v + ' × ' + ITEMS[k].name).join(', ') : ''}</span>`;
 }
 // où aller : le PNJ lui-même s'il est chargé, sinon sa place ; pour une quête en cours, la cible vivante la plus proche
-function npcPos(role, near) { let best = null, bd = 150; for (const [, n] of G.npcs) if (n.role === role) { const d = near ? Math.hypot(n.x - near.x, n.z - near.z) : 0; if (d < bd) { bd = d; best = { x: n.x, z: n.z, y: n.y + 2.4 }; } } return best; }
+function npcPos(role, near) { let best = null, bd = 150; for (const [, n] of G.npcs) if (n.role === role) { const d = near ? Math.hypot(n.x - near.x, n.z - near.z) : 0; if (d < bd) { bd = d; best = { x: n.x, z: n.z, y: n.y + 3.4 }; } /* au-dessus du nom et du « ! » */ } return best; }
 function giverPos(role, q) {
   const NP = gen.nord.places, c = { gaston: [0, 0], lapaperasse: [0, 0], pepere: [1, 0], ginette: [-1, 0] }[role];
   const p = q && q.home ? gen.reg.places[q.home] : c ? gen.cell(...c) : { cuisiniere: NP.etape, saguenayen: NP.port }[role];
@@ -1176,7 +1176,7 @@ function miniUpdate(dt) {
 }
 // sous terre : plan des salles visitées autour du joueur (couloirs vers les salles voisines), échelle, boss (au bord s'il est loin), joueur
 function drawDunMini() {
-  const s = G.dun, p = dunPlan(s), seen = S.dunSeen[s.key] || 0, P = G.P, c = mctx, W = 160, sc = 3.2;
+  const s = G.dun, p = dunPlan(s), seen = S.dunSeen[s.key] || 0, P = G.P, c = mctx, W = 160, sc = 4.5;
   const X = x => (x - P.x) * sc + W / 2, Z = z => (z - P.z) * sc + W / 2;
   const isSeen = m => seen & (1 << (m.i + 4 * m.j)), room = (i, j) => p.rooms[i + 4 * j];
   c.fillStyle = '#0c1420'; c.fillRect(0, 0, W, W);
