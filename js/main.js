@@ -6,6 +6,7 @@ import { World, moveBody, boxHit } from './world.js';
 import { B, CSM as CS, SEA, NAME, PLACEABLE, DROP, SOLID, COL, LEAF, VS } from './blocks.js';
 import { Sky } from './sky.js';
 import { Audio } from './audio.js';
+import { Ambiance } from './fx.js';
 import { human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel, critterModel } from './models.js';
 import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS, AMBIENT } from './data.js';
 import { blockIcon, itemIcon } from './icons.js';
@@ -37,6 +38,10 @@ const sky = new Sky(scene, mobile);
 const gen = createGen(SEED);
 const audio = new Audio(); audio.setVol(OPT.vol); audio.setMusic(OPT.mus);
 let world = null;
+const amb = new Ambiance(scene, mobile);
+// ombre ronde sous les personnages quand les ombres portées sont coupées (mobile, qualité basse)
+const blobGeo = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2), blobMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+function addBlob(g, r) { const b = new THREE.Mesh(blobGeo, blobMat); b.scale.setScalar(r / (g.scale.x || 1)); b.position.y = 0.04 / (g.scale.x || 1); b.renderOrder = 1; g.add(b); return b; }
 
 // ---------- état ----------
 const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
@@ -107,7 +112,7 @@ const PERSO_NOM = { gars: 'LE HÉROS', fille: 'L’HÉROÏNE' };
 function makePlayer() {
   const m = human(PLAYER_LOOKS[perso()]); setWeapon(m, S.equip.arme ? S.equip.arme.id : 'baton');
   const gl = glider(); gl.position.set(0, 2.25, 0); gl.visible = false; m.g.add(gl);
-  scene.add(m.g);
+  scene.add(m.g); addBlob(m.g, 0.45);
   const P = { x: S.pos[0], y: S.pos[1], z: S.pos[2], vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, hp: S.hp, stam: 1, yaw: S.yaw, model: m, gl, gliding: false, atkT: 0, atkCd: 0, hitAt: -1, iT: 0, buff: 0, brkCd: 0, fallV: 0, walkT: 0, rollT: 0, rollCd: 0, holdT: 0, atkWas: false, atkBuf: 0, combo: 0, lastSwing: -9, spinT: 0 };
   G.camYaw = S.yaw; G.camPitch = 0.32; G.camDist = 5.8;
   return P;
@@ -186,6 +191,8 @@ function playerUpdate(dt) {
   moveBody(world, P, dt, true);
   if (P.stepOff) P.model.stepOffV = (P.model.stepOffV || 0) + P.stepOff;
   P.model.stepOffV = Math.max(0, (P.model.stepOffV || 0) - dt * 7);
+  if (P.ground && !inWater && Math.hypot(P.vx, P.vz) > 7 && Math.random() < dt * 9) burst(P.x, P.y + 0.08, P.z, sky.snow > 0.4 || gen.column(Math.floor(P.x), Math.floor(P.z)).biome === BIOME.COLLINES ? 0xf4f8ff : 0xcfc0a0, 1, 1.4);
+  if (P.ground && !wasGround && fallV < -9 && !inWater) { burst(P.x, P.y + 0.1, P.z, 0xd8d0c0, 7, 3); ring(P.x, P.y + 0.06, P.z, 0.3, 1.3, 0.3, 0xe8e0d0); }
   if (P.ground && !wasGround) { if (fallV < -17 && !inWater) { hurtPlayer(Math.round((-fallV - 17) * 4), null, 'chute'); } else if (fallV < -6) audio.fx('land', 0.6); }
   if (P.y < -10) { P.y = gen.heightAt(P.x, P.z) + 3; P.vy = 0; }
   S.stats.dist += Math.hypot(P.vx, P.vz) * dt;
@@ -404,7 +411,7 @@ function projUpdate(dt) {
 function enemyLevel(x, z) { if (z < -480) return Math.min(6, 3 + Math.floor((-480 - z) / 700)); return 1 + Math.floor(Math.hypot(x - gen.VX, z - gen.VZ) / 220); }
 function spawnEnemy(type, x, z, opt = {}) {
   const T = ENEMIES[type], lvl = opt.lvl || enemyLevel(x, z), y = world.ground(x, z);
-  const M = enemyModel(type); scene.add(M.g);
+  const M = enemyModel(type); scene.add(M.g); if (!T.fly) addBlob(M.g, Math.max(0.4, T.hw * 1.2));
   const hpm = 1 + 0.3 * (lvl - 1);
   const e = { type, T, lvl, x, y, z, vx: 0, vy: 0, vz: 0, hw: T.hw, h: T.h, ground: false, hp: T.hp * hpm, hpMax: T.hp * hpm, dmg: T.dmg * (1 + 0.18 * (lvl - 1)), model: M, state: type === 'trou' ? 'hidden' : 'idle', cd: 1, atkAnim: 0, t: Math.random() * 10, wander: Math.random() * 6.28, home: { x, z }, camp: opt.camp, hurtT: 0, yaw: Math.random() * 6.28, moving: false };
   e.label = makeLabel('foe', `<div class="nm">${T.name} <span class="gold">niv. ${lvl}</span></div><div class="hb"><div></div></div>`);
@@ -603,7 +610,7 @@ function npcsUpdate(dt) {
     const m = layout(s);
     m.npcs.forEach((n, k) => {
       const key = s.i + ',' + s.j + ':' + k; if (G.npcs.has(key)) return;
-      const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g);
+      const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g); addBlob(model.g, 0.42);
       const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? (n.shop === 'etape' ? 'Comptoir de L’Étape' : s.nord ? 'Dépanneur du Royaume' : 'Dépanneur') : NPCS[n.role].name;
       const npc = { key, role: n.role, stop: n.stop, shop: n.shop, s, x: n.x, z: n.z, y: world.ground(n.x, n.z), vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, home: { x: n.x, z: n.z }, model, name: nm, t: Math.random() * 9, yaw: Math.random() * 6, wander: Math.random() * 6, walkT: 0, chat: ROLE_CHAT[n.role] ? ROLE_CHAT[n.role][(s.seed + k) % ROLE_CHAT[n.role].length] : CHATTER[(s.seed + k * 7) % CHATTER.length] };
       if (n.role === 'villageois') { npc.act = ['marche', 'marche', 'pelle', 'jase', 'hockey'][(s.seed + k * 13) % 5]; if (npc.act === 'pelle') setWeapon(model, 'pelle'); if (npc.act === 'hockey') setWeapon(model, 'baton'); }
@@ -1052,7 +1059,9 @@ function startGame(fresh) {
 }
 function waterUpdate() {
   const u = world.matWa.uniforms; u.time.value = G.t; u.sunDir.value.copy(sky.sun.position).sub(sky.sun.target.position).normalize();
-  u.sunCol.value.copy(sky.sun.color); u.skyCol.value.copy(sky.hor).lerp(sky.top, 0.3); u.dayF.value = sky.dayF; u.sunInt.value = Math.min(1.2, sky.sun.intensity / 2);
+  u.sunCol.value.copy(sky.sun.color); u.skyCol.value.copy(sky.hor).lerp(sky.top, 0.3); u.dayF.value = sky.dayF; u.sunInt.value = Math.min(1.2, sky.sun.intensity / 2); u.rain.value = sky.rain;
+  const k = 1 - sky.dayF; world.matGl.color.setRGB(0.86 + 0.8 * k, 0.86 + 0.5 * k, 0.86 + 0.05 * k); // fenêtres et lanternes plus chaudes la nuit
+  blobMat.visible = !renderer.shadowMap.enabled;
 }
 function enterPlay() {
   hide('loading'); show('hud'); G.state = 'play'; G.dirtyHot = true; G.dirtyQ = true; setupTouchOnce();
@@ -1128,6 +1137,7 @@ function frame(now) {
     camUpdate(dt); partsUpdate(dt); ringsUpdate(dt); G.shake *= Math.pow(0.004, dt);
     const col = gen.column(Math.floor(P.x), Math.floor(P.z));
     sky.update(dt, camera.position, G.t, world.view * CS, col.biome === BIOME.COLLINES ? 0.85 : 0);
+    amb.update(dt, P, G.t, 1 - sky.dayF, col.biome === BIOME.BOREALE || col.biome === BIOME.ERABLIERE || col.biome === BIOME.CAMPAGNE, col.biome === BIOME.ERABLIERE, Math.max(sky.rain, sky.snow));
     if (st === 'play') { hudUpdate(dt); miniUpdate(dt); }
   }
   pressed.clear();
@@ -1180,5 +1190,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
+const API = { amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT };
 window.__game = API;

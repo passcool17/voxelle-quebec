@@ -29,26 +29,30 @@ export function terrainMaterial() {
   return m;
 }
 export function waterMaterial() {
-  const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { time: { value: 0 }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color(1, 1, 1) }, skyCol: { value: new THREE.Color(0.7, 0.85, 1) }, dayF: { value: 1 }, sunInt: { value: 1 } }]);
+  const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { time: { value: 0 }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color(1, 1, 1) }, skyCol: { value: new THREE.Color(0.7, 0.85, 1) }, dayF: { value: 1 }, sunInt: { value: 1 }, rain: { value: 0 } }]);
   return new THREE.ShaderMaterial({ uniforms: u, vertexColors: true, transparent: true, depthWrite: false, fog: true,
     vertexShader: `attribute float tex; varying float vFoam; varying vec3 vW; varying vec3 vCol;
       #include <fog_pars_vertex>
       void main(){ vFoam = tex; vCol = color; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vec4 mvPosition = viewMatrix * w; gl_Position = projectionMatrix * mvPosition;
       #include <fog_vertex>
       }`,
-    fragmentShader: `uniform float time; uniform vec3 sunDir; uniform vec3 sunCol; uniform vec3 skyCol; uniform float dayF; uniform float sunInt;
+    fragmentShader: `uniform float time; uniform vec3 sunDir; uniform vec3 sunCol; uniform vec3 skyCol; uniform float dayF; uniform float sunInt; uniform float rain;
       varying float vFoam; varying vec3 vW; varying vec3 vCol;
       #include <fog_pars_fragment>
       void main(){ vec2 p = vW.xz; float t = time; vec2 g = vec2(0.0);
         g += vec2(cos(p.x * 0.9 + t * 1.3), cos(p.y * 0.7 + t * 1.1)) * 0.05;
         g += vec2(cos((p.x + p.y) * 1.7 - t * 1.9), cos((p.x - p.y) * 1.5 + t * 1.6)) * 0.035;
         g += vec2(sin(p.x * 3.7 + p.y * 1.3 + t * 2.7), sin(p.y * 3.3 - p.x * 1.1 + t * 2.3)) * 0.018;
+        g += rain * vec2(sin(p.x * 11.0 + t * 9.0) * cos(p.y * 7.0 - t * 5.0), cos(p.y * 10.0 - t * 8.0) * sin(p.x * 6.0 + t * 4.0)) * 0.06; // gouttes de pluie
         vec3 n = normalize(vec3(-g.x, 1.0, -g.y)); vec3 V = normalize(cameraPosition - vW);
         float fres = 0.06 + 0.9 * pow(1.0 - max(dot(n, V), 0.0), 4.0);
-        vec3 base = vCol * (0.25 + 0.75 * dayF);
+        vec3 base = vCol * (0.25 + 0.75 * dayF) * mix(0.62, 1.0, pow(1.0 - max(V.y, 0.0), 2.0)) * (1.0 - rain * 0.2); // plus sombre (profond) vu de haut
         vec3 c = mix(base, skyCol, fres);
         vec3 H = normalize(normalize(sunDir) + V); float sp = pow(max(dot(n, H), 0.0), 140.0) * sunInt;
         c += sunCol * sp * 1.6;
+        // scintillement : petites facettes qui renvoient le soleil
+        vec2 cellp = floor(p * 5.0 + vec2(t * 0.35, -t * 0.25)); float gh = fract(sin(dot(cellp, vec2(12.9898, 78.233))) * 43758.5453);
+        c += sunCol * step(0.975, gh) * pow(max(dot(n, H), 0.0), 18.0) * sunInt * dayF * (0.6 + 0.4 * sin(t * 6.0 + gh * 30.0)) * 1.4;
         float fo = vFoam * (0.55 + 0.45 * sin(p.x * 3.0 + t * 1.7) * sin(p.y * 3.4 - t * 1.3));
         float foam = smoothstep(0.3, 0.85, fo);
         c = mix(c, vec3(0.9, 0.95, 1.0) * (0.3 + 0.7 * dayF), foam * 0.75);

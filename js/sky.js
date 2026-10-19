@@ -72,7 +72,9 @@ export class Sky {
     const GRAY = C(0x7a8490).multiplyScalar(0.25 + dayF * 0.75), rn = this.rain * 0.7; this.top.lerp(GRAY, rn); this.hor.lerp(GRAY.clone().multiplyScalar(1.2), rn * 0.8);
     const sn = this.snow * 0.75; this.top.lerp(SNOW_TOP.clone().multiplyScalar(0.25 + dayF * 0.75), sn); this.hor.lerp(SNOW_HOR.clone().multiplyScalar(0.2 + dayF * 0.8), sn);
     this.u.top.value.copy(this.top); this.u.hor.value.copy(this.hor);
-    this.fog.color.copy(this.hor); this.fog.far = viewDist * (1 - this.snow * 0.45 - this.rain * 0.3); this.fog.near = this.fog.far * (0.38 - this.snow * 0.25);
+    // brume du matin (vers 5 h – 8 h) : brouillard plus proche et plus pâle
+    const mist = Math.max(0, 1 - Math.abs(this.t - 0.27) / 0.07) * (1 - this.snow); this.mist = mist;
+    this.fog.color.copy(this.hor).lerp(C(0xe8eef4).multiplyScalar(0.4 + dayF * 0.6), mist * 0.35); this.fog.far = viewDist * (1 - this.snow * 0.45 - this.rain * 0.3 - mist * 0.35); this.fog.near = this.fog.far * (0.38 - this.snow * 0.25);
     this.dome.position.copy(camPos); this.stars.position.copy(camPos); this.aurora.position.set(camPos.x, camPos.y * 0.3, camPos.z);
     this.starMat.opacity = (1 - dayF) * (1 - this.snow * 0.9) * 0.9; this.stars.rotation.y = now * 0.002;
     this.au.t.value = now; this.au.a.value = (1 - smooth(-0.25, 0.05, el)) * (1 - this.snow * 0.85) * 0.8; this.aurora.visible = this.au.a.value > 0.01;
