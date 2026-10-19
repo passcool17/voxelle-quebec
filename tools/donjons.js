@@ -29,7 +29,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     o.ennemis = await ev(fy => __game.G.enemies.filter(e => Math.abs(e.y - fy) < 3).length, s.fy);
     o.ySol = await ev(() => +(__game.G.P.y - __game.dun.fy).toFixed(2));
     // salle voisine éclairée : capture
-    await ev(() => { const G = __game.G; for (const e of G.enemies) e.hp = Math.min(e.hp, 1); G.camYaw = 2.4; G.camPitch = 0.25; G.camDist = 4; }); await W(1500);
+    await ev(() => { const G = __game.G; for (const e of G.enemies) e.hp = Math.min(e.hp, 1); G.camYaw = 2.4; G.camPitch = 0.45; G.camDist = 3.2; __game.G.P.x += 0; }); await W(1500);
     await p.screenshot({ path: SH + PFX + '-' + key + '-salle.png' });
     // coffre : on marche dessus
     const c = await ev(() => { const P = __game.G.P, c = __game.pickups.filter(p => p.kind === 'coffre').sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))[0]; return c && { x: c.x, y: c.y, z: c.z, key: c.key }; });
@@ -44,7 +44,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
     const b = await ev(k => { const r = __game.dunPlan(__game.gen.reg.places[k]).bossRoom; return { x: r.x + 0.5, z: r.z + 0.5 }; }, key);
     await ev(([b, fy]) => { const P = __game.G.P; P.x = b.x; P.z = b.z + 2; P.y = fy + 0.05; P.vx = P.vz = P.vy = 0; }, [b, s.fy]); await W(1500);
     o.boss = await ev(() => __game.G.boss && { type: __game.G.boss.type, nom: __game.G.boss.T.name, lvl: __game.G.boss.lvl });
-    await ev(() => { const G = __game.G, P = G.P, e = G.boss; if (!e) return; G.camYaw = Math.atan2(P.x - e.x, P.z - e.z); G.camPitch = 0.2; G.camDist = 6; }); await W(1800);
+    await ev(() => { const G = __game.G, P = G.P, e = G.boss; if (!e) return; G.camYaw = Math.atan2(e.x - P.x, e.z - P.z); G.camPitch = 0.25; G.camDist = 5; }); await W(1800);
     await p.screenshot({ path: SH + PFX + '-' + key + '-boss.png' });
     o.phases = await ev(async () => { const g = __game, e = g.G.boss, ph = []; if (!e) return null; for (let k = 0; k < 4 && e.hp > 0; k++) { g.damageEnemy(e, e.hpMax * 0.3, 0, 1, 0); ph.push(e.phase); await new Promise(r => setTimeout(r, 400)); } return ph; });
     await W(800);

@@ -753,7 +753,7 @@ function npcsUpdate(dt) {
     if (n.waveT > 0) { n.waveT -= dt; A.armR.rotation.x = 2.7; A.armR.rotation.z = 0.35 + Math.sin(n.t * 14) * 0.35; }
     if (n.sayEl.style.display !== 'none' && G.t > n.sayUntil) n.sayEl.style.display = 'none';
     const mk = npcMark(n); n.mkEl.textContent = mk === 'ready' ? '?' : mk === 'avail' ? '!' : ''; n.mkEl.className = 'mk' + (mk === 'ready' ? ' rdy' : '');
-    placeLabel(n.label, n.x, n.y + 2.3, n.z, 30);
+    if (G.dun && Math.abs(n.y - G.P.y) > 5) n.label.style.display = 'none'; else placeLabel(n.label, n.x, n.y + 2.3, n.z, 30);
     if (d < td && Math.abs(P.y - n.y) < 2.5) { td = d; talk = n; }
   }
   if (G.drive) talk = null;
@@ -1006,8 +1006,8 @@ function hudUpdate(dt) {
   const tp = talentPts(S); $('lvl').innerHTML = 'NIV. ' + S.lvl + '  ·  ' + S.xp + ' / ' + xpNext(S.lvl) + ' XP' + (tp ? ' <span class="gold">· ★ ' + tp + ' talent' + (tp > 1 ? 's' : '') + (isTouch ? '' : ' (T)') + '</span>' : '');
   $('cash').querySelector('b').textContent = S.cash;
   const col = gen.column(Math.floor(P.x), Math.floor(P.z)), rk = gen.nord.region(P.x, P.z);
-  const place = rk ? REGIONS[rk][0] : col.st && col.w > 0.4 ? col.st.name || { ville: 'Vieille-Ville', village: 'Village', cabane: 'Cabane à sucre', chantier: 'Chantier', grand: 'Grand Chantier' }[col.st.type] : BIOME_NAME[col.biome];
-  if (rk !== G.regKey) { if (rk && (!G.regSeen[rk] || G.t - G.regSeen[rk] > 60)) { banner(REGIONS[rk][0].toUpperCase(), REGIONS[rk][1]); G.lastBanner = rk; } G.regKey = rk; }
+  const place = G.dun ? DUN[G.dun.kind].name : rk ? REGIONS[rk][0] : col.st && col.w > 0.4 ? col.st.name || { ville: 'Vieille-Ville', village: 'Village', cabane: 'Cabane à sucre', chantier: 'Chantier', grand: 'Grand Chantier' }[col.st.type] : BIOME_NAME[col.biome];
+  if (rk !== G.regKey) { if (rk && !G.dun && (!G.regSeen[rk] || G.t - G.regSeen[rk] > 60)) { banner(REGIONS[rk][0].toUpperCase(), REGIONS[rk][1]); G.lastBanner = rk; } G.regKey = rk; }
   if (rk) G.regSeen[rk] = G.t;
   $('where').textContent = place; $('clock').textContent = sky.clock() + (sky.snow > 0.4 ? ' · neige' : sky.rain > 0.4 ? ' · pluie' : '');
   if (G.dirtyHot) { G.dirtyHot = false; renderHot(); }
