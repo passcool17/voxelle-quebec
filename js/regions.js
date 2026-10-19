@@ -93,9 +93,9 @@ export function createRegions({ N, N2, N3, seed, riverZ, riverW, VX }) {
   const stops = [
     { key: 'charlevoix', label: 'BAIE-SAINT-PAUL', ax: P.baie.x - 14.5, az: P.baie.z + 8.5, car: [P.baie.x - 20, P.baie.z + 8, 0] },
     { key: 'montreal', label: 'MONTRÉAL', ax: P.mtl.x + 0.5, az: P.mtl.z + 13.5, car: [P.mtl.x + 3, P.mtl.z + 16, Math.PI / 2] },
-    { key: 'montmagny', label: 'MONTMAGNY', ax: P.mm.x - 10.5, az: P.mm.z + 8.5, car: [P.mm.x - 16, P.mm.z + 6, 0] },
+    { key: 'montmagny', label: 'MONTMAGNY', ax: P.mm.x - 8.5, az: P.mm.z + 1.5, car: [P.mm.x - 2, P.mm.z + 1, 0] },
     { key: 'quai', label: 'QUAI DE LA VIEILLE-VILLE', ax: P.quai.x - 2.5, az: P.quai.z - 2.5, car: [P.quai.x - 8, P.quai.z - 6, 0], mode: 'ferry' },
-    { key: 'mmferry', label: 'MONTMAGNY (MARINA)', ax: P.mm.x - 6.5, az: P.mm.z - 16.5, car: [P.mm.x - 12, P.mm.z - 4, 0], mode: 'ferry' },
+    { key: 'mmferry', label: 'MONTMAGNY (MARINA)', ax: P.mm.x - 6.5, az: P.mm.z - 22.5, car: [P.mm.x - 14, P.mm.z - 8, 0], mode: 'ferry' },
     { key: 'perce', label: 'PERCÉ', ax: P.perce.x - 8.5, az: P.perce.z - 12.5, car: [P.perce.x - 14, P.perce.z - 4, 0], mode: 'ferry' },
   ];
   function region(x, z) {
@@ -228,13 +228,13 @@ export function regLayout(s, m, r) {
     for (let k = 0; k < 6; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 22, z: s.z + (r() - 0.5) * 22 });
   } else if (s.type === 'mm') {
     m.npcs.push(
-      { role: 'accordeoniste', x: s.x + 2.5, z: s.z + 3.5 },
-      { role: 'oiseleur', x: s.x - 8.5, z: s.z - 10.5 },
-      { role: 'commercant', x: s.x + 8.5, z: s.z - 4.5, shop: 'montmagny' },
-      { role: 'chauffeur', x: s.x - 12.5, z: s.z + 9.5, stop: 'montmagny' },
-      { role: 'matelot', x: s.x - 5.5, z: s.z - 15.5, stop: 'mmferry' },
-      { role: 'aubergiste', x: s.x - 2.5, z: s.z + 6.5 });
-    for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x + (r() - 0.5) * 28, z: s.z + (r() - 0.5) * 20 });
+      { role: 'accordeoniste', x: s.x + 9.5, z: s.z + 1.5 },
+      { role: 'oiseleur', x: s.x - 14.5, z: s.z - 6.5 },
+      { role: 'commercant', x: s.x + 11.5, z: s.z - 6.5, shop: 'montmagny' },
+      { role: 'chauffeur', x: s.x - 10.5, z: s.z + 2.5, stop: 'montmagny' },
+      { role: 'matelot', x: s.x - 6.5, z: s.z - 20.5, stop: 'mmferry' },
+      { role: 'aubergiste', x: s.x - 3.5, z: s.z + 8.5 });
+    for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x + 14 + (r() - 0.5) * 10, z: s.z + 10 + (r() - 0.5) * 8 });
   } else if (s.type === 'batt') {
     m.npcs.push({ role: 'oiseleur', x: s.x + 2.5, z: s.z + 4.5 });
     for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.2, d = 8 + k * 3; m.items.push({ kind: 'plume', x: s.x + Math.cos(a) * d + 0.5, z: s.z + Math.sin(a) * d + 0.5 }); }
@@ -282,27 +282,29 @@ export function regBuild(s, P, H) {
     P.fill(s.x - 1, h + 15, s.z - 1, s.x + 1, h + 16, s.z + 1, B.LAMP); P.fill(s.x - 2, h + 17, s.z - 2, s.x + 2, h + 17, s.z + 2, B.REDROOF); P.fill(s.x - 1, h + 18, s.z - 1, s.x + 1, h + 18, s.z + 1, B.REDROOF);
     H.house(P, s.x + 3, s.z - 2, 5, 4, h, B.WHITE, B.REDROOF, 'e', 3);
   } else if (s.type === 'mm') {
-    // Montmagny : vieille-ville, église, salle de l'accordéon, marina
-    P.fill(s.x - 18, h, s.z - 4, s.x + 18, h, s.z + 4, B.COBBLE); P.fill(s.x - 3, h, s.z - 20, s.x + 3, h, s.z + 14, B.COBBLE);
+    // Montmagny : place ouverte (autocar + bazou), église, salle accordéon, marina dégagée
+    P.fill(s.x - 20, h, s.z - 3, s.x + 20, h, s.z + 3, B.COBBLE); P.fill(s.x - 3, h, s.z - 24, s.x + 3, h, s.z + 16, B.COBBLE);
+    P.fill(s.x - 14, h, s.z - 2, s.x - 4, h, s.z + 5, B.COBBLE);
     const cols = [B.WHITE, B.BRICK, B.YELLOW, B.BLUE, B.COPPER, B.REDROOF];
-    [[-16, -12], [-6, -14], [6, -12], [14, -10], [-16, 6], [8, 8], [16, 4]].forEach(([dx, dz], k) => H.house(P, s.x + dx - 3, s.z + dz, 6, 5, h, cols[k % 6] === B.YELLOW ? B.PLANK : cols[k % 6], k % 2 ? B.TIN : B.SHINGLE, dz < 0 ? 's' : 'n', 3));
-    H.church(P, s.x - 3, s.z + 12, h);
-    P.fill(s.x + 6, h + 1, s.z - 2, s.x + 14, h + 5, s.z + 4, B.PLANK); P.fill(s.x + 7, h + 1, s.z - 1, s.x + 13, h + 4, s.z + 3, 0); P.fill(s.x + 6, h + 6, s.z - 2, s.x + 14, h + 6, s.z + 4, B.REDROOF);
-    panel(P, ['ACCORDÉON'], F(s.x + 10), F(h + 5) + 4, F(s.z + 5), 'x', B.SIGN, B.TRIM, true);
-    const qz0 = s.z - 12, qz1 = s.z - 30; P.fill(s.x - 8, SEA + 1, qz1, s.x - 4, SEA + 1, qz0, B.PLANK);
-    for (let z = qz1; z <= qz0; z += 4) { P.fill(s.x - 8, SEA - 3, z, s.x - 8, SEA, z, B.LOG); P.fill(s.x - 4, SEA - 3, z, s.x - 4, SEA, z, B.LOG); }
-    P.fill(s.x - 8, SEA + 2, qz1, s.x - 4, SEA + 10, qz0, 0);
-    const fx = s.x - 1, fz = qz1 + 5; P.fill(fx, SEA - 1, fz - 5, fx + 4, SEA + 1, fz + 5, B.WHITE); P.fill(fx, SEA + 1, fz - 5, fx + 4, SEA + 1, fz + 5, B.BLUE);
-    H.lampPost(P, s.x - 11, s.z + 8, h); busSign(P, s.x - 12, s.z + 9, h, 'MONTMAGNY'); busSign(P, s.x - 8, s.z - 14, h, 'TRAVERSIER');
-    panel(P, ['MONTMAGNY', 'CAPITALE DE L\'OIE BLANCHE'], F(s.x), F(h + 6) + 2, F(s.z + 18), 'x', B.SIGN, B.TRIM, true);
+    [[-22, -5], [16, -5], [-22, 9], [18, 9], [-12, 14], [12, 14]].forEach(([dx, dz], k) => H.house(P, s.x + dx - 3, s.z + dz, 6, 5, h, cols[k % 6] === B.YELLOW ? B.PLANK : cols[k % 6], k % 2 ? B.TIN : B.SHINGLE, dz < 0 ? 's' : 'n', 3));
+    H.church(P, s.x - 4, s.z + 14, h);
+    P.fill(s.x + 6, h + 1, s.z - 2, s.x + 16, h + 6, s.z + 6, B.PLANK); P.fill(s.x + 7, h + 1, s.z - 1, s.x + 15, h + 5, s.z + 5, 0); P.fill(s.x + 6, h + 7, s.z - 2, s.x + 16, h + 7, s.z + 6, B.REDROOF);
+    P.fill(s.x + 10, h + 1, s.z - 2, s.x + 12, h + 3, s.z - 2, 0);
+    busSign(P, s.x + 11, s.z - 5, h, 'ACCORDÉON');
+    const qz0 = s.z - 10, qz1 = s.z - 34; P.fill(s.x - 9, SEA + 1, qz1, s.x - 3, SEA + 1, qz0, B.PLANK);
+    for (let z = qz1; z <= qz0; z += 4) { P.fill(s.x - 9, SEA - 3, z, s.x - 9, SEA, z, B.LOG); P.fill(s.x - 3, SEA - 3, z, s.x - 3, SEA, z, B.LOG); }
+    P.fill(s.x - 9, SEA + 2, qz1, s.x - 3, SEA + 14, qz0, 0);
+    const fx = s.x + 1, fz = qz1 + 8;
+    P.fill(fx, SEA - 1, fz - 7, fx + 6, SEA + 1, fz + 7, B.WHITE);
+    P.fill(fx, SEA + 1, fz - 7, fx + 6, SEA + 2, fz + 7, B.BLUE);
+    P.fill(fx + 1, SEA + 3, fz - 3, fx + 5, SEA + 5, fz + 3, B.WHITE);
+    P.fill(fx + 3, SEA + 6, fz - 1, fx + 4, SEA + 7, fz + 1, B.REDROOF);
+    H.lampPost(P, s.x - 16, s.z + 3, h); busSign(P, s.x - 18, s.z + 2, h, 'MONTMAGNY');
+        panel(P, ['MONTMAGNY'], F(s.x), F(h + 8) + 2, F(s.z + 20), 'x', B.SIGN, B.TRIM, true);
   } else if (s.type === 'batt') {
-    P.fill(s.x - 20, h, s.z - 14, s.x + 20, h, s.z + 14, B.SAND);
-    for (let k = 0; k < 7; k++) { const ax = s.x - 16 + k * 5, az = s.z - 8 + (k % 3) * 6; P.fill(ax, h, az, ax + 2, h, az + 2, B.WATER); }
-    for (let k = 0; k < 28; k++) {
-      const a = k * 2.3 + 0.4, d = 4 + (k % 7) * 2.2, gx = Math.round(s.x + Math.cos(a) * d), gz = Math.round(s.z + Math.sin(a) * d);
-      P.set(gx, h + 1, gz, B.WHITE); P.set(gx, h + 2, gz, B.WHITE); if (k % 3 === 0) P.set(gx, h + 3, gz, B.STONE);
-    }
-    panel(P, ['BATTURES', 'OIES BLANCHES'], F(s.x), F(h + 2) + 8, F(s.z + 16), 'x', B.SIGN, B.TRIM, true);
+    P.fill(s.x - 22, h, s.z - 16, s.x + 22, h, s.z + 16, B.SAND);
+    for (let k = 0; k < 5; k++) { const ax = s.x - 14 + k * 6, az = s.z - 10 + (k % 2) * 8; P.fill(ax, h, az, ax + 3, h, az + 2, B.WATER); }
+    busSign(P, s.x - 2, s.z - 14, h, 'BATTURES');
   } else if (s.type === 'ile') {
     for (let dx = -7; dx <= 7; dx++) for (let dz = -5; dz <= 5; dz++) {
       const rr = Math.hypot(dx / 7, dz / 5); if (rr > 1) continue;

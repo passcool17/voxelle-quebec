@@ -45,7 +45,7 @@ const FONT = {
   Y: '101101010010010', Z: '111001010100111', 0: '111101101101111', 1: '010110010010111', 2: '110001010100111', 3: '110001010001110', 4: '101101111001001', 5: '111100110001110',
   6: '011100111101111', 7: '111001010010010', 8: '111101111101111', 9: '111101111001110', ' ': '000000000000000', '-': '000000111000000', '.': '000000000000010', ':': '000010000010000',
 };
-const ACC = { 'É': ['E', 'aigu'], 'È': ['E', 'grave'], 'Ê': ['E', 'circ'] };
+const ACC = { 'É': ['E', 'aigu'], 'È': ['E', 'grave'], 'Ê': ['E', 'circ'], 'Î': ['I', 'circ'], 'Ô': ['O', 'circ'], 'À': ['A', 'grave'], 'Ù': ['U', 'grave'] };
 export function textW(str) { let w = 0; for (const ch of str) w += (ch === '\'' || ch === '’' ? 1 : 3) + 1; return Math.max(0, w - 1); }
 // texte en voxels fins ; (fx, fy, fz) = coin haut-gauche de la 1re lettre, (ux, uz) = sens de lecture
 export function vtext(P, str, fx, fy, fz, ux, uz, b) {

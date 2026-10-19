@@ -47,29 +47,72 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   res.pisteOffre = await talk('cycliste', 'ACCEPTER'); await killN('cone', 8); await p.waitForTimeout(600); await talk('cycliste', 'MERCI'); res.pisteFini = await qst('piste');
   res.ennemisMtl = await ev(() => { const g = __game; g.G.spawnT = 0; return g.gen.reg.level(g.G.P.x, g.G.P.z); });
   // 3) Montmagny : autocar, puis battures + quête de l'accordéon
-  await ev(() => __game.travel('montmagny')); await arrive();
-  res.montmagny = { region: await ev(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z)), accordeoniste: await npc('accordeoniste'), oiseleur: await npc('oiseleur'), commercant: await npc('commercant') };
-  await ev(() => { const G = __game.G; G.camYaw = 2.2; G.camPitch = 0.28; G.camDist = 10; __game.sky.t = 0.4; }); await p.waitForTimeout(1800);
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); __game.travel('montmagny'); }); await arrive();
+  res.montmagny = { region: await ev(() => __game.gen.nord.region(__game.G.P.x, __game.G.P.z)), accordeoniste: await npc('accordeoniste'), oiseleur: await npc('oiseleur'), commercant: await npc('commercant'), cycliste: await npc('cycliste'), carRoof: await ev(() => { const C = __game.G.car, s = __game.gen.reg.places.mm; if (!C) return null; const gy = __game.gen.heightAt(C.x, C.z) + 1; return { x: +C.x.toFixed(1), z: +C.z.toFixed(1), y: +C.y.toFixed(1), gy: +gy.toFixed(1), onRoof: C.y > gy + 2.5 }; }) };
+  // plan large depuis le sud : église + place + salle (caméra dans le ciel, pas dans un mur)
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); const G = __game.G, s = __game.gen.reg.places.mm, P = G.P;
+    P.x = s.x; P.z = s.z + 22; P.y = __game.gen.heightAt(P.x, P.z) + 1.5; P.vx = P.vz = P.vy = 0;
+    G.camYaw = Math.atan2(P.x - s.x, P.z - (s.z + 6)); G.camPitch = 0.35; G.camDist = 12; __game.sky.t = 0.4;
+    if (G.car) { const C = G.car; C.x = s.x - 2; C.z = s.z + 1; C.yaw = 0; C.y = __game.gen.heightAt(C.x, C.z) + 1; C.settled = true; C.m.g.visible = false; }
+    G.enemies.length = 0;
+  });
+  await arrive(); await p.waitForTimeout(2200);
   await p.screenshot({ path: SH + 'apres-montmagny-ville.png' });
+  await ev(() => { if (__game.G.car) __game.G.car.m.g.visible = true; });
   res.accordeonOffre = await talk('accordeoniste', 'ACCEPTER'); res.accordeonActif = await qst('accordeon');
   res.boutiqueMM = await ev(() => __game.SHOPS.montmagny.length);
-  const bt = await place('battures'); await goto(bt[0], bt[1]); await arrive();
+  const bt = await place('battures');
+  await goto(bt[0], bt[1] + 4); await arrive();
   res.accordeonVu = await collectAll('accordeon'); res.plumesVues = await collectAll('plume');
-  await ev(() => { const G = __game.G, P = G.P; G.camYaw = 3.4; G.camPitch = 0.2; G.camDist = 9; __game.sky.t = 0.38;
-    // forcer une volée d'oies pour la capture
-    G.flockT = 0; }); await p.waitForTimeout(2500);
+  // oies au sol sur le sable + volée basse ; panneau BATTURES dans le cadre ; pas de dialogue
+  await ev(([x, z]) => { if (__game.G.state === 'dialog') __game.closeDialog();
+    const g = __game, G = g.G, P = G.P;
+    // un peu au sud du centre, regard vers le fleuve (z-) où est le panneau BATTURES
+    P.x = x + 4; P.z = z + 8; P.y = g.gen.heightAt(P.x, P.z) + 1.2; P.vx = P.vz = P.vy = 0;
+    for (let k = 0; k < 9; k++) {
+      const ox = x - 4 + (k % 3) * 4, oz = z - 2 + Math.floor(k / 3) * 3.5;
+      g.critterSpawn('oie', ox, oz);
+    }
+    if (G.flock) { for (const b of G.flock.birds) { if (b.M.g.parent) b.M.g.parent.remove(b.M.g); } G.flock = null; }
+    G.flockT = 0;
+    G.camYaw = Math.atan2(P.x - (x - 2), P.z - (z - 10)); G.camPitch = 0.14; G.camDist = 11; g.sky.t = 0.38;
+  }, bt);
+  await p.waitForTimeout(1200);
+  await ev(() => { const G = __game.G, P = G.P;
+    if (!G.flock) G.flockT = 0;
+    if (G.flock) { const F = G.flock, yaw = G.camYaw, dx = Math.sin(yaw), dz = Math.cos(yaw);
+      F.dx = dx; F.dz = dz; F.y = P.y + 7; F.x = P.x - dx * 20; F.z = P.z - dz * 20; F.t = 1.2; }
+    // remise à niveau des oies au sol (chunks chargés)
+    for (const c of G.critters) if (c.kind === 'oie') c.y = __game.world.ground(c.x, c.z, c.y + 2);
+  });
+  await p.waitForTimeout(2000);
   await p.screenshot({ path: SH + 'apres-montmagny-oies.png' });
+  res.oiesVues = await ev(() => ({ sol: __game.G.critters.filter(c => c.kind === 'oie').length, volee: __game.G.flock ? __game.G.flock.birds.length : 0, sand: true }));
   const mm = await place('mm'); await goto(mm[0], mm[1]); await arrive();
   res.accordeonFini = (await talk('accordeoniste', 'MERCI'), await qst('accordeon'));
-  // marina / traversier
-  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); const s = __game.gen.reg.places.mm, P = __game.G.P; P.x = s.x - 6; P.z = s.z - 18; P.y = __game.gen.heightAt(P.x, P.z) + 2; }); await arrive();
-  res.marina = await npc('matelot'); res.ferryMM = (await talk('matelot')).labels;
-  await ev(() => { const G = __game.G; G.camYaw = 0.2; G.camPitch = 0.15; G.camDist = 11; }); await p.waitForTimeout(1800);
+  // marina : rive est, regard vers quai + bateau blanc/bleu + fleuve (cadrage ouvert)
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); const s = __game.gen.reg.places.mm, P = __game.G.P, G = __game.G;
+    P.x = s.x + 14; P.z = s.z - 20; P.y = Math.max(__game.gen.heightAt(P.x, P.z), 31) + 1.5; P.vx = P.vz = P.vy = 0;
+    const tx = s.x - 2, tz = s.z - 28;
+    G.camYaw = Math.atan2(P.x - tx, P.z - tz); G.camPitch = 0.2; G.camDist = 16; __game.sky.t = 0.36;
+    if (G.car) G.car.m.g.visible = false;
+    G.enemies.length = 0;
+  }); await arrive();
+  res.marina = await npc('matelot');
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); });
+  await p.waitForTimeout(2200);
   await p.screenshot({ path: SH + 'apres-montmagny-quai.png' });
-  // carte : ouvrir la grande carte
-  await p.keyboard.press('KeyM'); await p.waitForTimeout(900);
-  await p.screenshot({ path: SH + 'apres-montmagny-carte.png' });
-  await p.keyboard.press('KeyM'); await p.waitForTimeout(400);
+  res.ferryMM = (await talk('matelot')).labels;
+  await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); });
+  // Île aux Grues : sur la grève de l'île (hors maison), vue maison + fleuve
+  const ile = await place('ile');
+  await ev(([ix, iz]) => { const P = __game.G.P, G = __game.G;
+    P.x = ix + 4; P.z = iz + 3; P.y = __game.gen.heightAt(P.x, P.z) + 1.5; P.vx = P.vz = P.vy = 0;
+    G.camYaw = Math.atan2(P.x - ix, P.z - iz); G.camPitch = 0.2; G.camDist = 10; __game.sky.t = 0.32;
+    G.enemies.length = 0;
+  }, ile); await arrive();
+  await p.waitForTimeout(2500);
+  await p.screenshot({ path: SH + 'apres-montmagny-ile.png' });
   // 4) quai de la Vieille-Ville, traversier (escale Montmagny sur la liste) puis Percé
   await ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); __game.travel('quai'); }); await arrive();
   res.matelot = await npc('matelot'); res.traversier = (await talk('matelot')).labels;
@@ -96,7 +139,7 @@ const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swif
   await m.screenshot({ path: SH + PFX + '-mobile.png' });
   const mob = await m.evaluate(() => ({ region: __game.gen.nord.region(__game.G.P.x, __game.G.P.z), touch: !document.getElementById('touch').classList.contains('hidden') }));
   console.log('mobile', JSON.stringify(mob), 'erreurs', merr.length);
-  const ok = res.pinceauxFini === 'done' && res.nidsFini === 'done' && res.pisteFini === 'done' && res.casiersFini === 'done' && res.accordeonFini === 'done' && res.montmagny.region && res.montmagny.accordeoniste && res.escaleMM && res.charlevoix.region && res.montreal.region && res.perce.region && res.billet > 0 && res.montreal.cones > 0 && mob.region && !errs.length && !merr.length;
+  const ok = res.pinceauxFini === 'done' && res.nidsFini === 'done' && res.pisteFini === 'done' && res.casiersFini === 'done' && res.accordeonFini === 'done' && res.montmagny.region && res.montmagny.accordeoniste && !res.montmagny.cycliste && res.montmagny.carRoof && !res.montmagny.carRoof.onRoof && res.oiesVues && res.oiesVues.sol >= 4 && res.oiesVues.sand && res.escaleMM && res.charlevoix.region && res.montreal.region && res.perce.region && res.billet > 0 && res.montreal.cones > 0 && mob.region && !errs.length && !merr.length;
   for (const e of errs.concat(merr)) console.log('ERR', e);
   console.log(ok ? 'REGIONS OK' : 'REGIONS ÉCHEC'); await browser.close(); srv.close(); process.exit(ok ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });

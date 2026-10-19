@@ -798,9 +798,9 @@ function crittersUpdate(dt) {
   // volée d'oies en V, le jour
   G.flockT -= dt;
   const nearMM = gen.nord.region(P.x, P.z) === 'montmagny' || gen.nord.region(P.x, P.z) === 'mm' || gen.nord.region(P.x, P.z) === 'battures';
-  if (!G.flock && G.flockT <= 0 && sky.dayF > 0.35) { G.flockT = nearMM ? 12 + Math.random() * 18 : 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + 28 + Math.random() * 10, birds = [];
-    for (let i = 0; i < 9; i++) { const M = critterModel('oie'), row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; scene.add(M.g); birds.push({ M, ox: -dz * side * row * 2.2 - dx * row * 2.4, oz: dx * side * row * 2.2 - dz * row * 2.4, ph: Math.random() * 6 }); }
-    G.flock = { x: P.x - dx * 160, z: P.z - dz * 160, y, dx, dz, birds, t: 0, honk: 0 }; }
+  if (!G.flock && G.flockT <= 0 && sky.dayF > 0.35) { G.flockT = nearMM ? 12 + Math.random() * 18 : 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + (nearMM ? 10 + Math.random() * 6 : 28 + Math.random() * 10), birds = [], nB = nearMM ? 11 : 9;
+    for (let i = 0; i < nB; i++) { const M = critterModel('oie'), row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; scene.add(M.g); birds.push({ M, ox: -dz * side * row * 2.2 - dx * row * 2.4, oz: dx * side * row * 2.2 - dz * row * 2.4, ph: Math.random() * 6 }); }
+    G.flock = { x: P.x - dx * (nearMM ? 40 : 160), z: P.z - dz * (nearMM ? 40 : 160), y, dx, dz, birds, t: 0, honk: 0 }; }
   if (G.flock) { const F = G.flock; F.t += dt; F.x += F.dx * 10 * dt; F.z += F.dz * 10 * dt; F.honk -= dt;
     if (F.honk <= 0 && Math.hypot(F.x - P.x, F.z - P.z) < 70) { F.honk = 1.5 + Math.random() * 2; audio.fx('honk', 0.5); }
     for (const b of F.birds) { b.M.g.position.set(F.x + b.ox, F.y + Math.sin(F.t * 1.3 + b.ph) * 0.3, F.z + b.oz); b.M.g.rotation.y = Math.atan2(-F.dx, -F.dz); const f = Math.sin(F.t * 7 + b.ph) * 0.5; b.M.P.wL.rotation.z = f; b.M.P.wR.rotation.z = -f; }
@@ -834,7 +834,8 @@ function placeCar() {
 }
 function carUpdate(dt) {
   const C = G.car; if (!C) return;
-  if (!G.drive && world.loadedAround(C.x, C.z, 0)) { const gy = world.ground(C.x, C.z, C.y + 2.5); if (!C.settled || Math.abs(gy - C.y) > 0.01) { C.y = gy; C.settled = true; } }
+  // hauteur du TERRAIN seulement : world.ground remonte sur les toits (bug du bazou sur le toit)
+  if (!G.drive && world.loadedAround(C.x, C.z, 0)) { const gy = gen.heightAt(C.x, C.z) + 1; if (!C.settled || Math.abs(gy - C.y) > 0.01) { C.y = gy; C.settled = true; } }
   C.m.g.position.set(C.x, C.y, C.z); C.m.g.rotation.y = C.yaw; C.m.g.rotation.x = C.pitch;
   for (const w of C.m.P.wheels) w.rotation.x -= C.v * dt / 0.41;
   C.m.P.body.position.y = G.drive ? Math.sin(G.t * 23) * 0.012 * Math.min(1, Math.abs(C.v) / 5) : 0;
@@ -877,6 +878,7 @@ function driveUpdate(dt) {
 }
 function travel(key) {
   const st = gen.nord.stops.find(s => s.key === key), P = G.P; if (!st) return;
+  if (G.state === 'dialog') closeDialog();
   if (G.drive) exitCar();
   P.x = st.ax; P.z = st.az; P.y = gen.heightAt(P.x, P.z) + 1.5; P.vx = P.vz = P.vy = 0; P.iT = 2; P.gliding = false; P.gl.visible = false;
   S.car = { x: st.car[0], z: st.car[1], yaw: st.car[2] }; if (G.car) placeCar();
