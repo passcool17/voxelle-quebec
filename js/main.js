@@ -170,7 +170,7 @@ function camUpdate(dt) {
   // disparaît dès que le mur la colle contre lui (vue à la première personne) : on voit la pièce et les meubles
   const indoor = !!S.home && !G.drive && inCabin(H, P.x, P.z) && Math.abs(P.y - H.h - 1) < 3; G.indoorK += ((indoor ? 1 : 0) - G.indoorK) * Math.min(1, dt * 6);
   const fov = 70 + 12 * G.indoorK; if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
-  const pitch = indoor ? Math.max(G.camPitch, 0.62) : G.camPitch;
+  const pitch = G.camPitch + (Math.max(G.camPitch, 0.62) - G.camPitch) * G.indoorK; // fondu en entrant / sortant
   const cp = Math.cos(pitch), dir = tmpV.set(Math.sin(G.camYaw) * cp, Math.sin(pitch), Math.cos(G.camYaw) * cp);
   let d = indoor ? Math.min(G.camDist, 3.4) : G.camDist + (P.gliding ? 1.5 : 0);
   const hit = world.ray(tmpV2.set(tx, ty, tz), dir, d + 0.3); if (hit) d = Math.max(indoor ? 0.15 : 0.6, hit.t - 0.35);
