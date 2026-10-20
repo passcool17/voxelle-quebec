@@ -3,6 +3,11 @@
 const { chromium } = require('/workspace/tnd-run/node_modules/playwright');
 const serve = require('./serve'); const brain = require('./brain');
 const PORT = +(process.env.PORT || 8915), SH = __dirname + '/../shots/';
+const pressTalk = async (p, role) => { // v6.3 : attend le dialogue en images de jeu (sous charge, 500 ms ne suffisent pas) ; si un passant s'est glissé plus près, on le pousse et on recommence
+  for (let k = 0; k < 4; k++) { await p.evaluate(r => { const G = __game.G, P = G.P; if (G.state === 'dialog') __game.closeDialog(); for (const [, o] of G.npcs) if (o.role !== r && Math.hypot(o.x - P.x, o.z - P.z) < 4) { o.x += 6; o.home.x += 6; } __game.pressed.add('KeyE'); }, role);
+    await p.waitForFunction(() => __game.G.state === 'dialog', null, { timeout: 20000 }).catch(() => {});
+    const got = await p.evaluate(() => __game.G.state === 'dialog' && __game.G.dlgNpc ? __game.G.dlgNpc.role : null); if (got === role) return true; if (got) console.log('dialogue avec', got, 'au lieu de', role); }
+  return false; };
 (async () => {
   const srv = await serve(PORT);
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
@@ -14,9 +19,9 @@ const PORT = +(process.env.PORT || 8915), SH = __dirname + '/../shots/';
   const tp = async (x, z) => { await ev(([x, z]) => { const P = __game.G.P; P.x = x; P.z = z; P.y = 90; P.vy = 0; window.__task = { type: 'idle' }; }, [x, z]);
     await p.waitForFunction(([x, z]) => __game.world.loadedAround(x, z, 1), [x, z], { timeout: 60000 });
     await ev(([x, z]) => { const P = __game.G.P; P.y = __game.world.ground(x, z) + 0.2; P.vy = 0; P.iT = 1; }, [x, z]); await p.waitForTimeout(2500); };
-  const talk = async (role, near) => { if (near) await tp(near[0] + 3, near[1] + 3); await p.waitForTimeout(1500); const n = await ev(r => { for (const [, n] of __game.G.npcs) if (n.role === r) return [n.x, n.z]; return null; }, role); if (!n) return 'pas de PNJ ' + role;
-    await tp(role === 'gaston' ? n[0] - 1.5 : n[0], role === 'gaston' ? n[1] : n[1] + 1.4); await ev(r => { const P = __game.G.P; for (const [, o] of __game.G.npcs) if (o.role !== r && Math.hypot(o.x - P.x, o.z - P.z) < 4) { o.x += 6; o.home.x += 6; } }, role); await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(500); return await ev(() => __game.G.state); };
-  const btn = async label => { if (!(await p.isVisible('#dialog'))) { console.log('pas de dialogue pour', label, await ev(() => __game.G.state)); return false; } const bs = await p.$$('#dbtns .btn'); for (const x of bs) if ((await x.textContent()).includes(label)) { await x.click(); await p.waitForTimeout(300); return true; } return false; };
+  const talk = async (role, near) => { if (near) await tp(near[0] + 3, near[1] + 3); await p.waitForTimeout(1500); await p.waitForFunction(r => [...__game.G.npcs.values()].some(n => n.role === r), role, { timeout: 20000 }).catch(() => {}); const n = await ev(r => { for (const [, n] of __game.G.npcs) if (n.role === r) return [n.x, n.z]; return null; }, role); if (!n) return 'pas de PNJ ' + role;
+    await tp(role === 'gaston' ? n[0] - 1.5 : n[0], role === 'gaston' ? n[1] : n[1] + 1.4); await ev(r => { const P = __game.G.P; for (const [, o] of __game.G.npcs) if (o.role !== r && Math.hypot(o.x - P.x, o.z - P.z) < 4) { o.x += 6; o.home.x += 6; } }, role); await pressTalk(p, role); await p.waitForTimeout(300); return await ev(() => __game.G.state); };
+  const btn = async label => { if (!(await p.isVisible('#dialog'))) { console.log('pas de dialogue pour', label, await ev(() => __game.G.state)); return false; } const bs = await p.$$('#dbtns .btn'); for (const x of bs) if ((await x.textContent()).includes(label)) { await x.click(); await p.waitForTimeout(300); return true; } console.log('bouton absent :', label, JSON.stringify(await p.evaluate(() => ({ st: __game.G.state, npc: __game.G.dlgNpc && __game.G.dlgNpc.role, t: (document.getElementById('dtext') || {}).textContent, b: [...document.querySelectorAll('#dbtns .btn')].map(b => b.textContent) })))); return false; };
   const fight = async (type, n, cond, maxS = 90) => { await ev(([t, n]) => { const P = __game.G.P; for (let i = 0; i < n; i++) __game.spawnEnemy(t, P.x + 5 + i * 1.5, P.z + 4); window.__task = { type: 'fight', pts: [] }; }, [type, n]);
     const end = Date.now() + maxS * 1000; while (Date.now() < end) { await p.waitForTimeout(500); if (await ev(c => eval(c), cond)) break; if (await ev(() => __game.G.state === 'dead')) { await p.click('#bRespawn'); return false; } } await ev(() => { window.__task = { type: 'idle' }; }); return await ev(c => eval(c), cond); };
   const gen = await ev(() => { const g = __game.gen, c = n => { const s = g.cell(...n); return [s.x, s.z]; }; return { ville: c([0, 0]), cabane: c([1, 0]), village: c([-1, 0]), grand: c([2, -1]) }; });

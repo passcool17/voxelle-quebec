@@ -10,7 +10,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   const mk = async opt => { const ctx = await b.newContext(opt); const p = await ctx.newPage(); p.on('pageerror', e => errs.push('pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); }); return p; };
   const shot = async (n, pg) => { await pg.screenshot({ path: SH + PFX + '-' + n + '.png' }); console.log('capture', PFX + '-' + n + '.png'); };
   const boot = async (p, tap) => { await p.goto(`http://localhost:${PORT}/`); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 4, fsAuto: false })); }); await p.reload(); await p.waitForTimeout(2500);
-    if (tap) { await p.tap('#bNew'); await p.tap('#bPersoGo'); } else { await p.click('#bNew'); await p.click('#bPersoGo'); } await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
+    if (tap) { await p.tap('#bNew'); await p.tap('#bPersoGo', { timeout: 120000 }); } else { await p.click('#bNew'); await p.click('#bPersoGo', { timeout: 120000 }); } await p.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
     await p.evaluate(() => { const S = __game.S; S.tuto = -1; S.lvl = 4; S.cash = 100; __game.G.P.hp = 400; __game.G.spawnT = 1e9; }); };
   const tpF = p => async (x, z, wait = 900) => { await p.evaluate(([x, z]) => { const P = __game.G.P; P.x = x; P.z = z; P.y = 90; P.vy = 0; }, [x, z]);
     await p.waitForFunction(([x, z]) => __game.world.loadedAround(x, z, 1), [x, z], { timeout: 90000 });

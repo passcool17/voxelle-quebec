@@ -53,7 +53,8 @@ const brain = require('./brain');
   await ev(() => __game.pressed.add('KeyE')); await p.waitForTimeout(600); await snap('dialog_recompense');
   await ev(() => __game.closeDialog()); await p.waitForTimeout(300);
   // 5. casser / poser un bloc
-  const bp = await ev(async () => { const g = __game, G = g.G, P = G.P; G.camPitch = 0.75; await new Promise(r => setTimeout(r, 400)); const t = G.target; if (!t) return { err: 'pas de cible' };
+  const bp = await ev(async () => { const g = __game, G = g.G, P = G.P; G.camPitch = 0.75; // attend quelques images de jeu (pas des ms : sous charge, 400 ms = 1 image) ; tourne un peu si rien n'est visé (bord des remparts)
+    let t = null; for (let k = 0; k < 6 && !t; k++) { const t0 = G.t; for (let w = 0; w < 50 && (G.t - t0 < 0.25 || !G.target); w++) await new Promise(r => setTimeout(r, 100)); t = G.target; if (!t) G.camYaw += 1.05; } if (!t) return { err: 'pas de cible', P: [P.x, P.y, P.z], pitch: G.camPitch };
     const before = g.world.get(t.x, t.y, t.z), cnt0 = JSON.stringify(g.S.blocks); g.pressed.add('KeyF'); for (let k = 0; k < 40 && g.world.get(t.x, t.y, t.z) === before; k++) await new Promise(r => setTimeout(r, 100)); // minage : prend la dureté du bloc
     const after = g.world.get(t.x, t.y, t.z); await new Promise(r => setTimeout(r, 400)); const t2 = G.target;
     const st0 = g.S.stats.placed; g.input.rmbP = true; for (let k = 0; k < 30 && g.input.rmbP; k++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 150)); // attend que la boucle de jeu ait traité le clic (machine lente)
@@ -100,7 +101,7 @@ const brain = require('./brain');
   const mInfo = await mp.evaluate(() => ({ view: __game.world.view, touch: document.body.classList.contains('touch'), fps: __game.G.fps }));
   await mp.screenshot({ path: SH + 'mobile.png' }); console.log('capture', SH + 'mobile.png', JSON.stringify(mInfo));
   await b2.close(); srv.close();
-  const ok = { quete: after.q.cones && after.q.cones.st === 'done', niveau: after.lvl >= 2, plane: glide > 8, bloc: bp.broke && bp.broke[4] === 0 && bp.placed && bp.placed[3] > 0, sauvegarde: Math.hypot(restored[0] - before.pos[0], restored[2] - before.pos[2]) < 2 && after.lvl === before.lvl && after.cash === before.cash && JSON.stringify(after.q) === JSON.stringify(before.q) && after.block === bp.placed[3], erreurs: errs.length === 0 };
+  const ok = { quete: after.q.cones && after.q.cones.st === 'done', niveau: after.lvl >= 2, plane: glide > 8, bloc: bp.broke && bp.broke[4] === 0 && bp.placed && bp.placed[3] > 0, sauvegarde: Math.hypot(restored[0] - before.pos[0], restored[2] - before.pos[2]) < 2 && after.lvl === before.lvl && after.cash === before.cash && JSON.stringify(after.q) === JSON.stringify(before.q) && !!bp.placed && after.block === bp.placed[3], erreurs: errs.length === 0 };
   console.log('RÉSULTAT', JSON.stringify(ok), 'durée', Math.round((Date.now() - t0) / 1000) + ' s');
   console.log(errs.length ? errs.slice(0, 20).join('\n') : 'aucune erreur JS');
   process.exit(Object.values(ok).every(Boolean) ? 0 : 1);

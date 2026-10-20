@@ -5,6 +5,11 @@
 const { chromium } = require('/workspace/tnd-run/node_modules/playwright');
 const serve = require('./serve');
 const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', SH = __dirname + '/../shots/';
+const pressTalk = async (p, role) => { // v6.3 : attend le dialogue en images de jeu (sous charge, 500 ms ne suffisent pas) ; si un passant s'est glissé plus près, on le pousse et on recommence
+  for (let k = 0; k < 4; k++) { await p.evaluate(r => { const G = __game.G, P = G.P; if (G.state === 'dialog') __game.closeDialog(); for (const [, o] of G.npcs) if (o.role !== r && Math.hypot(o.x - P.x, o.z - P.z) < 4) { o.x += 6; o.home.x += 6; } __game.pressed.add('KeyE'); }, role);
+    await p.waitForFunction(() => __game.G.state === 'dialog', null, { timeout: 20000 }).catch(() => {});
+    const got = await p.evaluate(() => __game.G.state === 'dialog' && __game.G.dlgNpc ? __game.G.dlgNpc.role : null); if (got === role) return true; if (got) console.log('dialogue avec', got, 'au lieu de', role); }
+  return false; };
 (async () => {
   const srv = await serve(PORT);
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -21,10 +26,10 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
     await ev(([x, z]) => { const P = __game.G.P; P.y = __game.world.ground(x, z) + 0.1; P.vy = 0; P.iT = 1; }, [x, z]); await W(wait); };
   const calm = () => ev(() => { const G = __game.G; G.P.hp = 400; G.P.iT = 99; for (const e of G.enemies) if (!e.dead) { e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.remove(); } });
   const talk = async () => { const c = await ev(() => { const s = __game.gen.cell(1, 0); return [s.x, s.z]; }); await tp(c[0] + 3, c[1] + 3, 1500);
+    await p.waitForFunction(() => [...__game.G.npcs.values()].some(n => n.role === 'pepere'), null, { timeout: 20000 }).catch(() => {});
     const n = await ev(() => { for (const [, n] of __game.G.npcs) if (n.role === 'pepere') return [n.x, n.z]; return null; }); if (!n) return 'pas de pépère';
-    await tp(n[0], n[1] + 1.4, 600); await ev(() => { const P = __game.G.P; for (const [, o] of __game.G.npcs) if (o.role !== 'pepere' && Math.hypot(o.x - P.x, o.z - P.z) < 4) { o.x += 6; o.home.x += 6; } });
-    await ev(() => __game.pressed.add('KeyE')); await W(500); return ev(() => __game.G.state); };
-  const btn = async label => { if (!(await p.isVisible('#dialog'))) return false; for (const x of await p.$$('#dbtns .btn')) if ((await x.textContent()).includes(label)) { await x.click(); await W(300); return true; } return false; };
+    await tp(n[0], n[1] + 1.4, 600); await pressTalk(p, 'pepere'); await W(300); return ev(() => __game.G.state); };
+  const btn = async label => { if (!(await p.isVisible('#dialog'))) return false; for (const x of await p.$$('#dbtns .btn')) if ((await x.textContent()).includes(label)) { await x.click(); await W(300); return true; } console.log('bouton absent :', label, JSON.stringify(await p.evaluate(() => ({ st: __game.G.state, npc: __game.G.dlgNpc && __game.G.dlgNpc.role, t: (document.getElementById('dtext') || {}).textContent, b: [...document.querySelectorAll('#dbtns .btn')].map(b => b.textContent) })))); return false; };
   const close = () => ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); });
   const C = await ev(() => { const s = __game.gen.cell(1, 0); return { x: s.x, z: s.z }; });
   const pick = (kind, pre) => ev(([k, pre]) => __game.G.pickups.filter(p => p.kind === k && (!pre || (p.key || '').startsWith(pre))).map(p => ({ x: p.x, z: p.z, key: p.key, guard: p.guard || 0 })), [kind, pre]);
