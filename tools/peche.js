@@ -27,7 +27,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   const p = await mk({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => p.evaluate(f, a), W = ms => p.waitForTimeout(ms), tp = tpF(p);
   await boot(p);
   const PK = await ev(() => { const k = __game.peche; return { shore: k.shore, board: k.board, huts: k.huts }; });
-  const talk = async () => { await tp(PK.shore.x + 2, PK.shore.z - 2, 1500); const n = await ev(() => { for (const [, n] of __game.G.npcs) if (n.role === 'pecheur') return [n.x, n.z]; return null; }); if (!n) return null;
+  const talk = async () => { await tp(PK.shore.x + 2, PK.shore.z - 2, 1500); const n = await ev(() => { for (const [, n] of __game.G.npcs) if (n.role === 'cabanier') return [n.x, n.z]; return null; }); if (!n) return null;
     await tp(n[0], n[1] - 1.4, 500); await ev(() => __game.pressed.add('KeyE')); await W(500); return ev(() => __game.G.state === 'dialog' ? document.getElementById('dtext').textContent : null); };
   const btn = async label => { for (const x of await p.$$('#dbtns .btn')) if ((await x.textContent()).includes(label)) { await x.click(); await W(300); return true; } return false; };
   const close = () => ev(() => { if (__game.G.state === 'dialog') __game.closeDialog(); });

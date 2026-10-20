@@ -790,7 +790,7 @@ function npcsUpdate(dt) {
     if (s.type === 'chantier' || s.type === 'grand') continue;
     if (Math.hypot(s.x - P.x, s.z - P.z) > 100 || !world.loadedAround(s.x, s.z, 1)) continue;
     const m = layout(s);
-    (s.type === 'ville' && s.i === 0 && s.j === 0 && !s.reg && !s.nord ? m.npcs.concat([{ role: 'pecheur', x: peche.shore.x, z: peche.shore.z }]) : m.npcs).forEach((n, k) => {
+    (s.type === 'ville' && s.i === 0 && s.j === 0 && !s.reg && !s.nord ? m.npcs.concat([{ role: 'cabanier', x: peche.shore.x, z: peche.shore.z }]) : m.npcs).forEach((n, k) => {
       const key = s.i + ',' + s.j + ':' + k; if (G.npcs.has(key) || (n.season != null && n.season !== G.season)) return;
       const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g); addBlob(model.g, 0.42);
       const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.reg ? 'Aubergiste de ' + s.name : s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? ({ etape: 'Comptoir de L’Étape', charlevoix: 'Boutique du terroir', perce: 'Poissonnerie de Percé', montreal: 'Dépanneur ouvert 24 h (sauf travaux)', montmagny: 'Épicerie de l’Oie blanche' }[n.shop] || (s.nord ? 'Dépanneur du Royaume' : 'Dépanneur')) : NPCS[n.role].name;
@@ -1159,7 +1159,7 @@ function reward(r) {
 // où aller : le PNJ lui-même s'il est chargé, sinon sa place ; pour une quête en cours, la cible vivante la plus proche
 function npcPos(role, near) { let best = null, bd = 150; for (const [, n] of G.npcs) if (n.role === role) { const d = near ? Math.hypot(n.x - near.x, n.z - near.z) : 0; if (d < bd) { bd = d; best = { x: n.x, z: n.z, y: n.y + 3.4 }; } /* au-dessus du nom et du « ! » */ } return best; }
 function giverPos(role, q) {
-  if (role === 'pecheur') return npcPos(role, peche.shore) || { x: peche.shore.x, z: peche.shore.z };
+  if (role === 'cabanier') return npcPos(role, peche.shore) || { x: peche.shore.x, z: peche.shore.z };
   const NP = gen.nord.places, c = { gaston: [0, 0], lapaperasse: [0, 0], pepere: [1, 0], ginette: [-1, 0], eleveuse: [-1, 0] }[role];
   const p = q && q.home ? gen.reg.places[q.home] : c ? gen.cell(...c) : { cuisiniere: NP.etape, saguenayen: NP.port, animatrice: gen.extras[0], notaire: { x: gen.home.x - 10.5, z: gen.home.z + 2.5 } }[role];
   return p ? npcPos(role, p) || { x: p.x, z: p.z } : null;
@@ -1334,7 +1334,7 @@ function renderDialog(n, extra) {
   if (n.role === 'gaston' && !extra && S.q.nouvelles && S.q.nouvelles.st === 'active') { addItem('gazette'); questEvent('collect', 'gazette'); pre = 'Des nouvelles pour le Saguenay? Tiens, la <b class="gold">Gazette des remparts</b>, encore chaude. Dis-leur que le pont tient!<br><br>'; }
   if (extra) txt = extra;
   else if (talkQ) { const q = QUESTS[talkQ[0]]; txt = q.done + reward(q.reward); add('MERCI!', () => renderDialog(n)); }
-  else if (n.role === 'pecheur' && !ready && !avail) { txt = peche.talk(add, () => renderDialog(n)); if (active) txt += '<br><span class="gold">' + QUESTS[active[0]].title + ' : ' + Math.min(S.q[active[0]].n, QUESTS[active[0]].n) + ' / ' + QUESTS[active[0]].n + '</span>'; }
+  else if (n.role === 'cabanier' && !ready && !avail) { txt = peche.talk(add, () => renderDialog(n)); if (active) txt += '<br><span class="gold">' + QUESTS[active[0]].title + ' : ' + Math.min(S.q[active[0]].n, QUESTS[active[0]].n) + ' / ' + QUESTS[active[0]].n + '</span>'; }
   else if (ready) { const [id, q] = ready; S.q[id].st = 'done'; txt = q.done + reward(q.reward); if (id === 'permis') S.inv = S.inv.filter(i => i.id !== 'permis'); if (id === 'nouvelles') S.inv = S.inv.filter(i => i.id !== 'gazette'); G.dirtyQ = true; add('MERCI!', () => renderDialog(n)); }
   else if (avail) { const [id, q] = avail; txt = (q.chap ? '<span class="chap">Récit · chapitre ' + q.chap + '</span><br>' : '') + '<b class="gold">' + q.title + '</b><br>' + q.intro + '<br><span class="rw">Récompense : ' + rewardTxt(q.reward) + '</span>'; add('ACCEPTER', () => { S.q[id] = { st: 'active', n: 0 }; if (q.give) addItem(q.give); if (q.gift) { for (const k in q.gift.items || {}) addItem(k, q.gift.items[k]); for (const b in q.gift.blocks || {}) S.blocks[b] = (S.blocks[b] || 0) + q.gift.blocks[b]; G.dirtyHot = true; } audio.fx('accept'); toast((q.chap ? 'Chapitre ' + q.chap + ' : ' : 'Nouvelle quête : ') + q.title); G.dirtyQ = true; writeSave(); closeDialog(); }, true); add('PLUS TARD', close); }
   else if (active) { const [id, q] = active; txt = q.wait + '<br><span class="gold">Progrès : ' + Math.min(S.q[id].n, q.n) + ' / ' + q.n + '</span>'; }

@@ -132,7 +132,7 @@ export const NPCS = {
   notaire: { name: 'Me Hortense Brisebois, notaire', quest: true, look: { coat: 0x2b2f3a, hatType: 'bun', hair: 0x6a4a3a, glasses: true, sash: false, mitt: 0xf0c8a0 } },
   animatrice: { name: 'Mireille, loisirs du village', quest: true, look: { coat: 0x2c8a8a, hat: 0xf2c12e, pom: 0xf2f2f2, hair: 0x2a1e18, sash: false } },
   eleveuse: { name: 'Mme Gagnon, chenil du village', quest: true, look: { coat: 0x5a7a3a, hat: 0xc07a20, hair: 0x6a4a2a, sash: false, mitt: 0x8a5a2c } },
-  pecheur: { name: 'Ti-Guy Bouchard, cabanes à pêche', quest: true, look: { coat: 0xd8a020, hat: 0xc02020, pom: 0xf2f2f2, beard: 0x8a6a4a, mitt: 0x5a3a22 } },
+  cabanier: { name: 'Ti-Guy Bouchard, cabanes à pêche', quest: true, look: { coat: 0xd8a020, hat: 0xc02020, pom: 0xf2f2f2, beard: 0x8a6a4a, mitt: 0x5a3a22 } },
   guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
 };
 export const ROLE_CHAT = {
@@ -184,7 +184,7 @@ export const QUESTS = {
   chiot: { giver: 'eleveuse', title: 'Un chien pour la vie', type: 'kill', target: 'raton', n: 3, reward: { cash: 20, xp: 120, pet: 'chien' },
     intro: 'Les ratons rôdent autour du chenil pis énervent mes chiens. Chasse-m’en trois, pis je te confie Pistache : y’est fin, y’a du flair, pis y’a pas peur des cônes.',
     wait: 'Les ratons sortent surtout le soir, autour du village.', done: 'Pistache t’a déjà adopté, regarde-le branler la queue! Prends-en soin : y trouve toutes sortes d’affaires en creusant.' },
-  peche_blanche: { giver: 'pecheur', season: 0, title: 'La pêche blanche', type: 'act', act: 'poisson', n: 4, reward: { cash: 60, xp: 220, give: { friture: 2 } },
+  peche_blanche: { giver: 'cabanier', season: 0, title: 'La pêche blanche', type: 'act', act: 'poisson', n: 4, reward: { cash: 60, xp: 220, give: { friture: 2 } },
     intro: 'Bonjour toé! Les poissons des chenaux sont arrivés sous la glace. Loue une de mes cabanes, perce ton trou, pis ramène-moi quatre poissons. Le premier qui sort le Gros Maski, je l’affiche au tableau pour l’éternité!',
     wait: 'Loue une cabane (10 $), entre dedans pis pêche : ferre quand ça mord, puis garde la ligne dans la zone verte.', done: 'Quatre beaux poissons! T’as le tour du poignet. Tiens, de la friture de chez nous.' },
   poutine: { giver: 'ginette', title: 'Les voleurs de poutine', type: 'kill', target: 'raton', n: 4, reward: { cash: 70, xp: 180, item: 'pelle' },
