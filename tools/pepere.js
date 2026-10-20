@@ -75,7 +75,8 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   ok(await ev(k => k.every(x => !__game.S.taken[x]), pails.slice(0, 3).map(q => q.key)), 'sirop : chaudières remises dans l’érablière (S.taken effacé)');
   await shot('gel-echec');
   await allLoaded(); pails = await pick('chaudiere', 'b1,0');
-  ok(pails.length === 12, 'sirop : les 12 chaudières sont revenues (' + pails.length + ')' + (pails.length < 12 ? ' manque ' + JSON.stringify(await ev(() => { const g = __game, s = g.gen.cell(1, 0), m = g.layout(s); return m.items.filter(it => it.kind === 'chaudiere' && !g.G.pickups.some(p => p.key === it.id)).map(it => ({ id: it.id, x: it.x, z: it.z, taken: !!g.S.taken[it.id], ld: g.world.loadedAround(it.x, it.z, 0), nd: g.G.nudge && g.G.nudge[it.id] })); })) : ''));
+  const reN = await ev(() => __game.S.q.sirop.n); // une chaudière sous un point de téléportation se ramasse toute seule (et relance la minuterie)
+  ok(pails.length + reN === 12, 'sirop : les 12 chaudières sont revenues (' + pails.length + ' au sol + ' + reN + ' déjà reprise)' + (pails.length < 12 ? ' manque ' + JSON.stringify(await ev(() => { const g = __game, s = g.gen.cell(1, 0), m = g.layout(s); return m.items.filter(it => it.kind === 'chaudiere' && !g.G.pickups.some(p => p.key === it.id)).map(it => ({ id: it.id, x: it.x, z: it.z, taken: !!g.S.taken[it.id], ld: g.world.loadedAround(it.x, it.z, 0), nd: g.G.nudge && g.G.nudge[it.id] })); })) : ''));
   // réussite : 10 en moins de 4 minutes (de jeu)
   for (const it of pails) { if (await ev(() => __game.S.q.sirop.st) !== 'active') break; await grab(it); }
   sq = await ev(() => __game.S.q.sirop);

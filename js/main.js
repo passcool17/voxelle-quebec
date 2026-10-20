@@ -792,6 +792,7 @@ function npcsUpdate(dt) {
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
     const boil = s.i === 1 && s.j === 0 && G.boilT > 0; if (boil) G.boilT -= dt; // v5c : ton eau d'érable bouille : panache épais quelques secondes
+    if (boil && (G.puffT = (G.puffT || 0) - dt) < 0) { G.puffT = 0.16; steamPuff(s.x + 1 + (Math.random() - 0.5) * 0.8, s.h + 11, s.z + 0.5); }
     if (s.type === 'cabane' && (G.season === 1 || boil) && Math.hypot(s.x - P.x, s.z - P.z) < 80 && Math.random() < dt * (boil ? 45 : 6)) burst(s.x + 1 + (Math.random() - 0.5) * 0.6, s.h + 11.2, s.z + 0.5, 0xf2f2f2, 1, 0.5, -1.5); // printemps : l'évaporateur bouille
     m.items.forEach((it, k) => { const key = it.id ? it.id + (it.yearly ? '@' + Math.floor((S.day - 1) / (4 * DAYS)) : '') : 'c' + s.i + ',' + s.j + ':' + k; if ((it.season != null && it.season !== G.season) || S.taken[key] || G.pickups.some(p => p.key === key) || ((it.y != null || it.nudge) && !world.loadedAround(it.x, it.z, 0))) return;
       let x = it.x, z = it.z; if (it.nudge) { const c = (G.nudge || (G.nudge = {}))[it.id || key] || (G.nudge[it.id || key] = freeSpot(it.x, it.z)); x = c.x; z = c.z; }
@@ -947,6 +948,10 @@ function travel(key) {
 }
 // ---------- objets au sol ----------
 const beamGeo = new THREE.BoxGeometry(0.12, 2.4, 0.12).translate(0, 1.2, 0);
+// v5c : bouffées de vapeur de l'évaporateur (cubes blancs qui montent, grossissent et s'effacent)
+const puffGeo = new THREE.BoxGeometry(1, 1, 1), puffs = [];
+function steamPuff(x, y, z) { const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color: 0xf4f6f8, transparent: true, opacity: 0.75, depthWrite: false, fog: true })); m.position.set(x, y, z); m.rotation.y = Math.random() * 3; scene.add(m); puffs.push({ m, t: 0, vx: 0.4 + Math.random() * 0.4, vz: (Math.random() - 0.5) * 0.4 }); }
+function puffsUpdate(dt) { for (let i = puffs.length - 1; i >= 0; i--) { const q = puffs[i]; q.t += dt; const k = q.t / 3.2; q.m.position.y += dt * 1.6; q.m.position.x += q.vx * dt; q.m.position.z += q.vz * dt; q.m.scale.setScalar(0.7 + k * 2.6); q.m.material.opacity = 0.75 * (1 - k); if (k >= 1) { scene.remove(q.m); q.m.material.dispose(); puffs.splice(i, 1); } } }
 // v5c : objet posé dans l'érablière — pas sur une souche, un tronc ou une roche : au sol naturel le plus proche (≤ 4 m)
 const NATGROUND = new Set([B.GRASS, B.DIRT, B.SAND, B.SNOW, B.GRAVEL, B.FIELD, B.PATH, B.SNOWGRASS, B.MOSS, B.PEBBLE]);
 function freeSpot(x0, z0) {
@@ -971,7 +976,7 @@ function dropPickup(kind, x, y, z, o) {
   G.pickups.push(Object.assign({ kind, m, x, y, z, vy: o.still ? 0 : 4, vx: o.still ? 0 : (Math.random() - 0.5) * 3, vz: o.still ? 0 : (Math.random() - 0.5) * 3, t: 0, life: o.still ? 1e9 : 90 }, o));
 }
 function pickupsUpdate(dt) {
-  const P = G.P; sapUpdate(dt);
+  const P = G.P; sapUpdate(dt); if (puffs.length) puffsUpdate(dt);
   const sirA = S.q.sirop && S.q.sirop.st === 'active';
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const p = G.pickups[i]; p.t += dt; p.life -= dt;
