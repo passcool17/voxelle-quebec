@@ -321,6 +321,35 @@ export function animEnemy(e, t, dt) {
   else if (ty === 'trou') { const open = e.state === 'chase' || e.atkAnim > 0 ? 1 : 0; e.jawT = (e.jawT || 0) + (open - (e.jawT || 0)) * Math.min(1, dt * 8); P.jaw.position.y = 0.08 + e.jawT * (0.15 + (e.atkAnim > 0 ? Math.sin(e.atkAnim * Math.PI) * 0.4 : Math.abs(Math.sin(t * 8)) * 0.1)); P.eyes.visible = e.jawT > 0.3; P.eyes.position.y = 0.2 + e.jawT * 0.3; }
 }
 
+// ---------- compagnons (v6) : chien Pistache, raton apprivoisé Bandit ----------
+export function petModel(kind) {
+  const g = new THREE.Group(), P = { legs: [] }, body = pivot(g, 0, 0, 0); P.body = body;
+  const dog = kind === 'chien', c = dog ? 0xd8b27a : 0x7d7a74, c2 = dog ? 0x8a5a2c : 0x1a1a1a, belly = dog ? 0xf0dcb4 : 0x9d9a94, scarf = dog ? 0xc02020 : 0x2e5fa8;
+  const ly = dog ? 0.34 : 0.24; // hauteur des hanches
+  box(body, dog ? 0.34 : 0.42, dog ? 0.3 : 0.34, dog ? 0.68 : 0.62, c, 0, ly + 0.14, 0); box(body, 0.28, 0.08, 0.48, belly, 0, ly, 0);
+  if (dog) box(body, 0.22, 0.04, 0.26, c2, 0.04, ly + 0.3, 0.1); // tache brune sur le dos
+  P.head = pivot(body, 0, ly + 0.3, dog ? -0.38 : -0.36);
+  if (dog) { box(P.head, 0.3, 0.28, 0.28, c, 0, 0.04, -0.04); box(P.head, 0.18, 0.13, 0.18, belly, 0, -0.03, -0.24); box(P.head, 0.07, 0.06, 0.04, 0x111111, 0, 0.02, -0.34);
+    for (const sx of [-1, 1]) { box(P.head, 0.06, 0.06, 0.02, 0x111111, sx * 0.08, 0.1, -0.19); box(P.head, 0.07, 0.2, 0.12, c2, sx * 0.17, 0.06, 0.02); }
+    box(P.head, 0.08, 0.02, 0.08, 0xe86a7a, 0, -0.11, -0.28); }
+  else { box(P.head, 0.36, 0.3, 0.3, 0x8d8a84, 0, 0, 0); box(P.head, 0.38, 0.1, 0.25, 0x1a1a1a, 0, 0.04, -0.04); box(P.head, 0.4, 0.035, 0.17, 0xe8e4dc, 0, 0.11, -0.07);
+    box(P.head, 0.12, 0.1, 0.14, 0xd8d4cc, 0, -0.07, -0.19); box(P.head, 0.05, 0.04, 0.03, 0x111111, 0, -0.03, -0.27);
+    for (const sx of [-1, 1]) { box(P.head, 0.06, 0.06, 0.02, 0xffffff, sx * 0.09, 0.05, -0.16); box(P.head, 0.03, 0.04, 0.02, 0x111111, sx * 0.09, 0.05, -0.17); box(P.head, 0.1, 0.11, 0.05, 0x5a5854, sx * 0.13, 0.2, 0); } }
+  box(body, dog ? 0.36 : 0.44, 0.07, 0.12, scarf, 0, ly + 0.24, dog ? -0.3 : -0.27); box(body, 0.14, 0.12, 0.04, scarf, 0, ly + 0.14, dog ? -0.36 : -0.33); // foulard
+  P.tail = pivot(body, 0, ly + 0.24, dog ? 0.34 : 0.3);
+  if (dog) box(P.tail, 0.08, 0.28, 0.08, c, 0, 0.13, 0.03); else for (let i = 0; i < 6; i++) box(P.tail, 0.15 - i * 0.008, 0.15 - i * 0.008, 0.1, i % 2 ? 0x1a1a1a : 0x9d9a94, 0, 0.03 * i, 0.05 + i * 0.09);
+  for (const [x, z] of [[-0.11, -0.22], [0.11, -0.22], [-0.11, 0.22], [0.11, 0.22]]) { const L = pivot(body, dog ? x : x * 1.4, ly, z); box(L, 0.1, ly, 0.1, dog ? c : 0x3a3a3a, 0, -ly / 2, 0); box(L, 0.11, 0.05, 0.13, dog ? belly : 0x222222, 0, -ly + 0.025, -0.01); P.legs.push(L); }
+  bake(g); return { g, P, kind };
+}
+// pose : mv = vitesse 0..1, dig = creuse, atk = élan d'attaque 0..1, ko = assommé
+export function animPet(M, t, mv, dig, atk, ko) {
+  const P = M.P, s = Math.sin(t * 13);
+  P.body.rotation.z = ko ? 1.45 : 0; P.body.position.y = ko ? 0.12 : Math.abs(s) * 0.05 * mv;
+  P.legs.forEach((L, i) => { L.rotation.x = ko ? 0.4 : dig && i < 2 ? Math.sin(t * 26 + i * 3) * 0.9 : Math.sin(t * 13 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.7 * mv; });
+  P.head.rotation.x = ko ? 0 : dig ? 0.55 : atk > 0 ? 0.4 * Math.sin(atk * Math.PI) : Math.sin(t * 1.3) * 0.08;
+  P.body.rotation.x = dig ? 0.18 : 0; P.head.position.z = (M.kind === 'chien' ? -0.38 : -0.36) - (atk > 0 ? 0.12 * Math.sin(atk * Math.PI) : 0);
+  P.tail.rotation.y = ko ? 0 : Math.sin(t * (M.kind === 'chien' ? 16 : 6)) * (M.kind === 'chien' ? 0.7 : 0.35);
+}
 // ---------- animaux d'ambiance (inoffensifs) ----------
 export function critterModel(kind) {
   const g = new THREE.Group(), P = {}, body = pivot(g, 0, 0, 0); P.body = body;

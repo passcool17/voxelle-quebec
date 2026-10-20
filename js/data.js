@@ -83,6 +83,11 @@ export const ENEMIES = {
   deneigete: { name: 'La Déneigeuse d’été', hp: 560, dmg: 19, spd: 3.4, range: 3.2, cd: 1.7, xp: 600, cash: [100, 150], aggro: 24, hw: 1.3, h: 2.8, boss: true, minion: 'trou', dun: 'egout', charge: true },
   supreme: { name: 'Le Cône Suprême', hp: 650, dmg: 20, spd: 3.0, range: 3.6, cd: 1.6, xp: 600, cash: [120, 160], aggro: 26, hw: 1.0, h: 3.8, boss: true },
 };
+// v6 : compagnons (un seul actif ; on change à sa cabane)
+export const PETS = {
+  chien: { name: 'Pistache', what: 'ton chien', hp: 70, dmg: 7, spd: 7.2, sniff: 75, loot: 1, steal: 0, mark: true },
+  raton: { name: 'Bandit', what: 'ton raton', hp: 50, dmg: 5, spd: 7.6, sniff: 120, loot: 1.6, steal: 0.4, mark: false },
+};
 export const NPCS = {
   gaston: { name: 'Gaston, crieur public', look: { coat: 0x8a1c2a, hat: 0x2b2f3a, hatBand: 0xe8c040, pom: 0xe8c040, beard: 0x8a6a4a } },
   lapaperasse: { name: 'Mme Lapaperasse, Bureau des permis', look: { coat: 0x6a3a8a, hatType: 'bun', hair: 0xb8b8c0, glasses: true, sash: false, mitt: 0xf0c8a0 } },
@@ -108,6 +113,7 @@ export const NPCS = {
   cycliste: { name: 'Josée, cycliste du Plateau', quest: true, look: { coat: 0x2c8a4a, hatType: 'casque', hair: 0xc89a3a, queue: true, cils: true, sash: false, mitt: 0x222222 } },
   notaire: { name: 'Me Hortense Brisebois, notaire', quest: true, look: { coat: 0x2b2f3a, hatType: 'bun', hair: 0x6a4a3a, glasses: true, sash: false, mitt: 0xf0c8a0 } },
   animatrice: { name: 'Mireille, loisirs du village', quest: true, look: { coat: 0x2c8a8a, hat: 0xf2c12e, pom: 0xf2f2f2, hair: 0x2a1e18, sash: false } },
+  eleveuse: { name: 'Mme Gagnon, chenil du village', quest: true, look: { coat: 0x5a7a3a, hat: 0xc07a20, hair: 0x6a4a2a, sash: false, mitt: 0x8a5a2c } },
   guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
 };
 export const ROLE_CHAT = {
@@ -156,6 +162,9 @@ export const QUESTS = {
   sirop: { giver: 'pepere', title: 'Le sirop de Pépère', type: 'collect', item: 'chaudiere', n: 10, timer: 240, reward: { cash: 90, xp: 260, item: 'mitaines', give: { sirop: 4 } },
     intro: 'Bonjour mon jeune! Mes chaudières d’eau d’érable sont restées accrochées partout dans l’érablière, pis les ratons rôdent autour. Ramène-m’en dix. Mais grouille : dès que t’en prends une, t’as quatre minutes avant que la sève gèle!',
     wait: 'Les chaudières sont éparpillées loin dans l’érablière. Dix, en quatre minutes, sinon la sève gèle pis faut tout recommencer.', done: 'Dix chaudières, pas une de gelée! Ça va faire du bon sirop. Tiens, des mitaines pis quatre cannes de sirop.' },
+  chiot: { giver: 'eleveuse', title: 'Un chien pour la vie', type: 'kill', target: 'raton', n: 3, reward: { cash: 20, xp: 120, pet: 'chien' },
+    intro: 'Les ratons rôdent autour du chenil pis énervent mes chiens. Chasse-m’en trois, pis je te confie Pistache : y’est fin, y’a du flair, pis y’a pas peur des cônes.',
+    wait: 'Les ratons sortent surtout le soir, autour du village.', done: 'Pistache t’a déjà adopté, regarde-le branler la queue! Prends-en soin : y trouve toutes sortes d’affaires en creusant.' },
   poutine: { giver: 'ginette', title: 'Les voleurs de poutine', type: 'kill', target: 'raton', n: 4, reward: { cash: 70, xp: 180, item: 'pelle' },
     intro: 'Mes poutines disparaissent! Des ratons laveurs masqués rôdent autour du village, surtout la nuit. Chasse-m’en quatre, pis je te donne ma vieille pelle.',
     wait: 'Les ratons, c’est des voleurs masqués. Ils sortent surtout le soir.', done: 'Merci! Tiens, ma pelle à neige. Elle a déneigé trois générations d’entrées.' },
@@ -231,7 +240,7 @@ export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches',
 // objectifs concrets affichés dans le suivi (quoi faire, où) ; foe = ennemi qui porte l'objet à ramasser
 const OBJ = {
   cones: 'Démolis des cônes-golems au chantier, au nord des remparts', permis: 'Bats des bureaucrates zombies (campagne, surtout la nuit) : l’un d’eux a le formulaire',
-  sirop: 'Ramasse les chaudières éparpillées dans l’érablière (ratons!)', poutine: 'Bats des ratons autour du village, surtout le soir',
+  sirop: 'Ramasse les chaudières éparpillées dans l’érablière (ratons!)', poutine: 'Bats des ratons autour du village, surtout le soir', chiot: 'Chasse des ratons autour du village (le chenil de Mme Gagnon)',
   pate: 'Ramasse les cannes de blé d’Inde aux travaux de la 175', nouvelles: 'Va chercher la gazette chez Gaston, à la Vieille-Ville',
   supreme: 'Bats le Cône Suprême au Grand Chantier, au nord-est', souffleuses: 'Bats des souffleuses à neige (campagne et collines, surtout la nuit)',
   goelands: 'Bats des goélands au-dessus du port de Chicoutimi', comite: 'Déloge le Comité au chantier de la 175',

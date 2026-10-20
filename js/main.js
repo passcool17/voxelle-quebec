@@ -9,8 +9,8 @@ import { Sky } from './sky.js';
 import { Audio } from './audio.js';
 import { Ambiance } from './fx.js';
 import { TALENTS, TAL, talentFx, points as talentPts, canLearn, spentIn } from './talents.js';
-import { gearLook, human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel, critterModel } from './models.js';
-import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS, AMBIENT } from './data.js';
+import { gearLook, human, PLAYER_LOOKS, setWeapon, animHuman, glider, enemyModel, animEnemy, pickupModel, box, carModel, critterModel, petModel, animPet } from './models.js';
+import { ITEMS, RARITY, SHOP, SHOPS, ENEMIES, NPCS, CHATTER, ROLE_CHAT, QUESTS, CONTRACT_TARGETS, AMBIENT, PETS } from './data.js';
 import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
 import { DUN, dunPlan, dunInside, dunRoomAt } from './donjons.js';
@@ -60,7 +60,7 @@ const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
     weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, tuto: 0, dunSeen: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0, crafted: 0, mined: 0 }, glider: true,
-    day: 2 * DAYS, home: false, furn: [], chest: [], spawn: null, homeT: -9, restedTo: 0 }; // v4 : jour de jeu (début de l'été), ta cabane
+    day: 2 * DAYS, home: false, furn: [], chest: [], spawn: null, homeT: -9, restedTo: 0, comp: { have: {}, act: null } }; // v4 : jour de jeu (début de l'été), ta cabane
 }
 let S = null; // sauvegarde active
 function loadSave() {
@@ -76,6 +76,7 @@ function normSave(s) {
   s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0; if (!s.tal || typeof s.tal !== 'object') s.tal = {};
   if (typeof s.tuto !== 'number') s.tuto = -1; // vieille partie : pas de premiers pas forcés (Pause → Revoir)
   if (typeof s.day !== 'number') s.day = f.day; for (const k of ['furn', 'chest']) if (!Array.isArray(s[k])) s[k] = []; // v4 : saisons, cabane
+  if (!s.comp || typeof s.comp !== 'object' || !s.comp.have || typeof s.comp.have !== 'object') s.comp = { have: {}, act: null }; if (!PETS[s.comp.act] || !s.comp.have[s.comp.act]) s.comp.act = null; // v6 : compagnon
   const sq = s.q.sirop; if (sq && typeof sq === 'object') { if (!Array.isArray(sq.keys)) sq.keys = []; if (typeof sq.left !== 'number') sq.left = null; } // v5c : minuterie de la sève
   s.home = !!s.home; if (typeof s.homeT !== 'number') s.homeT = -9; if (typeof s.restedTo !== 'number') s.restedTo = 0; if (!Array.isArray(s.spawn)) s.spawn = null;
   return s;
@@ -532,7 +533,8 @@ let PHASES = PHASES_BY.supreme;
 function bossTitle(e) { PHASES = PHASES_BY[e.type] || PHASES_BY.supreme; $('bossname').innerHTML = e.T.name + ' (niv. ' + e.lvl + ') <small>· phase ' + e.phase + ' : ' + PHASES[e.phase] + '</small>'; }
 function damageEnemy(e, dmg, nx, nz, kb, o = {}) {
   const crit = Math.random() < 0.12 + (o.src === 'p' ? G.tf.crit : 0), d = Math.round(dmg * (0.88 + Math.random() * 0.24) * (crit ? 1.7 : 1));
-  e.hp -= d; e.hurtT = 0.15; e.flashT = 0.09; if (G.dbg.log) G.dbg.log.push(e.type + ":" + d); e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
+  e.hp -= d; e.hurtT = 0.15; e.flashT = 0.09;
+  if (e.type === 'raton' && e.hp > 0 && e.hp < e.hpMax * 0.35 && !S.comp.have.raton && e.state !== 'docile') { e.state = 'docile'; e.docile = 18; e.label.querySelector('.nm').innerHTML = 'Raton affamé <span class="gold">· une poutine?</span>'; if (S.comp.tameHint !== 1) { S.comp.tameHint = 1; toast('Le raton a plus envie de se battre… Donne-lui une poutine ou une tarte (E) pour l’apprivoiser!'); } } if (G.dbg.log) G.dbg.log.push(e.type + ":" + d); e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
   if (!e.T.boss && e.type !== 'trou') { e.vx += nx * kb; e.vz += nz * kb; e.vy = Math.max(e.vy, 3.5); e.stunT = o.heavy ? 0.5 : 0.28; if (e.dive) { e.dive = null; e.rec = 1.2; } }
   else if (e.T.boss && o.heavy) { e.vx += nx * 2; e.vz += nz * 2; }
   floatTxt(e.x, e.y + e.T.h + 0.4, e.z, (crit ? 'CRITIQUE! ' : '') + d, crit ? '#ffd23a' : o.heavy ? '#ffb04a' : '#ffffff');
@@ -548,7 +550,7 @@ function killEnemy(e) {
   e.dead = true; scene.remove(e.model.g); e.label.remove(); if (e.mark) e.mark.life = 0;
   G.hitstop = Math.max(G.hitstop, e.T.boss ? 0.35 : 0.07); G.shake = Math.max(G.shake, e.T.boss ? 1 : 0.22); burst(e.x, e.y + e.T.h * 0.5, e.z, FOE_COL[e.type], 10, 5);
   burst(e.x, e.y + e.T.h * 0.5, e.z, e.type === 'mouches' ? 0x202020 : 0xffffff, 14, 6);
-  S.stats.kills++;
+  S.stats.kills++; petOnKill(e);
   gainXP(Math.round(e.T.xp * (1 + 0.25 * (e.lvl - 1))));
   const [a, b] = e.T.cash; const n = Math.round((a + Math.random() * (b - a)) * (1 + 0.2 * (e.lvl - 1)) * (1 + G.tf.cash));
   for (let k = 0; k < Math.min(6, Math.ceil(n / 3)); k++) dropPickup('piasse', e.x + (Math.random() - 0.5) * 1.5, e.y + 0.6, e.z + (Math.random() - 0.5) * 1.5, { val: Math.ceil(n / Math.min(6, Math.ceil(n / 3))) });
@@ -580,6 +582,7 @@ function enemiesUpdate(dt) {
     const dx = P.x - e.x, dz = P.z - e.z, d = Math.hypot(dx, dz), T = e.T;
     if (d > 110 && !e.camp || d > 160) { scene.remove(e.model.g); e.label.remove(); G.enemies.splice(i, 1); if (e.camp) { const c = G.camps.get(e.camp); if (c && --c.alive <= 0) G.camps.delete(e.camp); } if (e.T.boss) { $('bossbox').classList.add('hidden'); G.boss = null; } continue; }
     if (!world.loadedAround(e.x, e.z, 0)) continue;
+    if (e.state === 'docile' && (e.docile -= dt) <= 0) { e.state = 'chase'; e.label.querySelector('.nm').innerHTML = T.name + ' <span class="gold">niv. ' + e.lvl + '</span>'; }
     e.t += dt; e.cd -= dt; e.hurtT -= dt; e.stunT = (e.stunT || 0) - dt; e.flashT = (e.flashT || 0) - dt;
     if ((e.flashT > 0) !== !!e.flashOn) setFlash(e.model.g, e.flashOn = e.flashT > 0); if (e.atkAnim > 0) { e.atkAnim += dt * 2.5; if (e.atkAnim >= 1) e.atkAnim = 0; }
     const alive = G.state === 'play' && P.hp > 0, dy = Math.abs(P.y - e.y);
@@ -788,6 +791,7 @@ function npcsUpdate(dt) {
       const npc = { key, role: n.role, stop: n.stop, shop: n.shop, s, x: n.x, z: n.z, y: world.ground(n.x, n.z), vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, home: { x: n.x, z: n.z }, model, name: nm, t: Math.random() * 9, yaw: Math.random() * 6, wander: Math.random() * 6, walkT: 0, chat: ROLE_CHAT[n.role] ? ROLE_CHAT[n.role][(s.seed + k) % ROLE_CHAT[n.role].length] : CHATTER[(s.seed + k * 7) % CHATTER.length] };
       if (n.role === 'villageois') { npc.act = ['marche', 'marche', 'pelle', 'jase', 'hockey'][(s.seed + k * 13) % 5]; if (npc.act === 'pelle') setWeapon(model, 'pelle'); if (npc.act === 'hockey') setWeapon(model, 'baton'); if (n.act) npc.act = n.act; if (n.rink != null) { npc.act = 'patine'; npc.ang = n.rink; npc.rinkC = { x: s.x, z: s.z }; setWeapon(model, 'baton'); } }
       npc.label = makeLabel('npc', `<div class="say"></div><div class="mk"></div><div class="nm">${nm}</div>`); npc.mkEl = npc.label.querySelector('.mk'); npc.sayEl = npc.label.querySelector('.say');
+      if (n.role === 'eleveuse' && !S.comp.have.chien) { npc.dog = petModel('chien'); npc.dog.g.position.set(0.9, 0, -0.2); npc.dog.g.rotation.y = -0.5; model.g.add(npc.dog.g); } // Pistache attend au chenil
       G.npcs.set(key, npc);
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
@@ -1013,6 +1017,113 @@ function collect(p) {
   else if (p.kind === 'permis') { audio.fx('quest'); questEvent('collect', 'permis'); }
   else if (p.kind === 'gear') { addItem(p.id, 1, p.r); audio.fx('coin'); toast(ITEMS[p.id].name + ' (' + RARITY[p.r].n + ') ajouté au sac'); }
 }
+// ---------- compagnon (v6) : suit, aide au combat, renifle des trésors ----------
+const petName = k => PETS[k].name;
+function petGive(k) {
+  S.comp.have[k] = true; for (const [, n] of G.npcs) if (n.dog && k === 'chien') { n.model.g.remove(n.dog.g); n.dog = null; }
+  if (!S.comp.act) { S.comp.act = k; banner(petName(k).toUpperCase() + ' TE SUIT!', 'Il t’aide au combat pis il renifle des trésors'); }
+  else toast(petName(k) + ' t’attend à ta cabane : change de compagnon chez vous (E).');
+  audio.fx('quest'); G.dirtyQ = true;
+}
+function tameRaton(e) {
+  const food = ['poutine', 'tarte'].find(id => S.inv.some(i => i.id === id));
+  if (!food) { audio.fx('deny'); toast('Il te faut une poutine ou une tarte pour l’amadouer.'); return; }
+  const it = S.inv.find(i => i.id === food); if ((it.n || 1) > 1) it.n--; else S.inv.splice(S.inv.indexOf(it), 1);
+  e.dead = true; scene.remove(e.model.g); e.label.remove(); if (e.stole) { S.cash += e.stole; toast('Il te redonne tes ' + e.stole + ' piasses, gêné.'); }
+  burst(e.x, e.y + 0.6, e.z, 0xffd23a, 12, 3); floatTxt(e.x, e.y + 1.4, e.z, '♥', '#ff6a8a');
+  if (!S.comp.act) S.comp.act = 'raton'; else toast(petName('raton') + ' s’en va t’attendre à ta cabane.');
+  S.comp.have.raton = true; banner('BANDIT EST APPRIVOISÉ!', ITEMS[food].name + ' engloutie. Il chipe des piasses aux ennemis pis il trouve du gros butin.');
+  if (S.comp.act === 'raton' && G.pet && G.pet.kind === 'raton') { G.pet.x = e.x; G.pet.z = e.z; G.pet.y = e.y; }
+  else if (S.comp.act === 'raton') G.petAt = { x: e.x, y: e.y, z: e.z };
+  audio.fx('quest'); G.dirtyHot = true;
+}
+function petSwitch(k) { S.comp.act = k; audio.fx('ui'); toast(petName(k) + ' t’accompagne. ' + petName(k === 'chien' ? 'raton' : 'chien') + ' garde la cabane.'); }
+function petTp() {
+  const p = G.pet, P = G.P; if (!p) return;
+  for (const [ox, oz] of [[-Math.sin(P.yaw) * 1.4, -Math.cos(P.yaw) * 1.4], [1.2, 0], [-1.2, 0], [0, 1.2], [0, 0]]) {
+    const x = P.x + ox, z = P.z + oz, y = world.ground(x, z, P.y + 1.5);
+    if (Math.abs(y - P.y) < 1.2 && !boxHit(world, x, y + 0.02, z, p.hw, p.h)) { p.x = x; p.z = z; p.y = y; break; }
+    if (!ox && !oz) { p.x = x; p.z = z; p.y = P.y; }
+  }
+  p.vx = p.vy = p.vz = 0; p.stuck = 0; p.tps = (p.tps || 0) + 1;
+}
+function petOnKill(e) {
+  const p = G.pet; if (!p || p.ko > 0 || !PETS[p.kind].steal || Math.hypot(p.x - e.x, p.z - e.z) > 10 || Math.random() > PETS[p.kind].steal) return;
+  const v = 2 + (Math.random() * 4 | 0) + e.lvl; dropPickup('piasse', e.x, e.y + 0.6, e.z, { val: v }); floatTxt(e.x, e.y + e.T.h + 1, e.z, petName(p.kind) + ' chipe ' + v + ' $', '#ffd23a'); G.petSteals = (G.petSteals || 0) + 1;
+}
+function petUpdate(dt) {
+  const k = S.comp.act;
+  if (G.pet && G.pet.kind !== k) { scene.remove(G.pet.M.g); G.pet.label.remove(); G.pet = null; }
+  if (!k) return;
+  const P = G.P, T = PETS[k];
+  if (!G.pet) {
+    const M = petModel(k); scene.add(M.g); addBlob(M.g, 0.34);
+    G.pet = { kind: k, M, x: P.x, y: P.y, z: P.z, vx: 0, vy: 0, vz: 0, hw: 0.24, h: 0.6, ground: false, yaw: P.yaw, t: 0, hp: T.hp, ko: 0, cd: 0, atk: 0, stuck: 0, sniff: T.sniff * 0.5, dig: null, hits: 0, finds: 0, tps: 0 };
+    G.pet.label = makeLabel('npc', `<div class="nm">${T.name}</div>`); G.pet.nm = G.pet.label.querySelector('.nm');
+    if (G.petAt) { Object.assign(G.pet, G.petAt); G.petAt = null; } else petTp();
+  }
+  const p = G.pet; p.t += dt; p.cd -= dt; if (p.atk > 0) p.atk = Math.max(0, p.atk - dt * 3);
+  if (G.drive || P.sled) { p.M.g.visible = false; p.label.style.display = 'none'; p.away = true; return; } // dans le bazou ou en traîne : il attend… puis te rejoint
+  if (p.away) { p.away = false; p.M.g.visible = true; petTp(); }
+  const dx = P.x - p.x, dz = P.z - p.z, d = Math.hypot(dx, dz), dy = P.y - p.y;
+  if (d > 22 || Math.abs(dy) > 5 || p.stuck > 2.5 || (!!G.dun) !== !!p.dun) { p.dun = !!G.dun; if (p.dig) { if (p.dig.mark) p.dig.mark.life = 0; p.dig = null; } petTp(); }
+  let tx = null, tz = null, sp = T.spd, foe = null, dig = false;
+  if (p.ko > 0) { p.ko -= dt; if (p.ko <= 0) { p.hp = T.hp; p.nm.textContent = T.name; toast(T.name + ' est revenu à lui!'); } }
+  else {
+    // combat : l'ennemi le plus proche qui te poursuit
+    let bd = 12; for (const e of G.enemies) if (!e.dead && e.state === 'chase' && !(e.T.fly && e.y - world.ground(e.x, e.z, e.y + 2) > 2.2)) { const de = Math.hypot(e.x - p.x, e.z - p.z); if (de < bd && Math.hypot(e.x - P.x, e.z - P.z) < 10) { bd = de; foe = e; } }
+    if (foe) { if (p.dig) { if (p.dig.mark) p.dig.mark.life = 0; p.dig = null; }
+      const reach = foe.T.hw + 0.75; tx = foe.x; tz = foe.z; sp = T.spd * 1.15;
+      if (bd < reach + 0.2) { tx = null; p.yaw = Math.atan2(-(foe.x - p.x), -(foe.z - p.z));
+        if (p.cd <= 0) { p.cd = 1.1; p.atk = 1; const ux = (foe.x - p.x) / (bd || 1), uz = (foe.z - p.z) / (bd || 1); p.hits++; G.petHits = (G.petHits || 0) + 1;
+          damageEnemy(foe, T.dmg * (1 + 0.15 * (S.lvl - 1)), ux, uz, 2, { src: 'pet' }); audio.fx(k === 'chien' ? 'bonk' : 'squeak', 0.6);
+          if (!foe.dead && Math.random() < 0.45) { p.hp -= Math.round(foe.dmg * 0.6); floatTxt(p.x, p.y + 1, p.z, '-' + Math.round(foe.dmg * 0.6), '#ff8a8a');
+            if (p.hp <= 0) { p.hp = 0; p.ko = 25; p.nm.textContent = T.name + ' · K.-O.'; toast(T.name + ' est sonné! Y va revenir dans un moment.'); burst(p.x, p.y + 0.6, p.z, 0xffffff, 8, 3); } } } } }
+    else if (p.dig) { // trésor : va au coin, creuse, déterre
+      const g = p.dig, dd = Math.hypot(g.x - p.x, g.z - p.z);
+      if (dd > 0.6 && g.t === 0) { tx = g.x; tz = g.z; g.go = (g.go || 0) + dt; if (g.go > 8) { p.dig = null; if (g.mark) g.mark.life = 0; } }
+      else { dig = true; g.t += dt; if (Math.random() < dt * 14) burst(p.x - Math.sin(p.yaw) * 0.4, p.y + 0.15, p.z - Math.cos(p.yaw) * 0.4, 0x6b4a2b, 1, 2.5);
+        if (g.t > 2.4) { petDigUp(g); p.dig = null; } } }
+    else if (d > 2.6) { tx = P.x - Math.sin(P.yaw) * 1.6 + Math.cos(P.yaw) * 0.8; tz = P.z - Math.cos(P.yaw) * 1.6 - Math.sin(P.yaw) * 0.8; sp = T.spd * (d > 7 ? 1.35 : 1); }
+    // reniflage : de temps en temps, dehors et au calme
+    if (!foe && !p.dig && !G.dun && !(S.home && inHome(H, P.x, P.z)) && (p.sniff -= dt) <= 0) petSniff();
+  }
+  let tvx = 0, tvz = 0; if (tx != null) { const lx = tx - p.x, lz = tz - p.z, L = Math.hypot(lx, lz); if (L > 0.4) { tvx = lx / L * sp; tvz = lz / L * sp; } }
+  const water = world.get(p.x, p.y + 0.25, p.z) === B.WATER; if (water) { tvx *= 0.55; tvz *= 0.55; }
+  const kk = Math.min(1, dt * (p.ground || water ? 10 : 3)); p.vx += (tvx - p.vx) * kk; p.vz += (tvz - p.vz) * kk;
+  p.vy -= 26 * dt; if (water) p.vy = Math.max(p.vy, world.get(p.x, p.y + 0.55, p.z) === B.WATER ? 2.5 : -0.5); // nage : la tête hors de l'eau
+  const ox = p.x, oz = p.z; moveBody(world, p, dt, true);
+  const want = Math.hypot(tvx, tvz) > 0.5, moved = Math.hypot(p.x - ox, p.z - oz);
+  if (p.hitWall && want && (p.ground || water)) p.vy = 8; // saute par-dessus l'obstacle
+  p.stuck = want && moved < dt * 0.6 ? p.stuck + dt : Math.max(0, p.stuck - dt * 2);
+  if (p.y < -5) petTp();
+  const mv = Math.min(1, Math.hypot(p.vx, p.vz) / T.spd);
+  if (want) { const ty = Math.atan2(-tvx, -tvz); p.yaw += Math.atan2(Math.sin(ty - p.yaw), Math.cos(ty - p.yaw)) * Math.min(1, dt * 10); }
+  else if (!foe && !dig && d < 6) { const ty = Math.atan2(-dx, -dz); p.yaw += Math.atan2(Math.sin(ty - p.yaw), Math.cos(ty - p.yaw)) * Math.min(1, dt * 3); }
+  p.M.g.position.set(p.x, p.y - (water ? 0.3 : 0), p.z); p.M.g.rotation.y = p.yaw;
+  animPet(p.M, p.t, mv, dig, p.atk, p.ko > 0);
+  if (d < 30) placeLabel(p.label, p.x, p.y + 1.05, p.z); else p.label.style.display = 'none';
+}
+function petSniff() {
+  const p = G.pet, P = G.P, T = PETS[p.kind]; p.sniff = T.sniff * (0.8 + Math.random() * 0.4);
+  for (let tries = 0; tries < 6; tries++) {
+    const a = Math.random() * 6.283, r = 5 + Math.random() * 5, c = freeSpot(P.x + Math.cos(a) * r, P.z + Math.sin(a) * r), y = world.ground(c.x, c.z, P.y + 4);
+    if (Math.abs(y - P.y) > 3 || !NATGROUND.has(world.get(c.x, y - VS / 2, c.z))) continue;
+    p.dig = { x: c.x, z: c.z, y, t: 0 }; if (T.mark) p.dig.mark = ring(c.x, y + 0.06, c.z, 0.9, 0.9, 30, 0xffd23a);
+    toast(T.name + ' renifle quelque chose…'); floatTxt(p.x, p.y + 1.3, p.z, '?!', '#ffd23a'); return true;
+  }
+  p.sniff = 12; return false;
+}
+function petDigUp(g) {
+  const p = G.pet, T = PETS[p.kind], L = T.loot; if (g.mark) g.mark.life = 0; p.finds++; S.stats.tresors = (S.stats.tresors || 0) + 1;
+  const cash = Math.round((5 + Math.random() * 10) * L * (1 + 0.1 * (S.lvl - 1))), y = g.y + 0.6;
+  for (let k = 0; k < 3; k++) dropPickup('piasse', g.x + (Math.random() - 0.5), y, g.z + (Math.random() - 0.5), { val: Math.ceil(cash / 3) });
+  const r = Math.random(), got = [cash + ' $'];
+  if (r < 0.1 * L) { dropPickup('gear', g.x, y, g.z, { id: GEAR_POOL[(Math.random() * GEAR_POOL.length) | 0], r: rollRarity(p.kind === 'raton' ? 1 : 0) }); got.push('de l’équipement'); }
+  else if (r < 0.55) { const f = pick(['sirop', 'tire', 'tarte', 'fromage', 'poutine']); addItem(f, 1); got.push(ITEMS[f].name); }
+  burst(g.x, g.y + 0.3, g.z, 0x6b4a2b, 14, 4); burst(g.x, g.y + 0.5, g.z, 0xffd23a, 8, 3); audio.fx('dig');
+  floatTxt(g.x, g.y + 1.4, g.z, 'TRÉSOR!', '#ffd23a'); toast(T.name + ' a déterré : ' + got.join(', ') + '!');
+}
 // ---------- quêtes ----------
 function questEvent(kind, what) {
   for (const id in S.q) { const s = S.q[id], q = QUESTS[id]; if (s.st !== 'active') continue;
@@ -1025,16 +1136,16 @@ function gainXP(n) {
   S.xp += n; floatTxt(G.P.x, G.P.y + 2.4, G.P.z, '+' + n + ' XP', '#9ae0ff');
   while (S.xp >= xpNext(S.lvl)) { S.xp -= xpNext(S.lvl); S.lvl++; const st = stats(); G.P.hp = st.hpMax; audio.fx('level'); banner('NIVEAU ' + S.lvl + '!', 'PV max ' + st.hpMax + ' · dégâts +10 % · 1 point de talent (T)'); burst(G.P.x, G.P.y + 1, G.P.z, 0xffd23a, 20, 6); G.dirtyHot = true; }
 }
-function rewardTxt(r) { return (r.cash || 0) + ' piasses · ' + r.xp + ' XP' + (r.item ? ' · ' + ITEMS[r.item].name : '') + (r.give ? ' · ' + Object.entries(r.give).map(([k, v]) => v + ' × ' + ITEMS[k].name).join(', ') : ''); }
+function rewardTxt(r) { return (r.cash || 0) + ' piasses · ' + r.xp + ' XP' + (r.pet ? ' · ' + PETS[r.pet].name + ', ' + PETS[r.pet].what : '') + (r.item ? ' · ' + ITEMS[r.item].name : '') + (r.give ? ' · ' + Object.entries(r.give).map(([k, v]) => v + ' × ' + ITEMS[k].name).join(', ') : ''); }
 function reward(r) {
-  S.cash += r.cash || 0; if (r.item) addItem(r.item, 1, 0); if (r.give) for (const k in r.give) addItem(k, r.give[k]);
+  S.cash += r.cash || 0; if (r.item) addItem(r.item, 1, 0); if (r.give) for (const k in r.give) addItem(k, r.give[k]); if (r.pet) petGive(r.pet);
   gainXP(r.xp || 0); audio.fx('quest');
   return `<span class="rw">Récompense : ${r.cash || 0} piasses · ${r.xp} XP${r.item ? ' · ' + ITEMS[r.item].name : ''}${r.give ? ' · ' + Object.entries(r.give).map(([k, v]) => v + ' × ' + ITEMS[k].name).join(', ') : ''}</span>`;
 }
 // où aller : le PNJ lui-même s'il est chargé, sinon sa place ; pour une quête en cours, la cible vivante la plus proche
 function npcPos(role, near) { let best = null, bd = 150; for (const [, n] of G.npcs) if (n.role === role) { const d = near ? Math.hypot(n.x - near.x, n.z - near.z) : 0; if (d < bd) { bd = d; best = { x: n.x, z: n.z, y: n.y + 3.4 }; } /* au-dessus du nom et du « ! » */ } return best; }
 function giverPos(role, q) {
-  const NP = gen.nord.places, c = { gaston: [0, 0], lapaperasse: [0, 0], pepere: [1, 0], ginette: [-1, 0] }[role];
+  const NP = gen.nord.places, c = { gaston: [0, 0], lapaperasse: [0, 0], pepere: [1, 0], ginette: [-1, 0], eleveuse: [-1, 0] }[role];
   const p = q && q.home ? gen.reg.places[q.home] : c ? gen.cell(...c) : { cuisiniere: NP.etape, saguenayen: NP.port, animatrice: gen.extras[0], notaire: { x: gen.home.x - 10.5, z: gen.home.z + 2.5 } }[role];
   return p ? npcPos(role, p) || { x: p.x, z: p.z } : null;
 }
@@ -1054,7 +1165,7 @@ function questTargetPos(id) {
   if (best) return best;
   if (q.home) { const p = gen.reg.places[q.at || q.home]; return p ? { x: p.x, z: p.z } : null; }
   if (q.where) { const c = gen.cell(...q.where); return { x: c.x, z: c.z }; }
-  const Z = { terrain: () => gen.home, glissade: () => ({ x: gen.extras[0].butte.x0 + 0.5, z: gen.extras[0].z + 0.5, y: gen.home.h + 7 }), feuilles: () => gen.cell(1, 0), sirop: () => gen.cell(1, 0), tire_printemps: () => gen.cell(1, 0) /* la cabane à sucre de pépère */, mouches_ete: () => gen.cell(1, 0) /* érablière : mouches le jour */, poutine: () => gen.cell(-1, 0), permis: () => gen.cell(-1, 0), souffleuses: () => gen.cell(2, -1), pate: () => NP.travaux, comite: () => NP.travaux, goelands: () => NP.port }[id];
+  const Z = { terrain: () => gen.home, glissade: () => ({ x: gen.extras[0].butte.x0 + 0.5, z: gen.extras[0].z + 0.5, y: gen.home.h + 7 }), feuilles: () => gen.cell(1, 0), sirop: () => gen.cell(1, 0), tire_printemps: () => gen.cell(1, 0) /* la cabane à sucre de pépère */, mouches_ete: () => gen.cell(1, 0) /* érablière : mouches le jour */, poutine: () => gen.cell(-1, 0), chiot: () => gen.cell(-1, 0), permis: () => gen.cell(-1, 0), souffleuses: () => gen.cell(2, -1), pate: () => NP.travaux, comite: () => NP.travaux, goelands: () => NP.port }[id];
   const c = Z && Z(); return c ? { x: c.x, z: c.z } : null;
 }
 // ---------- premiers pas (tutoriel du premier lancement) ----------
@@ -1120,6 +1231,9 @@ function furnPlace(id) {
 function furnNear() { const P = G.P; let b = -1, bd = 1.8; S.furn.forEach((f, i) => { const d = Math.hypot(f.x - P.x, f.z - P.z); if (d < bd && Math.abs(f.y - P.y) < 1.5) { bd = d; b = i; } }); return b; }
 // action possible tout près : un meuble, ou le haut de la butte l'hiver
 function useNear() {
+  const P0 = G.P;
+  if (!S.comp.have.raton) for (const e of G.enemies) if (e.state === 'docile' && !e.dead && Math.hypot(e.x - P0.x, e.z - P0.z) < 2.6) return { txt: 'Apprivoiser le raton (une poutine ou une tarte)', btn: 'APPRIVOISE', fn: () => tameRaton(e) };
+  if (S.comp.have.chien && S.comp.have.raton && S.home && inHome(H, P0.x, P0.z) && furnNear() < 0) { const o = S.comp.act === 'chien' ? 'raton' : 'chien'; return { txt: 'Changer de compagnon : prendre ' + PETS[o].name, btn: 'COMPAGNON', fn: () => petSwitch(o) }; }
   if (!S.home && !S.furn.length && Math.abs(G.P.x - PAT.x) > 40) return null;
   const i = furnNear(); if (i >= 0) { const id = S.furn[i].id, a = FURN_ACT[id]; return { txt: a[0], btn: a[1], fn: () => furnOpen(i) }; }
   const P = G.P, b = PAT.butte;
@@ -1655,7 +1769,7 @@ function frame(now) {
     const P = G.P;
     if (st === 'play') {
       const gd = G.hitstop > 0 ? dt * 0.08 : dt; G.hitstop = Math.max(0, G.hitstop - dt); // arrêt sur image à l'impact
-      if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); npcsUpdate(dt); dunUpdate(gd); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
+      if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); petUpdate(gd); npcsUpdate(dt); dunUpdate(gd); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
       crittersUpdate(dt);
       { const nt = sky.t + dt / DAY_LEN; if (nt >= 1) newDay(); sky.t = nt % 1; }
       G.weatherT -= dt; if (G.weatherT <= 0) { const w = weatherPick(G.season, Math.random()); sky.snowT = w === 'neige' ? 1 : 0; sky.rainT = w === 'pluie' ? 1 : 0; G.weatherT = 90 + Math.random() * 150; } // météo pondérée par la saison
@@ -1742,5 +1856,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { die, setSeason, seasonParams, homeSetup, furnPlace, furnOpen, furnSync, openCoffre, sleep, goHome, useNear, inHome, closePanels, newDay, get season() { return G.season; }, get frozen() { return !!G.frozen; }, SEASON_U, H, PAT, tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { PETS, petGive, petSniff, petSwitch, tameRaton, die, setSeason, seasonParams, homeSetup, furnPlace, furnOpen, furnSync, openCoffre, sleep, goHome, useNear, inHome, closePanels, newDay, get season() { return G.season; }, get frozen() { return !!G.frozen; }, SEASON_U, H, PAT, tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;
