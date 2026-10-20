@@ -222,3 +222,22 @@ body.touch #stats { width: min(36vw, 360px, calc(50% - 190px)); } body.touch #st
   #tEat, #tSwap { right: auto; left: 4vw; min-height: 34px; }
   #tEat { bottom: calc(3vh + 38vw); } #tSwap { bottom: calc(3vh + 38vw + 42px); }
 }
+/* v6.2 : pêche blanche */
+#peche { position: fixed; left: 50%; bottom: 16%; transform: translateX(-50%); width: min(560px, 92vw); z-index: 40; background: rgba(8, 22, 40, .9); border: 3px solid #9ae0ff; border-radius: 6px; padding: 12px 14px; color: #fff; text-align: center; font-size: 15px; user-select: none; -webkit-user-select: none; touch-action: none; }
+#peche.hidden { display: none; }
+#pkT { display: block; color: #9ae0ff; font-size: 18px; margin-bottom: 4px; }
+#pkMsg { min-height: 22px; margin: 4px 0 8px; }
+#pkMsg .bite { color: #ffd23a; font-size: 24px; animation: pkb .25s infinite alternate; }
+@keyframes pkb { from { transform: scale(1); } to { transform: scale(1.12); } }
+#pkBar { position: relative; height: 26px; background: #20303e; border: 2px solid #5a7a8a; margin: 6px 0; overflow: hidden; }
+#pkZone { position: absolute; top: 0; bottom: 0; background: rgba(90, 200, 90, .55); border-left: 2px solid #8dff6a; border-right: 2px solid #8dff6a; }
+#pkBar.in #pkZone { background: rgba(120, 240, 110, .8); }
+#pkMark { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: #ffd23a; box-shadow: 0 0 6px #ffd23a; }
+#pkProg { height: 8px; background: #20303e; margin-bottom: 8px; }
+#pkProg div { height: 100%; background: #9ae0ff; width: 0; }
+#pkTire { display: block; width: 100%; margin: 6px 0; font-size: 20px; padding: 12px 0; touch-action: none; }
+body.touch #pkTire { padding: 22px 0; font-size: 24px; }
+#pkBtns .btn { margin: 4px; }
+#pkHelp { display: block; opacity: .7; margin-top: 4px; }
+table.rec { width: 100%; border-collapse: collapse; margin: 6px 0; }
+table.rec th, table.rec td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,.15); text-align: left; }

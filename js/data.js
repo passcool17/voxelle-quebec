@@ -42,6 +42,15 @@ export const ITEMS = {
   // construire et miner
   charbon: { name: 'Charbon', slot: 'mat', desc: 'Trouvé dans la pierre. Noircit les mitaines.', price: 8 },
   fer: { name: 'Minerai de fer', slot: 'mat', desc: 'Du fer brut, plein de rouille et de promesses.', price: 14 },
+  // v6.2 : pêche blanche (poissons crus = matériaux à vendre ou à cuisiner ; plats = conso)
+  poulamon: { name: 'Poulamon', slot: 'mat', desc: 'Le petit poisson des chenaux. Y’en a des tonnes, pis c’est bon frit.', price: 4 },
+  perchaude: { name: 'Perchaude', slot: 'mat', desc: 'Rayée, nerveuse, délicieuse en filets.', price: 8 },
+  dore: { name: 'Doré jaune', slot: 'mat', desc: 'Le roi de la poêle. Les yeux brillent même sous la glace.', price: 16 },
+  brochet: { name: 'Brochet', slot: 'mat', desc: 'Des dents comme une scie à chaîne. Se vend bien au marché.', price: 26 },
+  maski: { name: 'Maskinongé géant', slot: 'mat', desc: 'Le monstre du fleuve! Ti-Guy en parle depuis trente ans.', price: 90 },
+  friture: { name: 'Friture de poulamons', slot: 'conso', heal: 45, stam: 1, desc: 'Croustillante, avec du citron. Rend 45 PV et l’énergie.', price: 20 },
+  filets_perchaude: { name: 'Filets de perchaude', slot: 'conso', heal: 55, desc: 'Panés à la chapelure. Rend 55 PV.', price: 24 },
+  filet_dore: { name: 'Filet de doré au beurre', slot: 'conso', heal: 75, buff: 8, desc: 'Le meilleur poisson du Québec, pis c’est pas discutable. Rend 75 PV et donne de la vitesse.', price: 34 },
   plastique: { name: 'Plastique orange', slot: 'mat', desc: 'Ce qui reste d’un cône-golem. Recyclable (en théorie).', price: 5 },
   pic_bois: { name: 'Pic en bois', slot: 'outil', tool: 'pic', pow: 2.2, desc: 'Mine la pierre 2 fois plus vite. Fait en planches, pis ça paraît.', price: 30 },
   pic_fer: { name: 'Pic en fer', slot: 'outil', tool: 'pic', pow: 4, desc: 'Mine la pierre 4 fois plus vite. Le roc-mère, lui, s’en fout.', price: 90 },
@@ -84,6 +93,14 @@ export const ENEMIES = {
   supreme: { name: 'Le Cône Suprême', hp: 650, dmg: 20, spd: 3.0, range: 3.6, cd: 1.6, xp: 600, cash: [120, 160], aggro: 26, hw: 1.0, h: 3.8, boss: true },
 };
 // v6 : compagnons (un seul actif ; on change à sa cabane)
+// v6.2 : poissons de la pêche blanche : chance (poids relatif), poids (kg), zone verte (fraction de la barre), vitesse du poisson
+export const FISH = {
+  poulamon: { p: 46, w: [0.05, 0.2], zs: 0.36, spd: 0.5 },
+  perchaude: { p: 28, w: [0.15, 0.6], zs: 0.3, spd: 0.8 },
+  dore: { p: 15, w: [0.6, 3.2], zs: 0.24, spd: 1.1 },
+  brochet: { p: 9, w: [1.5, 7], zs: 0.19, spd: 1.5 },
+  maski: { p: 2, w: [9, 22], zs: 0.15, spd: 1.9, rare: true },
+};
 export const PETS = {
   chien: { name: 'Pistache', what: 'ton chien', hp: 70, dmg: 7, spd: 7.2, sniff: 75, loot: 1, steal: 0, mark: true },
   raton: { name: 'Bandit', what: 'ton raton', hp: 50, dmg: 5, spd: 7.6, sniff: 120, loot: 1.6, steal: 0.4, mark: false },
@@ -114,6 +131,7 @@ export const NPCS = {
   notaire: { name: 'Me Hortense Brisebois, notaire', quest: true, look: { coat: 0x2b2f3a, hatType: 'bun', hair: 0x6a4a3a, glasses: true, sash: false, mitt: 0xf0c8a0 } },
   animatrice: { name: 'Mireille, loisirs du village', quest: true, look: { coat: 0x2c8a8a, hat: 0xf2c12e, pom: 0xf2f2f2, hair: 0x2a1e18, sash: false } },
   eleveuse: { name: 'Mme Gagnon, chenil du village', quest: true, look: { coat: 0x5a7a3a, hat: 0xc07a20, hair: 0x6a4a2a, sash: false, mitt: 0x8a5a2c } },
+  pecheur: { name: 'Ti-Guy Bouchard, cabanes à pêche', quest: true, look: { coat: 0xd8a020, hat: 0xc02020, pom: 0xf2f2f2, beard: 0x8a6a4a, mitt: 0x5a3a22 } },
   guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
 };
 export const ROLE_CHAT = {
@@ -165,6 +183,9 @@ export const QUESTS = {
   chiot: { giver: 'eleveuse', title: 'Un chien pour la vie', type: 'kill', target: 'raton', n: 3, reward: { cash: 20, xp: 120, pet: 'chien' },
     intro: 'Les ratons rôdent autour du chenil pis énervent mes chiens. Chasse-m’en trois, pis je te confie Pistache : y’est fin, y’a du flair, pis y’a pas peur des cônes.',
     wait: 'Les ratons sortent surtout le soir, autour du village.', done: 'Pistache t’a déjà adopté, regarde-le branler la queue! Prends-en soin : y trouve toutes sortes d’affaires en creusant.' },
+  peche_blanche: { giver: 'pecheur', season: 0, title: 'La pêche blanche', type: 'act', act: 'poisson', n: 4, reward: { cash: 60, xp: 220, give: { friture: 2 } },
+    intro: 'Bonjour toé! Les poissons des chenaux sont arrivés sous la glace. Loue une de mes cabanes, perce ton trou, pis ramène-moi quatre poissons. Le premier qui sort le Gros Maski, je l’affiche au tableau pour l’éternité!',
+    wait: 'Loue une cabane (10 $), entre dedans pis pêche : ferre quand ça mord, puis garde la ligne dans la zone verte.', done: 'Quatre beaux poissons! T’as le tour du poignet. Tiens, de la friture de chez nous.' },
   poutine: { giver: 'ginette', title: 'Les voleurs de poutine', type: 'kill', target: 'raton', n: 4, reward: { cash: 70, xp: 180, item: 'pelle' },
     intro: 'Mes poutines disparaissent! Des ratons laveurs masqués rôdent autour du village, surtout la nuit. Chasse-m’en quatre, pis je te donne ma vieille pelle.',
     wait: 'Les ratons, c’est des voleurs masqués. Ils sortent surtout le soir.', done: 'Merci! Tiens, ma pelle à neige. Elle a déneigé trois générations d’entrées.' },
@@ -240,7 +261,7 @@ export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches',
 // objectifs concrets affichés dans le suivi (quoi faire, où) ; foe = ennemi qui porte l'objet à ramasser
 const OBJ = {
   cones: 'Démolis des cônes-golems au chantier, au nord des remparts', permis: 'Bats des bureaucrates zombies (campagne, surtout la nuit) : l’un d’eux a le formulaire',
-  sirop: 'Ramasse les chaudières éparpillées dans l’érablière (ratons!)', poutine: 'Bats des ratons autour du village, surtout le soir', chiot: 'Chasse des ratons autour du village (le chenil de Mme Gagnon)',
+  sirop: 'Ramasse les chaudières éparpillées dans l’érablière (ratons!)', poutine: 'Bats des ratons autour du village, surtout le soir', chiot: 'Chasse des ratons autour du village (le chenil de Mme Gagnon)', peche_blanche: 'Pêche dans une cabane sur le fleuve gelé, à l’ouest de la Vieille-Ville',
   pate: 'Ramasse les cannes de blé d’Inde aux travaux de la 175', nouvelles: 'Va chercher la gazette chez Gaston, à la Vieille-Ville',
   supreme: 'Bats le Cône Suprême au Grand Chantier, au nord-est', souffleuses: 'Bats des souffleuses à neige (campagne et collines, surtout la nuit)',
   goelands: 'Bats des goélands au-dessus du port de Chicoutimi', comite: 'Déloge le Comité au chantier de la 175',

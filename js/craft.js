@@ -31,6 +31,10 @@ export const RECIPES = [
   // v5c : le temps des sucres de Pépère (visibles seulement pendant la quête) ; at = à faire sur place
   { id: 'bouillir', name: 'Faire bouillir l’eau d’érable', out: { i: 'sirop_coulee', n: 1 }, ini: { eau_erable: 3 }, at: 'cabane', quest: 'tire_printemps', note: 'À l’évaporateur de la cabane à sucre de Pépère.' },
   { id: 'tire_pepere', name: 'Tire de Pépère', out: { i: 'tire', n: 2 }, inb: { [B.SNOW]: 2 }, ini: { sirop_coulee: 1 }, quest: 'tire_printemps', note: 'Avec ton propre sirop de la coulée, sur ta neige.' },
+  // v6.2 : cuisine du pêcheur
+  { id: 'friture', name: 'Friture de poulamons', out: { i: 'friture', n: 1 }, ini: { poulamon: 3 } },
+  { id: 'filets_perchaude', name: 'Filets de perchaude', out: { i: 'filets_perchaude', n: 1 }, ini: { perchaude: 2 } },
+  { id: 'filet_dore', name: 'Filet de doré', out: { i: 'filet_dore', n: 1 }, ini: { dore: 1 } },
   { id: 'pave', name: 'Pavé', out: { b: B.COBBLE, n: 2 }, inb: { [B.STONE]: 2 }, bench: true },
   { id: 'vitre', name: 'Fenêtres', out: { b: B.GLASS, n: 2 }, inb: { [B.SAND]: 2 }, ini: { charbon: 1 }, bench: true },
   { id: 'brique', name: 'Briques', out: { b: B.BRICK, n: 3 }, inb: { [B.DIRT]: 2, [B.SAND]: 1 }, ini: { charbon: 1 }, bench: true },
