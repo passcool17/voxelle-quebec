@@ -75,7 +75,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   ok(await ev(k => k.every(x => !__game.S.taken[x]), pails.slice(0, 3).map(q => q.key)), 'sirop : chaudières remises dans l’érablière (S.taken effacé)');
   await shot('gel-echec');
   await allLoaded(); pails = await pick('chaudiere', 'b1,0');
-  ok(pails.length === 12, 'sirop : les 12 chaudières sont revenues (' + pails.length + ')');
+  ok(pails.length === 12, 'sirop : les 12 chaudières sont revenues (' + pails.length + ')' + (pails.length < 12 ? ' manque ' + JSON.stringify(await ev(() => { const g = __game, s = g.gen.cell(1, 0), m = g.layout(s); return m.items.filter(it => it.kind === 'chaudiere' && !g.G.pickups.some(p => p.key === it.id)).map(it => ({ id: it.id, x: it.x, z: it.z, taken: !!g.S.taken[it.id], ld: g.world.loadedAround(it.x, it.z, 0), nd: g.G.nudge && g.G.nudge[it.id] })); })) : ''));
   // réussite : 10 en moins de 4 minutes (de jeu)
   for (const it of pails) { if (await ev(() => __game.S.q.sirop.st) !== 'active') break; await grab(it); }
   sq = await ev(() => __game.S.q.sirop);
@@ -108,7 +108,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   await W(200); await shot('bouillir-atelier');
   await ev(() => __game.closePanels && __game.closePanels());
   // le panache de l'évaporateur, vu de dehors
-  await ev(([cx, cz]) => { const G = __game.G, P = G.P; P.x = cx + 1; P.z = cz + 14; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI; G.camPitch = 0.12; G.camDist = 7; G.boilT = 6; }, [C.x, C.z]);
+  await ev(([cx, cz]) => { const G = __game.G, P = G.P; P.x = cx + 1; P.z = cz + 14; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = 0; G.camPitch = 0.12; G.camDist = 7; G.boilT = 6; }, [C.x, C.z]);
   await W(1800); await shot('bouillir');
   ok(await ev(() => __game.S.inv.filter(i => i.id === 'sirop_coulee').reduce((a, i) => a + (i.n || 1), 0) === 2), 'tire : 2 cannes de sirop de la coulée');
   ok(!(await ev(() => __game.craft('tire_pepere'))), 'tire : pas de tire sans neige');
@@ -129,7 +129,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   // gros plan : une terne et la rouge la plus proche
   const t0 = ternes[0]; const r0 = rouges.slice().sort((a, b2) => Math.hypot(a.x - t0.x, a.z - t0.z) - Math.hypot(b2.x - t0.x, b2.z - t0.z))[0];
   ok(!(await grab(t0)) && (await ev(() => __game.S.q.feuilles.n)) === 0, 'feuilles : une terne ne compte pas (reste au sol)');
-  await ev(([t, r]) => { const G = __game.G; for (const q of G.pickups) if (q.key === r.key) { q.x = t.x + 1.2; q.z = t.z; } const P = G.P; P.x = t.x + 0.6; P.z = t.z + 3.2; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI; G.camPitch = 0.5; G.camDist = 3.2; }, [t0, r0]);
+  await ev(([t, r]) => { const G = __game.G; for (const q of G.pickups) if (q.key === r.key) { q.x = t.x + 1.2; q.z = t.z; } const P = G.P; P.x = t.x - 1.6; P.z = t.z + 3.4; P.y = __game.world.ground(P.x, P.z) + 0.1; P.yaw = Math.PI; G.camYaw = 0; G.camPitch = 0.5; G.camDist = 3.2; }, [t0, r0]);
   await W(1200); await shot('feuilles-rouges-ternes');
   let n = 0; for (const it of rouges) { if (await ev(() => __game.S.q.feuilles.st) !== 'active') break; n += await grab(await ev(k => { const q = __game.G.pickups.find(q => q.key === k); return q ? { x: q.x, z: q.z, key: k } : null; }, it.key) || it) ? 1 : 0; }
   ok((await ev(() => __game.S.q.feuilles.st)) === 'ready', 'feuilles : 10 rouges → objectif atteint (' + n + ' ramassées)');
