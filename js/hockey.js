@@ -15,6 +15,8 @@ export function createHockey(C) {
     document.body.appendChild(el);
     const bt = (id, f) => el.querySelector('#' + id).addEventListener('pointerdown', e => { e.preventDefault(); if (M) M[f] = true; });
     bt('hkLance', 'wantShot'); bt('hkPasse', 'wantPass');
+    // clic gauche : lance, clic droit : passe (pris à l'appui : un clic rapide tombe parfois entre deux images)
+    addEventListener('mousedown', e => { if (!M || G.state !== 'hockey' || (e.target.closest && e.target.closest('#hockey button'))) return; if (e.button === 0) M.wantShot = true; else if (e.button === 2) M.wantPass = true; });
   }
   const $ = id => el.querySelector('#' + id);
   // ---------- joueurs ----------
@@ -156,7 +158,7 @@ export function createHockey(C) {
     if (!M) return; const R = rk(), P = G.P, k = M.puck;
     if (C.pressed.has('Escape') && M.ph !== 'fin') { C.toast('Partie abandonnée.'); quit(); return; }
     if (M.ph === 'fin') { show(); return; }
-    if (C.pressed.has('Space') || (C.input.lmb && !M.lmbWas)) M.wantShot = true; M.lmbWas = C.input.lmb;
+    if (C.pressed.has('Space')) M.wantShot = true;
     if (C.pressed.has('KeyE') || C.input.rmbP) M.wantPass = true; C.input.rmbP = false;
     G.camYaw = 0; G.camPitch = 0.72; G.camDist = C.isTouch ? 12.5 : 10; // vue de la galerie
     M.t += dt;

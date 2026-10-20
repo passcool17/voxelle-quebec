@@ -33,8 +33,8 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v6-hoc
   const cash0 = await ev(() => __game.S.cash);
   await btn('GAME DE HOCKEY'); await W(500);
   ok((await ev(() => __game.G.state)) === 'hockey' && await ev(() => getComputedStyle(document.getElementById('hockey')).display !== 'none' && __game.hockey.M.L.length === 6), 'game lancée : 6 joueurs, pointage affiché');
-  await shot('mise-au-jeu', p);
-  ok((await st(p)).ph === 'mise' && /Mise au jeu/.test(await ev(() => document.getElementById('hkMsg').textContent)), 'mise au jeu au centre');
+  ok(await ev(() => { const M = __game.hockey.M, R = __game.hockey.rk(); M.t = -2; return M.ph === 'mise' && Math.hypot(M.puck.x - R.cx, M.puck.z - R.cz) < 0.1 && /Mise au jeu/.test(document.getElementById('hkMsg').textContent); }), 'mise au jeu au centre');
+  await W(300); await shot('mise-au-jeu', p);
   await p.waitForFunction(() => __game.hockey.M.ph === 'jeu', null, { timeout: 10000 });
   // ---------- 2. patiner ----------
   const x0 = await ev(() => __game.G.P.x); await p.keyboard.down('KeyD'); await W(900); await p.keyboard.up('KeyD'); const x1 = await ev(() => __game.G.P.x);
