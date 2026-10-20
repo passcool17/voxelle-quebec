@@ -185,8 +185,8 @@ export function createHockey(C) {
       const sp = Math.hypot(p.vx, p.vz);
       if (p.me) { P.x = p.x; P.z = p.z; P.y = R.y; P.vx = p.vx; P.vz = p.vz; P.vy = 0; P.yaw = p.yaw; }
       p.model.g.position.set(p.x, R.y, p.z); p.model.g.rotation.y = p.yaw;
-      C.animHuman(p.model, p.walkT, Math.min(0.7, sp / 6), p.atk > 0 ? 1 - p.atk / 0.3 : 0, false, false); p.atk = Math.max(0, (p.atk || 0) - dt);
-      const A = p.model.P; A.torso.rotation.x = p.gk ? 0.45 : 0.3; A.armR.rotation.x = Math.max(A.armR.rotation.x, 0.6); A.armL.rotation.x = Math.max(A.armL.rotation.x, 0.5); // penché sur le bâton
+      C.animHuman(p.model, p.walkT, Math.min(0.4, sp / 9), p.atk > 0 ? 1 - p.atk / 0.3 : 0, false, false); p.atk = Math.max(0, (p.atk || 0) - dt);
+      const A = p.model.P; A.torso.rotation.x = p.gk ? 0.22 : 0.14; if (!(p.atk > 0)) { A.armR.rotation.x = 0.55; A.armL.rotation.x = 0.45; } // penché sur le bâton
       if (p.label) C.placeLabel(p.label, p.x, R.y + 2.3, p.z, 40);
     }
     show();
