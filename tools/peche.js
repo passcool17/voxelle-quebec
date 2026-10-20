@@ -39,7 +39,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   // ---------- 2. hiver : cabanes, quête, location ----------
   await ev(() => __game.setSeason(0)); await W(1500); await tp(PK.shore.x, PK.shore.z - 1, 1500);
   ok(await ev(() => __game.frozen) && (await ev(() => __game.peche.built)) === 5, 'hiver : fleuve gelé, 5 cabanes sur la glace');
-  await ev(([h]) => { const G = __game.G, P = G.P; P.x = h.x - 4; P.z = h.z - 12; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI + 0.3; G.camPitch = 0.42; G.camDist = 3.2; }, [PK.huts[2]]); await W(1500); await shot('cabanes', p);
+  await ev(([h]) => { const G = __game.G, P = G.P; P.x = h.x + 2; P.z = h.z - 8; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI - 0.15; G.camPitch = 0.62; G.camDist = 11; }, [PK.huts[2]]); await W(1500); await shot('cabanes', p);
   const t1 = await talk(); ok(/pêche blanche/i.test(t1 || '') && await btn('ACCEPTER'), 'quête « La pêche blanche » acceptée'); await close();
   await ev(() => __game.petGive('chien')); await W(500);
   const cash0 = await ev(() => __game.S.cash); await talk(); ok(await btn('LOUER'), 'bouton LOUER'); await close();

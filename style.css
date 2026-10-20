@@ -223,7 +223,7 @@ body.touch #stats { width: min(36vw, 360px, calc(50% - 190px)); } body.touch #st
   #tEat { bottom: calc(3vh + 38vw); } #tSwap { bottom: calc(3vh + 38vw + 42px); }
 }
 /* v6.2 : pêche blanche */
-#peche { position: fixed; left: 50%; bottom: 16%; transform: translateX(-50%); width: min(560px, 92vw); z-index: 40; background: rgba(8, 22, 40, .9); border: 3px solid #9ae0ff; border-radius: 6px; padding: 12px 14px; color: #fff; text-align: center; font-size: 15px; user-select: none; -webkit-user-select: none; touch-action: none; }
+#peche { position: fixed; left: 50%; bottom: 5%; transform: translateX(-50%); width: min(560px, 92vw); z-index: 40; background: rgba(8, 22, 40, .9); border: 3px solid #9ae0ff; border-radius: 6px; padding: 12px 14px; color: #fff; text-align: center; font-size: 15px; user-select: none; -webkit-user-select: none; touch-action: none; }
 #peche.hidden { display: none; }
 #pkT { display: block; color: #9ae0ff; font-size: 18px; margin-bottom: 4px; }
 #pkMsg { min-height: 22px; margin: 4px 0 8px; }
