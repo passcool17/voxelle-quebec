@@ -15,7 +15,7 @@ import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
 import { DUN, dunPlan, dunInside, dunRoomAt } from './donjons.js';
 import * as FS from './fullscreen.js';
-import { SEASON_U } from './materials.js';
+import { SEASON_U, seasonTints } from './materials.js';
 import { SAISONS, DAYS, seasonOf, dayInSeason, seasonParams, weatherPick, FLIES, LEAVES } from './saisons.js';
 import { FURN_ACT, inHome, inCabin, moveStack, CHEST_MAX, furnModel, winterDecor, sledModel } from './cabane.js';
 
@@ -1027,6 +1027,7 @@ const winterG = winterDecor(gen.extras[0]); winterG.position.y = gen.extras[0].h
 function seasonUpdate(dt, snap) {
   const p = seasonParams(dayNow()), U = SEASON_U, k = snap ? 1 : Math.min(1, dt * 0.5); G.season = p.k;
   for (const [u, v] of [['uSnow', p.snow], ['uIce', p.ice], ['uGreen', p.green], ['uFall', p.fall], ['uFresh', p.fresh]]) U[u].value += (v - U[u].value) * k;
+  seasonTints();
   if ((U.uIce.value > 0.5) !== !!G.frozen) setFrozen(!G.frozen);
   winterG.visible = U.uSnow.value > 0.5;
 }

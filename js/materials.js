@@ -7,32 +7,45 @@ float vqNoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f
   float a = vqHash(vec3(i, 1.)), b = vqHash(vec3(i + vec2(1, 0), 1.)), c = vqHash(vec3(i + vec2(0, 1), 1.)), d = vqHash(vec3(i + vec2(1, 1), 1.));
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y); }`;
 // Saisons : uniformes partagés par le terrain (aucun remaillage au changement de saison, voir saisons.js)
-export const SEASON_U = { uSnow: { value: 0 }, uIce: { value: 0 }, uGreen: { value: 1 }, uFall: { value: 0 }, uFresh: { value: 0 } };
+export const SEASON_U = { uSnow: { value: 0 }, uIce: { value: 0 }, uGreen: { value: 1 }, uFall: { value: 0 }, uFresh: { value: 0 },
+  uSM: { value: Array.from({ length: 16 }, () => new THREE.Vector4(1, 1, 1, 0)) }, uST: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) } };
+// Teinte de saison par (classe + 8 × dessus) : couleur = couleur du bloc × M + ombrage × T, calculée ici une fois par image
+// (16 entrées) au lieu d'une cascade de mix/if par sommet. M.w = variation du grain, T.w = neige au sol.
+export function seasonTints() {
+  const U = SEASON_U, sn = U.uSnow.value, ic = U.uIce.value, gr = U.uGreen.value, fa = U.uFall.value, fr = U.uFresh.value;
+  for (let idx = 0; idx < 16; idx++) {
+    const cls = idx & 7, top = idx >> 3, M = [1, 1, 1], T = [0, 0, 0];
+    const mixTo = (A, w) => { for (let c = 0; c < 3; c++) { M[c] *= 1 - w; T[c] = T[c] * (1 - w) + A[c] * w; } };
+    let vr = 0;
+    if (cls === 1) { mixTo([0.66, 0.58, 0.27], fa * 0.7 * top); mixTo([0.42, 0.72, 0.26], fr * 0.45 * top); }
+    else if (cls === 2) { mixTo([0.28, 0.52, 0.19], gr); vr = 0.4 * gr; }
+    else if (cls === 3) { mixTo([0.9, 0.7, 0.16], fa); vr = 0.3 * fa; }
+    else if (cls === 5) mixTo([0.78, 0.89, 0.97], ic);
+    else if (cls === 6) { const w = fa * 0.8, K = [1.35, 1.05, 0.5]; for (let c = 0; c < 3; c++) { M[c] *= 1 - w + w * K[c]; T[c] = 0.05 * w; } mixTo([0.9, 0.93, 0.97], sn * 0.8); }
+    if (cls === 2 || cls === 3) { const h = 0.25 + 0.65 * top; mixTo([0.45 + 0.48 * h, 0.39 + 0.56 * h, 0.33 + 0.65 * h], sn * 0.85); } // feuillus givrés
+    U.uSM.value[idx].set(M[0], M[1], M[2], vr); U.uST.value[idx].set(T[0], T[1], T[2], cls === 5 ? 0 : sn);
+  }
+}
+seasonTints();
 export function terrainMaterial() {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, SEASON_U);
     // saison, par sommet (pas par pixel : SwiftShader et les petits GPU paient chaque instruction du nuanceur de pixels) :
     // kd bits 0-2 = classe (blocks.js SEASON), bit 3 = dessus à ciel ouvert, bits 4-7 = ombrage AO×face /15
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uSnow, uIce, uGreen, uFall, uFresh; attribute float tex; attribute float kd; varying float vTex; varying vec3 vVox; varying vec3 vNw; varying vec4 vSn; varying float vVar;')
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform vec4 uSM[16], uST[16]; attribute float tex; attribute float kd; varying vec4 vK; varying vec3 vVox; varying vec3 vNw;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-vTex = tex; vVox = (modelMatrix * vec4(position, 1.0)).xyz * 2.0; vNw = normal;
-{ float kq = floor(kd * 255.0 + 0.5), cls = mod(kq, 8.0), opn = mod(floor(kq / 8.0), 2.0), shd = floor(kq / 16.0) / 15.0, top = step(0.5, normal.y); vec3 c = color; vVar = 0.0;
-  if (cls == 1.0) c = mix(mix(c, shd * vec3(0.66, 0.58, 0.27), uFall * 0.7 * top), shd * vec3(0.42, 0.72, 0.26), uFresh * 0.45 * top);
-  else if (cls == 2.0) { c = mix(c, shd * vec3(0.28, 0.52, 0.19), uGreen); vVar = 0.4 * uGreen; }
-  else if (cls == 3.0) { c = mix(c, shd * vec3(0.9, 0.7, 0.16), uFall); vVar = 0.3 * uFall; }
-  else if (cls == 5.0) c = mix(c, shd * vec3(0.78, 0.89, 0.97), uIce);
-  else if (cls == 6.0) c = mix(mix(c, c * vec3(1.35, 1.05, 0.5) + shd * 0.05, uFall * 0.8), shd * vec3(0.9, 0.93, 0.97), uSnow * 0.8);
-  if (cls == 2.0 || cls == 3.0) c = mix(c, shd * mix(vec3(0.45, 0.39, 0.33), vec3(0.93, 0.95, 0.98), 0.25 + 0.65 * top), uSnow * 0.85); /* feuillus givrés */
-  vColor = c; vSn = vec4(shd * vec3(0.95, 0.97, 1.0), opn * (cls == 5.0 ? 0.0 : uSnow)); }`);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vTex; varying vec3 vVox; varying vec3 vNw; varying vec4 vSn; varying float vVar;' + HASH)
+vVox = (modelMatrix * vec4(position, 1.0)).xyz * 2.0; vNw = normal;
+{ float kq = floor(kd * 255.0 + 0.5), shd = floor(kq / 16.0) / 15.0; int ix = int(mod(kq, 8.0) + 8.0 * step(0.5, normal.y)); vec4 sm = uSM[ix], st = uST[ix];
+  vColor = color * sm.xyz + shd * st.xyz; vK = vec4(tex, shd, mod(floor(kq / 8.0), 2.0) * st.w, sm.w); } /* un seul vec4 interpolé : grain, ombrage, neige, variation */`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vK; varying vec3 vVox; varying vec3 vNw;' + HASH)
       .replace('#include <color_fragment>', `#include <color_fragment>
       { vec3 inside = vVox - vNw * 0.5; vec3 cell = floor(inside);
-        float tb = floor(vTex * 255.0 + 0.5), bevF = step(127.5, tb), amp = mod(tb, 128.0) / 127.0;
+        float tb = floor(vK.x * 255.0 + 0.5), bevF = step(127.5, tb), amp = mod(tb, 128.0) / 127.0;
         float h1 = vqHash(cell), mac = vqNoise(cell.xz * 0.045 + cell.y * 0.02);
         // neige d'hiver sur les dessus à ciel ouvert, en plaques (mêmes bruits que le grain)
-        float nz = mac * 0.6 + h1 * 0.4, cov = smoothstep(nz - 0.08, nz + 0.08, vSn.a * 1.16 - 0.08);
-        diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 + (h1 - 0.5) * vVar), vSn.rgb, cov); amp *= 1.0 - 0.75 * cov;
+        float nz = mac * 0.6 + h1 * 0.4, cov = smoothstep(nz - 0.08, nz + 0.08, vK.z * 1.16 - 0.08);
+        diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 + (h1 - 0.5) * vK.w), vK.y * vec3(0.95, 0.97, 1.0), cov); amp *= 1.0 - 0.75 * cov;
         float px = length(fwidth(vVox)); float near = 1.0 - smoothstep(0.3, 1.0, px);
         float v = (h1 - 0.5) * 0.2 * amp + (mac - 0.5) * 0.34 * amp;
         diffuseColor.rgb *= 1.0 + v;
