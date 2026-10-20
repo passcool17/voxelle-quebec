@@ -253,8 +253,9 @@ body.peche #touch { display: none !important; }
 #hkBtns { position: absolute; right: 18px; bottom: 18px; display: flex; gap: 10px; align-items: flex-end; pointer-events: auto; }
 #hkBtns .btn { touch-action: none; user-select: none; -webkit-user-select: none; }
 body.touch #hkBtns { right: 12px; bottom: 26px; flex-direction: column-reverse; }
-body.touch #hkLance { width: 120px; height: 120px; border-radius: 50%; font-size: 22px; background: #c8282e; }
-body.touch #hkPasse { width: 92px; height: 92px; border-radius: 50%; font-size: 18px; }
+body.touch #hkBtns .btn { flex: none; min-width: 0; max-width: none; padding: 0; margin: 0; border-radius: 50%; }
+body.touch #hkLance { width: 112px !important; height: 112px; font-size: 21px; background: #c8282e; }
+body.touch #hkPasse { width: 84px !important; height: 84px; font-size: 16px; align-self: flex-end; }
 #hkHelp { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); opacity: .75; white-space: nowrap; text-shadow: 0 1px 0 #000; }
 body.touch #hkHelp { display: none; }
 #hkEnd { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(8, 18, 32, .94); border: 3px solid #ffd23a; border-radius: 8px; padding: 16px 22px; font-size: 17px; line-height: 1.6; pointer-events: auto; width: min(460px, 90vw); }

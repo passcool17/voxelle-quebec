@@ -160,7 +160,7 @@ export function createHockey(C) {
     if (M.ph === 'fin') { show(); return; }
     if (C.pressed.has('Space')) M.wantShot = true;
     if (C.pressed.has('KeyE') || C.input.rmbP) M.wantPass = true; C.input.rmbP = false;
-    G.camYaw = 0; G.camPitch = 0.72; G.camDist = C.isTouch ? 12.5 : 10; // vue de la galerie
+    G.camYaw = 0; G.camPitch = 0.72; G.camDist = innerWidth < innerHeight ? 17 : C.isTouch ? 12.5 : 10; // téléphone debout : plus de recul pour voir la largeur de la glace // vue de la galerie
     M.t += dt;
     if (M.ph === 'mise') { M.wantShot = M.wantPass = false; if (M.t > 1.6) { M.ph = 'jeu'; M.t = 0; audio.fx('ui'); k.vz = (Math.random() - 0.5) * 2; } }
     else if (M.ph === 'but') { if (M.t > 2.6) { if (M.sc[0] >= HOCKEY.buts || M.sc[1] >= HOCKEY.buts) finish(); else faceoff(); } }
