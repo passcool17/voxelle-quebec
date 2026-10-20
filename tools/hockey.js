@@ -18,6 +18,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v6-hoc
   // donne la rondelle à un joueur (index) à d mètres du but visé ; le gardien adverse regarde ailleurs si noSave
   const setup = (p, i, d, noSave) => p.evaluate(([i, d, noSave]) => { const H = __game.hockey, M = H.M, R = H.rk(), s = M.L[i], sx = s.team ? -1 : 1;
     s.x = R.cx + sx * (R.gx - d); s.z = R.cz; s.vx = s.vz = 0; s.yaw = sx > 0 ? -Math.PI / 2 : Math.PI / 2; s.cd = 0; M.puck.own = s; M.lastTouch = s; s.think = 0.2;
+    for (const q of M.L) if (q.team === s.team && q !== s && !q.gk) { q.x = s.x - sx * 3; q.z = R.cz + 4.5; q.vx = q.vz = 0; q.cd = 1.5; } // le coéquipier ne coupe pas le lancer
     for (const q of M.L) if (q.team !== s.team) { q.x = R.cx - sx * 6 + (q.gk ? 0 : (Math.random() - 0.5) * 4); q.z = R.cz + (q.gk ? 5 : (Math.random() - 0.5) * 6); q.vx = q.vz = 0; if (noSave) q.cd = 99; } }, [i, d, noSave]);
   const st = p => p.evaluate(() => { const M = __game.hockey.M; return M ? { ph: M.ph, sc: M.sc.slice(), clock: M.clock } : null; });
 
@@ -37,8 +38,9 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v6-hoc
   await W(300); await shot('mise-au-jeu', p);
   await p.waitForFunction(() => __game.hockey.M.ph === 'jeu', null, { timeout: 10000 });
   // ---------- 2. patiner ----------
-  const x0 = await ev(() => __game.G.P.x); await p.keyboard.down('KeyD'); await W(900); await p.keyboard.up('KeyD'); const x1 = await ev(() => __game.G.P.x);
-  await W(600); const x2 = await ev(() => __game.G.P.x);
+  const gt = () => ev(() => __game.G.t), waitG = async s => { const t0 = await gt(); await p.waitForFunction(([t0, s]) => __game.G.t - t0 >= s, [t0, s], { timeout: 30000 }); }; // en temps de JEU (sous charge, 900 ms réelles ≠ 0,9 s de jeu)
+  const x0 = await ev(() => __game.G.P.x); await p.keyboard.down('KeyD'); await waitG(0.9); await p.keyboard.up('KeyD'); const x1 = await ev(() => __game.G.P.x);
+  await waitG(0.6); const x2 = await ev(() => __game.G.P.x);
   ok(x1 - x0 > 1.5 && x2 > x1, 'patine vers la droite : +' + (x1 - x0).toFixed(1) + ' m, puis glisse encore +' + (x2 - x1).toFixed(1) + ' m');
   const sitd = await ev(() => { const d = __game.G.pet, h = __game.G.petHold; return d && h ? +Math.hypot(d.x - h.x, d.z - h.z).toFixed(1) : 99; });
   // ---------- 3. ton but ----------
@@ -92,7 +94,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v6-hoc
   const mx1 = await m.evaluate(() => __game.G.P.x); ok(mx1 - mx0 > 1.5, 'téléphone : patine au pouce (+' + (mx1 - mx0).toFixed(1) + ' m)');
   await setup(m, 0, 4.5, true); await m.waitForTimeout(100); await m.tap('#hkLance');
   const mg = await m.waitForFunction(() => __game.hockey.M.sc[0] >= 1, null, { timeout: 6000 }).then(() => true).catch(() => false);
-  ok(mg, 'téléphone : BUT au bouton LANCE');
+  ok(mg, 'téléphone : BUT au bouton LANCE' + (mg ? '' : ' — ' + JSON.stringify(await m.evaluate(() => { const M = __game.hockey.M; return { ph: M.ph, sc: M.sc, own: M.puck.own && M.puck.own.name, pk: [M.puck.x, M.puck.z, M.puck.vx, M.puck.vz].map(v => +v.toFixed(1)), shots: M.shots, log: __game.G.hkLog }; }))));
   await setup(m, 0, 8, true); const own = await m.evaluate(() => __game.hockey.M.ph); if (own === 'jeu') { await m.tap('#hkPasse'); await m.waitForTimeout(400); }
   ok(own !== 'jeu' || await m.evaluate(() => { const M = __game.hockey.M; return M.puck.own !== M.L[0]; }), 'téléphone : PASSE');
   ok(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.slice(0, 3).join(' | ') : ''));
