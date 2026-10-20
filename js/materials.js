@@ -16,9 +16,10 @@ export function seasonTints() {
   for (let idx = 0; idx < 16; idx++) {
     const cls = idx & 7, top = idx >> 3, M = [1, 1, 1], T = [0, 0, 0];
     const mixTo = (A, w) => { for (let c = 0; c < 3; c++) { M[c] *= 1 - w; T[c] = T[c] * (1 - w) + A[c] * w; } };
-    let vr = 0;
-    if (cls === 1) { mixTo([0.66, 0.58, 0.27], fa * 0.7 * top); mixTo([0.42, 0.72, 0.26], fr * 0.45 * top); }
-    else if (cls === 2) { mixTo([0.28, 0.52, 0.19], gr); vr = 0.4 * gr; }
+    // été = vert foncé et saturé (plein été : vert, sans printemps ni automne) ; printemps = vert tendre, jaune-vert, plus clair
+    let vr = 0; const deep = gr * (1 - fr) * (1 - fa);
+    if (cls === 1) { mixTo([0.66, 0.58, 0.27], fa * 0.7 * top); mixTo([0.56, 0.84, 0.3], fr * 0.6 * top); mixTo([0.2, 0.46, 0.13], deep * 0.4 * top); }
+    else if (cls === 2) { mixTo([0.28, 0.52, 0.19], gr); mixTo([0.52, 0.78, 0.3], fr * 0.5); mixTo([0.18, 0.4, 0.13], deep * 0.3); vr = 0.4 * gr; }
     else if (cls === 3) { mixTo([0.9, 0.7, 0.16], fa); vr = 0.3 * fa; }
     else if (cls === 5) mixTo([0.78, 0.89, 0.97], ic);
     else if (cls === 6) { const w = fa * 0.8, K = [1.35, 1.05, 0.5]; for (let c = 0; c < 3; c++) { M[c] *= 1 - w + w * K[c]; T[c] = 0.05 * w; } mixTo([0.9, 0.93, 0.97], sn * 0.8); }

@@ -1,6 +1,6 @@
 // Maillage « glouton » (fusion des faces coplanaires identiques) avec occlusion ambiante par sommet,
 // couleurs par sommet, grain de texture (attribut tex), eau à part (profondeur + écume), végétation en petits modèles.
-// Attribut kd (saisons) : bits 0-2 classe (blocks.js SEASON), bit 3 dessus à ciel ouvert (neige), bits 4-7 ombrage AO×face /15.
+// Attribut kd (saisons) : bits 0-2 classe (blocks.js SEASON), bit 3 face (dessus ou côté) du voxel au sommet de sa colonne (neige), bits 4-7 ombrage AO×face /15.
 // Entrée : tableau « rembourré » d'un voxel sur les 4 côtés : (S+2) × (S+2) × H, index = (x+1) + (z+1)*P + y*P*P.
 import { B, COL, OPAQUE, GLOW, SPRITE, TEX, SEASON } from './blocks.js';
 import { hash2, hash3 } from './noise.js';
@@ -91,7 +91,8 @@ export function meshChunk(pad, S, H, sc, ox, oz, sprites) {
             let variant = 0;
             if ((b === B.GRASS || b === B.SNOWGRASS) && kTop === 1 && !opq(x, y + 1, z)) variant = 1;
             else if (b === B.CONE && kTop === 1 && (y & 1)) variant = 2;
-            if (kTop === 0 && x >= 0 && z >= 0 && x < S && z < S && y >= ctop[x + z * S]) variant |= 4;
+            // neige : dessus ET côtés du voxel au sommet de sa colonne (contremarches des toits en escalier, rebords des gradins de gazon)
+            if (kTop !== 2 && x >= 0 && z >= 0 && x < S && z < S && y >= ctop[x + z * S]) variant |= 4;
             let ao = 0;
             for (let k = 0; k < 4; k++) { const su = k === 1 || k === 2 ? 1 : -1, sv = k >= 2 ? 1 : -1;
               const s1 = opq(nx + du[0] * su, ny + du[1] * su, nz + du[2] * su), s2 = opq(nx + dv[0] * sv, ny + dv[1] * sv, nz + dv[2] * sv), c = opq(nx + du[0] * su + dv[0] * sv, ny + du[1] * su + dv[1] * sv, nz + du[2] * su + dv[2] * sv);
@@ -139,12 +140,12 @@ export function meshChunk(pad, S, H, sc, ox, oz, sprites) {
 }
 // Couleur et hauteur du dessus de chaque colonne d'un mètre (mini-carte), échantillonnée dans les données fines
 export function topInfo(get, S, H, step) {
-  const M = S / step, top = new Uint8Array(M * M * 3), hm = new Uint8Array(M * M);
+  const M = S / step, top = new Uint8Array(M * M * 3), hm = new Uint8Array(M * M), cl = new Uint8Array(M * M); // cl : classe de saison (eau = 5, glace l'hiver)
   for (let z = 0; z < M; z++) for (let x = 0; x < M; x++) {
     let y = H - 1; while (y > 0 && (!get(x * step, y, z * step) || SPRITE[get(x * step, y, z * step)])) y--;
     const b = get(x * step, y, z * step), c = b === B.WATER ? 0x3a78c0 : COL[b][0], i = x + z * M, ym = y / step;
     const m = b === B.WATER ? 1 : 0.75 + (ym - 30) * 0.008;
-    top[i * 3] = Math.min(255, (c >> 16 & 255) * m); top[i * 3 + 1] = Math.min(255, (c >> 8 & 255) * m); top[i * 3 + 2] = Math.min(255, (c & 255) * m); hm[i] = ym;
+    top[i * 3] = Math.min(255, (c >> 16 & 255) * m); top[i * 3 + 1] = Math.min(255, (c >> 8 & 255) * m); top[i * 3 + 2] = Math.min(255, (c & 255) * m); hm[i] = ym; cl[i] = b === B.WATER ? 5 : SEASON[b];
   }
-  return { top, hm };
+  return { top, hm, cl };
 }

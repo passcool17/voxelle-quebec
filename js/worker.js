@@ -44,9 +44,9 @@ function meshMsg(t, cx, cz, withData, lod) {
   const m = lod ? meshChunk(padCoarse(cx, cz, f), CS / f, WH / f, f, cx * CS / f, cz * CS / f, false)
                 : meshChunk(padFine(cx, cz), CS, WH, 1, cx * CS, cz * CS, true);
   const d = chunk(cx, cz), ti = topInfo((x, y, z) => d[x + z * CS + y * CS2], CS, WH, 2);
-  const msg = { t, cx, cz, lod, m, top: ti.top, hm: ti.hm }, tr = [];
+  const msg = { t, cx, cz, lod, m, top: ti.top, hm: ti.hm, cl: ti.cl }, tr = [];
   for (const k of ['op', 'wa', 'gl']) tr.push(m[k].pos.buffer, m[k].nor.buffer, m[k].col.buffer, m[k].tex.buffer, m[k].kd.buffer, m[k].idx.buffer);
-  tr.push(ti.top.buffer, ti.hm.buffer);
+  tr.push(ti.top.buffer, ti.hm.buffer, ti.cl.buffer);
   if (withData) { msg.data = d.slice(); tr.push(msg.data.buffer); }
   postMessage(msg, tr);
 }

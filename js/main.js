@@ -55,7 +55,7 @@ const blobGeo = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2), blobMat =
 function addBlob(g, r) { const b = new THREE.Mesh(blobGeo, blobMat); b.scale.setScalar(r / (g.scale.x || 1)); b.position.y = 0.04 / (g.scale.x || 1); b.renderOrder = 1; g.add(b); return b; }
 
 // ---------- état ----------
-const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
+const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0, indoorK: 0 };
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
     weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, tuto: 0, dunSeen: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0, crafted: 0, mined: 0 }, glider: true,
@@ -166,12 +166,19 @@ function camUpdate(dt) {
   G.camPitch = Math.max(-0.9, Math.min(1.25, G.camPitch));
   const so = P.model.stepOffV || 0;
   const tx = P.x, ty = P.y + 1.55 - so, tz = P.z;
-  const cp = Math.cos(G.camPitch), dir = tmpV.set(Math.sin(G.camYaw) * cp, Math.sin(G.camPitch), Math.cos(G.camYaw) * cp);
-  let d = G.camDist + (P.gliding ? 1.5 : 0);
-  const hit = world.ray(tmpV2.set(tx, ty, tz), dir, d + 0.3); if (hit) d = Math.max(0.6, hit.t - 0.35);
+  // dans ta cabane (pièce de 6 × 5 m) : caméra plus haute qui regarde vers le bas, angle plus large, et le personnage
+  // disparaît dès que le mur la colle contre lui (vue à la première personne) : on voit la pièce et les meubles
+  const indoor = !!S.home && !G.drive && inCabin(H, P.x, P.z) && Math.abs(P.y - H.h - 1) < 3; G.indoorK += ((indoor ? 1 : 0) - G.indoorK) * Math.min(1, dt * 6);
+  const fov = 70 + 12 * G.indoorK; if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const pitch = indoor ? Math.max(G.camPitch, 0.62) : G.camPitch;
+  const cp = Math.cos(pitch), dir = tmpV.set(Math.sin(G.camYaw) * cp, Math.sin(pitch), Math.cos(G.camYaw) * cp);
+  let d = indoor ? Math.min(G.camDist, 3.4) : G.camDist + (P.gliding ? 1.5 : 0);
+  const hit = world.ray(tmpV2.set(tx, ty, tz), dir, d + 0.3); if (hit) d = Math.max(indoor ? 0.15 : 0.6, hit.t - 0.35);
+  if (indoor && d < 1.9) d = Math.min(d, 0.15); // trop près : première personne (yeux du personnage)
   for (const e of G.enemies) { if (!(e.T.boss || e.T.hw >= 0.8) || e.hp <= 0) continue; const pad = e.T.boss ? 0.9 : 0.4; const t = rayBox(tx, ty, tz, dir, e.x, e.y + e.T.h / 2, e.z, e.T.hw + pad, e.T.h / 2 + pad * 0.5); if (t != null && t < d) d = Math.max(0.6, t - 0.25); }
   // caméra repoussée contre le joueur (mur ou boss juste derrière) : elle serait dans sa tête, on cache son modèle
   if (!G.drive) P.model.g.visible = d > 1.1;
+  if (indoor && d < 0.5) { const q = 0.15 + G.camPitch * 0.6, cq = Math.cos(q); camera.position.set(tx, ty, tz); camera.lookAt(tx - Math.sin(G.camYaw) * cq, ty - Math.sin(q), tz - Math.cos(G.camYaw) * cq); return; }
   camera.position.set(tx + dir.x * d, ty + dir.y * d, tz + dir.z * d);
   camera.lookAt(tx, ty + 0.25, tz);
   if (G.shake > 0.01) { const k = G.shake * 0.5; camera.position.x += (Math.random() - 0.5) * k; camera.position.y += (Math.random() - 0.5) * k; camera.position.z += (Math.random() - 0.5) * k; camera.rotation.z += (Math.random() - 0.5) * k * 0.08; }
@@ -426,7 +433,16 @@ function placeLabel(el, x, y, z, maxD = 34) {
   const d = Math.hypot(x - camera.position.x, z - camera.position.z);
   projV.set(x, y, z).project(camera);
   if (projV.z > 1 || d > maxD || !sameFloor(y) || Math.abs(projV.x) > 1.2 || Math.abs(projV.y) > 1.2) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
+  if (G.t - (el._ocT ?? -9) > 0.2) { el._ocT = G.t + Math.random() * 0.05; el._oc = labelHidden(x, y - 0.5, z); } // revu 5 fois par seconde
+  if (el._oc) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
   lblQ.push({ el, d, sx: (projV.x * 0.5 + 0.5) * innerWidth, sy: (-projV.y * 0.5 + 0.5) * innerHeight });
+}
+// un mur (bloc plein, sauf vitre et feuillage) entre la caméra et la tête : l'étiquette est cachée (pas de noms à travers les murs)
+function labelHidden(x, y, z) {
+  const c = camera.position, dx = x - c.x, dy = y - c.y, dz = z - c.z, L = Math.hypot(dx, dy, dz), n = Math.ceil(L / (VS * 0.5));
+  for (let k = 1; k < n; k++) { const t = k / n; if (t * L < 0.3 || (1 - t) * L < 0.4) continue;
+    const b = world.get(c.x + dx * t, c.y + dy * t, c.z + dz * t); if (b > 0 && SOLID[b] && b !== B.GLASS) return true; }
+  return false;
 }
 function flushLabels() {
   if (G.t - hudRectT > 1) { hudRectT = G.t; hudRects = ['stats', 'mapbox', 'tracker', 'tTop', 'hotbar', 'bossbox'].map(id => $(id)).filter(e => e && e.offsetParent !== null).map(e => e.getBoundingClientRect()); }
@@ -1249,7 +1265,7 @@ function renderTracker() {
 }
 $('tracker').addEventListener('pointerdown', e => { if (e.target.closest('.tskip')) { e.stopPropagation(); tutoSet(false); toast('Premiers pas passés (Pause → Revoir)'); } });
 // repère à l'écran vers l'objectif : losange au-dessus de la cible, ou flèche au bord de l'écran, avec la distance
-const wpEl = $('wp');
+const wpEl = $('wp'); let wpRects = [], wpRectT = -9, wpRectN = -1;
 function wpUpdate() {
   const p = G.wpPos, P = G.P; if (!p || G.state !== 'play') { wpEl.style.display = 'none'; return; }
   const d = Math.hypot(p.x - P.x, p.z - P.z); if (d < 1.5) { wpEl.style.display = 'none'; return; }
@@ -1259,14 +1275,35 @@ function wpUpdate() {
   const MX = 0.82, MY = 0.62, on = !behind && Math.abs(x) < MX && Math.abs(yy) < MY;
   if (!on) { const k = Math.max(Math.abs(x) / MX, Math.abs(yy) / MY, 1e-6); x /= k; yy /= k; if (behind && Math.abs(yy) < 0.2) yy = -MY; }
   wpEl.style.display = 'block'; wpEl.classList.toggle('off', !on);
-  wpEl.style.transform = `translate(${((x * 0.5 + 0.5) * innerWidth) | 0}px,${((-yy * 0.5 + 0.5) * innerHeight) | 0}px)`;
+  let sx = (x * 0.5 + 0.5) * innerWidth, sy = (-yy * 0.5 + 0.5) * innerHeight;
+  // jamais par-dessus un bouton tactile, le bâton, la mini-carte ou la barre de blocs : on le pousse à côté (le plus près)
+  if (G.t - wpRectT > 1 || wpRectN !== resizeN) { wpRectT = G.t; wpRectN = resizeN; wpRects = [...document.querySelectorAll('#touch .tb, #stick, #mapbox, #hotbar')].filter(e => e.offsetParent !== null).map(e => e.getBoundingClientRect()); }
+  for (let it = 0; it < 4; it++) {
+    const r = wpRects.find(r => sx + 30 > r.left && sx - 30 < r.right && sy + 34 > r.top && sy - 26 < r.bottom); if (!r) break;
+    const c = [[sx, r.top - 36], [r.left - 32, sy], [r.right + 32, sy], [sx, r.bottom + 28]].filter(([a, b]) => a > 30 && a < innerWidth - 30 && b > 28 && b < innerHeight - 36);
+    if (!c.length) break; c.sort((a, b) => Math.hypot(a[0] - sx, a[1] - sy) - Math.hypot(b[0] - sx, b[1] - sy)); [sx, sy] = c[0];
+  }
+  wpEl.style.transform = `translate(${sx | 0}px,${sy | 0}px)`;
   wpEl.firstChild.style.transform = on ? '' : `rotate(${Math.atan2(-yy, x)}rad)`;
   const t = d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km'; if (wpEl.lastChild.textContent !== t) wpEl.lastChild.textContent = t;
 }
 // mini-carte
 const mini = $('mini'), mctx = mini.getContext('2d'), mimg = mctx.createImageData(160, 160);
 let miniT = 0;
-function topColor(x, z) { const cx = Math.floor(x / CS), cz = Math.floor(z / CS), c = world.chunks.get(cx + ',' + cz); if (!c || !c.top) return null; const i = ((x - cx * CS) + (z - cz * CS) * CS) * 3; return [c.top[i], c.top[i + 1], c.top[i + 2]]; }
+// teinte de saison de la mini-carte : mêmes tables que le terrain (uSM/uST du dessus, voir seasonTints), neige d'après uST.w
+const mmLut = new Float32Array(8 * 7); let mmPlain = true;
+function mmLutUpdate() { const U = SEASON_U; mmPlain = true; for (let k = 0; k < 8; k++) { const M = U.uSM.value[8 + k], T = U.uST.value[8 + k], o = k * 7;
+  mmLut[o] = M.x; mmLut[o + 1] = M.y; mmLut[o + 2] = M.z; mmLut[o + 3] = T.x * 217; mmLut[o + 4] = T.y * 217; mmLut[o + 5] = T.z * 217; mmLut[o + 6] = k === 5 ? 0 : T.w;
+  if (M.x !== 1 || M.y !== 1 || M.z !== 1 || T.x || T.y || T.z || mmLut[o + 6] > 0.002) mmPlain = false; } }
+// pixel j (colonne de 1 m) du tronçon c → out[k..k+2] (entiers, identiques pour la mini-carte et topColor)
+function mmPix(c, j, out, k) {
+  const t = c.top, i = j * 3; if (mmPlain || !c.cl) { out[k] = t[i]; out[k + 1] = t[i + 1]; out[k + 2] = t[i + 2]; return; }
+  const o = c.cl[j] * 7, sn = mmLut[o + 6], a = 1 - sn, w = sn * Math.min(1, Math.max(0.7, 0.8 + (c.hm[j] - 30) * 0.008)); // neige : blanc ombré par l'altitude
+  out[k] = Math.min(255, (t[i] * mmLut[o] + mmLut[o + 3]) * a + 242 * w) | 0;
+  out[k + 1] = Math.min(255, (t[i + 1] * mmLut[o + 1] + mmLut[o + 4]) * a + 246 * w) | 0;
+  out[k + 2] = Math.min(255, (t[i + 2] * mmLut[o + 2] + mmLut[o + 5]) * a + 251 * w) | 0;
+}
+function topColor(x, z) { const cx = Math.floor(x / CS), cz = Math.floor(z / CS), c = world.chunks.get(cx + ',' + cz); if (!c || !c.top) return null; const o = [0, 0, 0]; mmPix(c, (x - cx * CS) + (z - cz * CS) * CS, o, 0); return o; }
 function drawMarkers(ctx, cx, cz, scale, W, round) {
   const P = G.P, put = (x, z, col, sz, shape) => { let px = (x - cx) * scale + W / 2, pz = (z - cz) * scale + W / 2; if (round) { const dx = px - W / 2, dz = pz - W / 2, l = Math.hypot(dx, dz); if (l > W / 2 - 6) { px = W / 2 + dx / l * (W / 2 - 6); pz = W / 2 + dz / l * (W / 2 - 6); } } else if (px < 0 || pz < 0 || px > W || pz > W) return;
     ctx.fillStyle = '#0c1420'; ctx.fillRect(px - sz / 2 - 1, pz - sz / 2 - 1, sz + 2, sz + 2); ctx.fillStyle = col; if (shape === 'd') { ctx.save(); ctx.translate(px, pz); ctx.rotate(Math.PI / 4); ctx.fillRect(-sz / 2, -sz / 2, sz, sz); ctx.restore(); } else ctx.fillRect(px - sz / 2, pz - sz / 2, sz, sz); };
@@ -1297,11 +1334,12 @@ function miniUpdate(dt) {
   miniT -= dt; if (miniT > 0) return; miniT = 0.25;
   if (G.dun) return drawDunMini();
   const P = G.P, d = mimg.data, ox = Math.floor(P.x) - 80, oz = Math.floor(P.z) - 80;
-  mini32.fill(0xff322216); // fond (22, 34, 50) hors des tronçons chargés
+  mmLutUpdate(); mini32.fill(0xff322216); // fond (22, 34, 50) hors des tronçons chargés
   for (let cz = Math.floor(oz / CS); cz <= Math.floor((oz + 159) / CS); cz++) for (let cx = Math.floor(ox / CS); cx <= Math.floor((ox + 159) / CS); cx++) {
     const c = world.chunks.get(cx + ',' + cz); if (!c || !c.top) continue; const t = c.top;
     const x0 = Math.max(ox, cx * CS), x1 = Math.min(ox + 160, cx * CS + CS), z0 = Math.max(oz, cz * CS), z1 = Math.min(oz + 160, cz * CS + CS);
-    for (let z = z0; z < z1; z++) { let i = ((x0 - cx * CS) + (z - cz * CS) * CS) * 3, k = ((x0 - ox) + (z - oz) * 160) * 4; for (let x = x0; x < x1; x++, i += 3, k += 4) { d[k] = t[i]; d[k + 1] = t[i + 1]; d[k + 2] = t[i + 2]; } }
+    if (mmPlain || !c.cl) for (let z = z0; z < z1; z++) { let i = ((x0 - cx * CS) + (z - cz * CS) * CS) * 3, k = ((x0 - ox) + (z - oz) * 160) * 4; for (let x = x0; x < x1; x++, i += 3, k += 4) { d[k] = t[i]; d[k + 1] = t[i + 1]; d[k + 2] = t[i + 2]; } }
+    else for (let z = z0; z < z1; z++) { let j = (x0 - cx * CS) + (z - cz * CS) * CS, k = ((x0 - ox) + (z - oz) * 160) * 4; for (let x = x0; x < x1; x++, j++, k += 4) mmPix(c, j, d, k); }
   }
   mctx.putImageData(mimg, 0, 0); drawMarkers(mctx, P.x, P.z, 1, 160, true);
 }
@@ -1323,9 +1361,10 @@ function drawDunMini() {
   c.save(); c.translate(W / 2, W / 2); c.rotate(-G.camYaw); c.fillStyle = '#0c1420'; c.beginPath(); c.moveTo(0, -9); c.lineTo(7, 7); c.lineTo(-7, 7); c.fill(); c.fillStyle = '#ffd23a'; c.beginPath(); c.moveTo(0, -6); c.lineTo(4.5, 5); c.lineTo(-4.5, 5); c.fill(); c.restore();
 }
 function drawBigMap() {
-  const cv = $('bigmap'), ctx = cv.getContext('2d'), W = 480, P = G.P, sc = [1.5, 0.45, 0.16][G.mapZ], stp = sc < 1 ? 4 : 1, img = ctx.createImageData(W, W), d = img.data;
+  const cv = $('bigmap'), ctx = cv.getContext('2d'), W = 480, P = G.P, sc = [1.5, 0.45, 0.16][G.mapZ], stp = sc < 1 ? 4 : 1, img = ctx.createImageData(W, W), d = img.data, sn = SEASON_U.uSnow.value;
+  mmLutUpdate();
   for (let j = 0; j < W; j += stp) for (let i = 0; i < W; i += stp) { const x = Math.floor(P.x + (i - W / 2) / sc), z = Math.floor(P.z + (j - W / 2) / sc); let c = stp === 1 ? topColor(x, z) : null;
-    if (!c) { const col = gen.column(x, z); const h = col.h; c = h <= SEA || (col.wl && h < col.wl) ? [40, 80, 140] : [[200, 190, 140], [100, 150, 70], [50, 90, 60], [170, 70, 40], [210, 215, 225], [150, 150, 150]][col.biome].map(v => v * (0.55 + (h - SEA) * 0.006)); }
+    if (!c) { const col = gen.column(x, z); const h = col.h; c = h <= SEA || (col.wl && h < col.wl) ? [40, 80, 140] : [[200, 190, 140], [100, 150, 70], [50, 90, 60], [170, 70, 40], [210, 215, 225], [150, 150, 150]][col.biome].map(v => v * (0.55 + (h - SEA) * 0.006)); if (sn > 0.01 && c[0] !== 40) c = c.map((v, q) => v * (1 - sn) + [236, 240, 246][q] * sn * 0.9); }
     for (let b = 0; b < stp; b++) for (let a = 0; a < stp; a++) { const k = (i + a + (j + b) * W) * 4; d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = 255; } }
   ctx.putImageData(img, 0, 0); drawMarkers(ctx, P.x, P.z, sc, W, false);
   $('maplegend').innerHTML = '<span style="color:#5ab8ff">■</span> Ville &nbsp; ■ Village &nbsp; <span style="color:#c8361e">■</span> Cabane &nbsp; <span style="color:#ff7a1a">■</span> Chantier &nbsp; <span class="gold">■</span> Relais &nbsp; <span style="color:#e8e2c8">━</span> Route 175 &nbsp; <span class="gold">◆</span> Quête' + (S.home ? ' &nbsp; <span class="green">◆</span> Chez vous' : '') + '<br><button class="btn sm" id="mzBtn">' + ['ZOOM : PROCHE', 'ZOOM : RÉGION', 'ZOOM : TOUT LE NORD'][G.mapZ] + (isTouch ? '' : ' (Z)') + '</button>';

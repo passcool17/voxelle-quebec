@@ -10,8 +10,8 @@ export const dayInSeason = d => Math.floor(wrap(d) % DAYS) + 1;
 export function seasonParams(d) {
   const p = wrap(d), k = Math.floor(p / DAYS), f = (p - k * DAYS) / DAYS;
   if (k === 0) return { k, f, snow: 1, ice: sm(0, 0.08, f), green: 0, fall: 1, fresh: 0 };
-  if (k === 1) return { k, f, snow: 1 - sm(0.02, 0.3, f), ice: 1 - sm(0.12, 0.3, f), green: sm(0.1, 0.45, f), fall: 1 - sm(0.05, 0.35, f), fresh: sm(0.25, 0.55, f) };
-  if (k === 2) return { k, f, snow: 0, ice: 0, green: 1, fall: 0, fresh: 1 - sm(0, 0.35, f) };
+  if (k === 1) return { k, f, snow: 1 - sm(0.02, 0.3, f), ice: 1 - sm(0.12, 0.3, f), green: sm(0.1, 0.45, f), fall: 1 - sm(0.05, 0.35, f), fresh: sm(0.08, 0.3, f) };
+  if (k === 2) return { k, f, snow: 0, ice: 0, green: 1, fall: 0, fresh: 1 - sm(0, 0.2, f) };
   return { k, f, snow: sm(0.86, 1, f), ice: 0, green: 1 - sm(0, 0.3, f), fall: sm(0, 0.3, f), fresh: 0 };
 }
 // tirage de la météo selon la saison : r ∈ [0, 1) → 'neige' | 'pluie' | 'beau'

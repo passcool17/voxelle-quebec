@@ -29,7 +29,7 @@ export class World {
     if (!c) { if (q.t !== 'chunk') return; c = { cx: q.cx, cz: q.cz, meshes: [], lod: q.lod }; this.chunks.set(k, c); }
     if (q.t === 'mesh' && c.want != null && q.lod !== c.want) return; // réponse périmée
     if (q.data) c.data = q.data;
-    c.lod = q.lod; c.want = null; c.top = q.top; c.hm = q.hm;
+    c.lod = q.lod; c.want = null; c.top = q.top; c.hm = q.hm; c.cl = q.cl;
     for (const m of c.meshes) { this.group.remove(m); m.geometry.dispose(); } c.meshes = [];
     for (const [name, mat] of [['op', this.matOp], ['wa', this.matWa], ['gl', this.matGl]]) {
       const d = q.m[name]; if (!d.idx.length) continue;
