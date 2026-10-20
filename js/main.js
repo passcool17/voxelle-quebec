@@ -534,7 +534,7 @@ function bossTitle(e) { PHASES = PHASES_BY[e.type] || PHASES_BY.supreme; $('boss
 function damageEnemy(e, dmg, nx, nz, kb, o = {}) {
   const crit = Math.random() < 0.12 + (o.src === 'p' ? G.tf.crit : 0), d = Math.round(dmg * (0.88 + Math.random() * 0.24) * (crit ? 1.7 : 1));
   e.hp -= d; e.hurtT = 0.15; e.flashT = 0.09;
-  if (e.type === 'raton' && e.hp > 0 && e.hp < e.hpMax * 0.35 && !S.comp.have.raton && e.state !== 'docile') { e.state = 'docile'; e.docile = 18; e.label.querySelector('.nm').innerHTML = 'Raton affamé <span class="gold">· une poutine?</span>'; if (S.comp.tameHint !== 1) { S.comp.tameHint = 1; toast('Le raton a plus envie de se battre… Donne-lui une poutine ou une tarte (E) pour l’apprivoiser!'); } } if (G.dbg.log) G.dbg.log.push(e.type + ":" + d); e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
+  if (e.type === 'raton' && e.hp > 0 && e.hp < e.hpMax * 0.35 && !S.comp.have.raton && e.state !== 'docile') { e.state = 'docile'; e.docile = 18; e.label.querySelector('.nm').innerHTML = 'Raton affamé <span class="gold">· une poutine?</span>'; if (S.comp.tameHint !== 1) { S.comp.tameHint = 1; toast('Le raton a plus envie de se battre… Donne-lui une poutine ou une tarte (' + (isTouch ? 'APPRIVOISE' : 'E') + ') pour l’apprivoiser!'); } } if (G.dbg.log) G.dbg.log.push(e.type + ":" + d); e.state = e.state === 'hidden' ? 'chase' : e.state === 'idle' ? 'chase' : e.state;
   if (!e.T.boss && e.type !== 'trou') { e.vx += nx * kb; e.vz += nz * kb; e.vy = Math.max(e.vy, 3.5); e.stunT = o.heavy ? 0.5 : 0.28; if (e.dive) { e.dive = null; e.rec = 1.2; } }
   else if (e.T.boss && o.heavy) { e.vx += nx * 2; e.vz += nz * 2; }
   floatTxt(e.x, e.y + e.T.h + 0.4, e.z, (crit ? 'CRITIQUE! ' : '') + d, crit ? '#ffd23a' : o.heavy ? '#ffb04a' : '#ffffff');
@@ -1022,7 +1022,7 @@ const petName = k => PETS[k].name;
 function petGive(k) {
   S.comp.have[k] = true; for (const [, n] of G.npcs) if (n.dog && k === 'chien') { n.model.g.remove(n.dog.g); n.dog = null; }
   if (!S.comp.act) { S.comp.act = k; banner(petName(k).toUpperCase() + ' TE SUIT!', 'Il t’aide au combat pis il renifle des trésors'); }
-  else toast(petName(k) + ' t’attend à ta cabane : change de compagnon chez vous (E).');
+  else toast(petName(k) + ' t’attend à ta cabane : change de compagnon chez vous.');
   audio.fx('quest'); G.dirtyQ = true;
 }
 function tameRaton(e) {

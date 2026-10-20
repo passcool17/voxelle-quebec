@@ -38,8 +38,9 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-com
   const p0 = await pet(); ok(p0 && p0.kind === 'chien' && (await ev(() => __game.S.comp.have.chien && __game.S.comp.act === 'chien')), 'Pistache adopté : ' + JSON.stringify(p0));
   ok(await ev(() => { for (const [, n] of __game.G.npcs) if (n.role === 'eleveuse') return !n.dog; return true; }), 'le chien n’est plus au chenil');
   // ---------- 2. il suit ----------
-  await ev(() => { const G = __game.G; G.camYaw = 0; __game.keys.add('KeyW'); }); await W(3500); await ev(() => __game.keys.delete('KeyW')); await W(1500);
-  let q = await pet(); ok(q.d < 4.5 && Math.abs(q.dy) < 1.5, 'il suit en marchant : ' + q.d + ' m');
+  await ev(() => { const G = __game.G; G.camYaw = 0; __game.keys.add('KeyW'); }); await W(3500); let q = await pet(); const dWalk = q.d; await ev(() => __game.keys.delete('KeyW'));
+  await p.waitForFunction(() => { const p = __game.G.pet, P = __game.G.P; return Math.hypot(p.x - P.x, p.z - P.z) < 4.5 && p.label.style.display !== 'none'; }, null, { timeout: 10000 }).catch(() => {});
+  q = await pet(); ok(q.d < 4.5 && Math.abs(q.dy) < 1.5, 'il suit en marchant : ' + dWalk + ' m en marche, ' + q.d + ' m à l’arrêt');
   await ev(() => { const G = __game.G; G.camYaw = G.P.yaw + 1.9; G.camPitch = 0.3; G.camDist = 5.5; }); await W(1200); await shot('chien-village');
   ok(q.lbl && /Pistache/.test(q.lbl), 'étiquette « ' + q.lbl + ' »');
   const tps0 = q.tps; const far = await ev(() => [__game.G.P.x + 60, __game.G.P.z + 10]); await tp(far[0], far[1], 1500);
@@ -49,7 +50,7 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-com
   await ev(() => { const g = __game, P = g.G.P; const e = g.spawnEnemy('cone', P.x + 3, P.z + 2, { lvl: 1 }); e.hp = e.hpMax = 400; e.state = 'chase'; window.__foe = e; });
   await p.waitForFunction(() => __game.G.pet.hits >= 2, null, { timeout: 25000 }).catch(() => {});
   q = await pet(); ok(q.hits >= 2 && (await ev(() => __foe.hp < 400)), 'il attaque l’ennemi qui te poursuit : ' + q.hits + ' coups (cône ' + (await ev(() => Math.round(__foe.hp))) + '/400)');
-  await ev(() => { const G = __game.G, f = __foe; G.camYaw = Math.atan2(G.P.x - f.x, G.P.z - f.z) + 0.8; G.camPitch = 0.35; G.camDist = 6; }); await W(500); await shot('combat');
+  await ev(() => { const G = __game.G, f = __foe, d = G.pet; G.camYaw = Math.atan2(d.z - f.z, -(d.x - f.x)); G.camPitch = 0.3; G.camDist = 5; G.P.x = (d.x + f.x) / 2 + Math.sin(G.camYaw) * 1.5; G.P.z = (d.z + f.z) / 2 + Math.cos(G.camYaw) * 1.5; }); await W(400); await shot('combat');
   await ev(() => { __game.G.pet.hp = 1; }); await p.waitForFunction(() => __game.G.pet.ko > 0, null, { timeout: 30000 }).catch(() => {});
   q = await pet(); ok(q.ko > 0 && /K\.-O\./.test(await ev(() => __game.G.pet.nm.textContent)), 'K.-O. (' + q.ko + ' s), pas de mort');
   await calm(); await ev(() => { __game.G.pet.ko = 0.3; }); await W(1200);
@@ -96,13 +97,13 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-com
   const m = await mk({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await m.goto(`http://localhost:${PORT}/`); await m.evaluate(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 3, fsAuto: false })); }); await m.reload(); await m.waitForTimeout(2500);
   await m.tap('#bNew'); await m.tap('#bPersoGo'); await m.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
-  await m.evaluate(() => { const g = __game; g.S.tuto = -1; g.G.spawnT = 1e9; g.petGive('chien'); g.G.dirtyQ = true; }); await m.waitForTimeout(1500);
+  await m.evaluate(() => { const g = __game; g.S.tuto = -1; g.G.spawnT = 1e9; g.petGive('chien'); g.G.dirtyQ = true; }); await m.waitForTimeout(4500);
+  await m.evaluate(() => { const G = __game.G; G.camYaw = G.P.yaw + 2.3; G.camPitch = 0.35; G.camDist = 4.5; }); await m.waitForTimeout(1000); await shot('mobile', m);
   await m.evaluate(() => { const g = __game, P = g.G.P; const e = g.spawnEnemy('raton', P.x + 1.5, P.z - 1, { lvl: 1 }); e.hp = Math.ceil(e.hpMax * 0.36) + 1; g.damageEnemy(e, 2, 0, 0, 0); e.docile = 30; e.vx = e.vz = 0; g.G.camPitch = 0.35; g.G.camDist = 5; }); await m.waitForTimeout(1500);
   const mb = await m.evaluate(() => { const t = document.getElementById('tTalk'), p = __game.G.pet, P = __game.G.P; return { hid: t.classList.contains('hidden'), txt: t.textContent, pet: !!p, d: p && +Math.hypot(p.x - P.x, p.z - P.z).toFixed(1) }; });
   ok(mb.pet && mb.d < 4 && !mb.hid && mb.txt === 'APPRIVOISE', 'téléphone : Pistache suit (' + mb.d + ' m), bouton « ' + mb.txt + ' » près du raton docile');
   await m.tap('#tTalk'); await m.waitForTimeout(600);
   ok(await m.evaluate(() => __game.S.comp.have.raton), 'téléphone : le bouton apprivoise Bandit');
-  await shot('mobile', m);
   ok(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.slice(0, 3).join(' | ') : ''));
   console.log(bad.length ? 'COMPAGNON ÉCHEC (' + bad.length + ')' : 'COMPAGNON OK');
   await b.close(); srv.close(); process.exit(bad.length ? 1 : 0);
