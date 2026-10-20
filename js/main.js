@@ -1278,11 +1278,9 @@ function wpUpdate() {
   let sx = (x * 0.5 + 0.5) * innerWidth, sy = (-yy * 0.5 + 0.5) * innerHeight;
   // jamais par-dessus un bouton tactile, le bâton, la mini-carte ou la barre de blocs : on le pousse à côté (le plus près)
   if (G.t - wpRectT > 1 || wpRectN !== resizeN) { wpRectT = G.t; wpRectN = resizeN; wpRects = [...document.querySelectorAll('#touch .tb, #stick, #mapbox, #hotbar')].filter(e => e.offsetParent !== null).map(e => e.getBoundingClientRect()); }
-  for (let it = 0; it < 4; it++) {
-    const r = wpRects.find(r => sx + 30 > r.left && sx - 30 < r.right && sy + 34 > r.top && sy - 26 < r.bottom); if (!r) break;
-    const c = [[sx, r.top - 36], [r.left - 32, sy], [r.right + 32, sy], [sx, r.bottom + 28]].filter(([a, b]) => a > 30 && a < innerWidth - 30 && b > 28 && b < innerHeight - 36);
-    if (!c.length) break; c.sort((a, b) => Math.hypot(a[0] - sx, a[1] - sy) - Math.hypot(b[0] - sx, b[1] - sy)); [sx, sy] = c[0];
-  }
+  const free = (x, y) => x > 30 && x < innerWidth - 30 && y > 28 && y < innerHeight - 36 && !wpRects.some(r => x + 30 > r.left && x - 30 < r.right && y + 34 > r.top && y - 26 < r.bottom);
+  if (!free(sx, sy)) search: for (let rad = 12; rad < innerWidth + innerHeight; rad += 12) for (let k = 0; k < 16; k++) { // place libre la plus proche (anneaux)
+    const x = sx + Math.cos(k * Math.PI / 8) * rad, y = sy + Math.sin(k * Math.PI / 8) * rad; if (free(x, y)) { sx = x; sy = y; break search; } }
   wpEl.style.transform = `translate(${sx | 0}px,${sy | 0}px)`;
   wpEl.firstChild.style.transform = on ? '' : `rotate(${Math.atan2(-yy, x)}rad)`;
   const t = d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km'; if (wpEl.lastChild.textContent !== t) wpEl.lastChild.textContent = t;

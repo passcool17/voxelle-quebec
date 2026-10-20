@@ -10,7 +10,7 @@ const DEVS = [['ordi', { viewport: { width: 1280, height: 720 } }], ['mobile', {
   ['portrait', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }], ['petit', { viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true }]];
 (async () => {
   const srv = await serve(PORT); const browser = await chromium.launch({ args: ARGS }); const errs = [], rep = [];
-  for (const [dev, opt] of DEVS) {
+  for (const [dev, opt] of DEVS.filter(([d]) => !process.env.ONLY || process.env.ONLY.split(',').includes(d))) {
     const ctx = await browser.newContext(opt); const p = await ctx.newPage();
     p.on('pageerror', e => errs.push(dev + ' pageerror: ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(dev + ' console: ' + m.text()); });
     const ev = (f, a) => p.evaluate(f, a), W = ms => p.waitForTimeout(ms), shot = n => p.screenshot({ path: SH + PFX + '-' + dev + '-' + n + '.png' });
@@ -58,7 +58,7 @@ const DEVS = [['ordi', { viewport: { width: 1280, height: 720 } }], ['mobile', {
         const r = await ev(() => { const w = document.querySelector('#wp'); if (!w || w.style.display === 'none') return null; const R = [...w.children].map(c => c.getBoundingClientRect()).reduce((o, b) => ({ l: Math.min(o.l, b.left), r: Math.max(o.r, b.right), t: Math.min(o.t, b.top), b: Math.max(o.b, b.bottom) }), { l: 1e9, r: -1e9, t: 1e9, b: -1e9 });
           const hit = [...document.querySelectorAll('#touch .tb, #stick, #mapbox, #hotbar')].filter(e => e.offsetParent !== null).map(e => [e.id || e.className, e.getBoundingClientRect()]).filter(([, b]) => R.r > b.left && R.l < b.right && R.b > b.top && R.t < b.bottom).map(([n]) => n);
           return hit; });
-        if (r) { seen++; if (r.length) { bad++; if (bad === 1) await shot('village-hiver-chevauche'); } }
+        if (r) { seen++; if (r.length) { bad++; rep.push(dev + ' cap ' + a + ' : ' + r.join(',')); if (bad === 1) await shot('village-hiver-chevauche'); } }
       }
       rep.push(dev + ' repère : ' + bad + ' chevauchement(s) sur ' + seen + ' caps');
     }
