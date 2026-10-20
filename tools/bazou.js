@@ -18,8 +18,9 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-baz
   // pilote : vise la route (roadX) un peu devant, gaz au fond ; mode 'lent' = 60 % du temps sans gaz
   const pilot = (p, mode) => p.evaluate(mode => { clearInterval(window.__pl); window.__pl = setInterval(() => { const g = __game, c = g.G.car, N = g.gen.nord, R = g.bazou.R; if (!R || !c) return;
     const zt = c.z - 14, tx = N.roadX(zt) + (R.aimOff || 0), dx = tx - c.x, dz = zt - c.z, want = Math.atan2(-dx, -dz), d = Math.atan2(Math.sin(want - c.yaw), Math.cos(want - c.yaw));
-    g.input.tx = Math.max(-1, Math.min(1, -d * 3)); g.input.tz = mode === 'lent' ? (Math.random() < 0.6 ? 0 : -1) : -1; }, 40); }, mode);
-  const stop = p => p.evaluate(() => { clearInterval(window.__pl); __game.input.tx = __game.input.tz = 0; });
+    g.input.tx = Math.max(-1, Math.min(1, -d * 3)); g.input.tz = mode === 'lent' ? (Math.random() < 0.6 ? 0 : -1) : -1; g.input.tRun = mode === 'turbo'; }, 40); }, mode);
+  const stop = p => p.evaluate(() => { clearInterval(window.__pl); __game.input.tx = __game.input.tz = 0; __game.input.tRun = false; });
+  const waitG = async (p, s) => { const t0 = await p.evaluate(() => __game.G.t); await p.waitForFunction(([t0, s]) => __game.G.t - t0 >= s, [t0, s], { timeout: 30000 }); }; // temps de JEU
 
   const p = await mk({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => p.evaluate(f, a), W = ms => p.waitForTimeout(ms), tp = tpF(p);
   await boot(p);
@@ -40,35 +41,37 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-baz
   ok(vf[0] > 0 ? vf[1] === 0 : true, 'compte à rebours : le bazou reste sur la ligne (v=' + vf[1] + ')');
   await p.waitForFunction(() => __game.bazou.R.count <= 0, null, { timeout: 15000 });
   const pet = await ev(() => { const d = __game.G.pet, c = __game.G.car; return d && d.M.g.visible && Math.hypot(d.M.g.position.x - c.x, d.M.g.position.z - c.z) < 1.5; }); ok(pet, 'Pistache est assis dans le bazou (passager)');
-  // ---------- 2. conduire : W + pilote ; porte manquée ----------
-  await p.keyboard.down('KeyW'); await W(1500); const sp = await ev(() => __game.G.car.v); await p.keyboard.up('KeyW');
-  ok(sp > 8, 'W : le bazou accélère (' + sp.toFixed(1) + ' m/s)');
-  await ev(() => { __game.bazou.R.aimOff = 12; }); await pilot(p, 'vite');
-  await p.waitForFunction(() => __game.G.car.z < -237, null, { timeout: 30000 }).catch(() => {});
-  const miss = await ev(() => __game.bazou.R.cp); ok(miss === 0, 'porte 1 passée à côté (12 m) : pas comptée');
-  // retour : on remet le bazou avant la porte sur la route
-  await ev(() => { const g = __game, c = g.G.car, N = g.gen.nord; c.z = -228; c.x = N.roadX(-228); c.v = 0; c.yaw = c.dir = 0; g.bazou.R.prevZ = c.z; g.bazou.R.aimOff = 0; });
-  await p.waitForFunction(() => __game.bazou.R.cp >= 2, null, { timeout: 40000 }).catch(() => {});
-  await W(600); await ev(() => { const G = __game.G; G.camYaw = G.car.yaw - 0.35; G.camPitch = 0.28; }); await W(250); await shot('course', p);
-  ok((await ev(() => __game.bazou.R.cp)) >= 2, 'portes 1 et 2 passées sur la route (' + await ev(() => __game.bazou.R.cpT.map(t => t.toFixed(1)).join(', ')) + ' s)');
-  await p.waitForFunction(() => __game.bazou.R.done && __game.bazou.R.pos, null, { timeout: 60000 }).catch(() => {});
+  // ---------- 2. 1re course : gaz (W), puis pilote au turbo sur la route → victoire ----------
+  await p.keyboard.down('KeyW'); await waitG(p, 1.5); const sp = await ev(() => __game.G.car.v); await p.keyboard.up('KeyW');
+  ok(sp > 8, 'W : le bazou accélère (' + sp.toFixed(1) + ' m/s en 1,5 s de jeu)');
+  await pilot(p, 'turbo');
+  await p.waitForFunction(() => __game.bazou.R.cp >= 2, null, { timeout: 60000 }).catch(() => {});
+  await W(500); await ev(() => { const G = __game.G; G.camYaw = G.car.yaw - 0.35; G.camPitch = 0.28; }); await W(250); await shot('course', p);
+  ok((await ev(() => __game.bazou.R.cp)) >= 2, 'portes 1 et 2 passées (' + await ev(() => __game.bazou.R.cpT.map(t => t.toFixed(1)).join(', ')) + ' s)');
+  await p.waitForFunction(() => __game.bazou.R.done && __game.bazou.R.pos, null, { timeout: 90000 }).catch(() => {});
   await stop(p);
   const r1 = await ev(() => ({ pos: __game.bazou.R && __game.bazou.R.pos, lr: __game.G.lastRace, b: __game.S.bazou, cash: __game.S.cash, ai: __game.bazou.R && __game.bazou.R.ai.map(a => [a.name.slice(0, 8), +a.s.toFixed(0), a.fin && +a.fin.toFixed(1)]), dmg: __game.bazou.R && +__game.bazou.R.dmg.toFixed(0) }));
-  ok(r1.pos && r1.b.n === 1 && r1.b.best > 0 && r1.lr.rec, 'arrivée : ' + r1.pos + 'e en ' + (r1.lr && r1.lr.t.toFixed(1)) + ' s, record ' + JSON.stringify(r1.b) + ' rivaux ' + JSON.stringify(r1.ai) + ' dégâts ' + r1.dmg);
-  await shot('arrivee', p);
-  const rt = await ev(() => document.getElementById('bzRes').textContent); ok(/Nouveau record/.test(rt) && /Toi/.test(rt), 'tableau d\'arrivée avec record');
-  // ---------- 3. 2e course : lente → l'IA gagne ----------
+  ok(r1.pos === 1 && r1.b.n === 1 && r1.b.w === 1 && r1.b.best > 0 && r1.lr.rec && r1.cash === cash0 - 10 + 90, 'VICTOIRE : ' + r1.pos + 'er en ' + (r1.lr && r1.lr.t.toFixed(1)) + ' s, +90 $, record ' + JSON.stringify(r1.b) + ' rivaux ' + JSON.stringify(r1.ai) + ' dégâts ' + r1.dmg);
+  await W(300); await shot('arrivee', p);
+  const rt = await ev(() => document.getElementById('bzRes').textContent); ok(/Nouveau record/.test(rt) && /VICTOIRE/.test(rt), 'tableau d\'arrivée : victoire et record');
   await ev(() => [...document.querySelectorAll('#bzResB .btn')].find(b => /GARAGE/.test(b.textContent)).click()); await W(800);
   ok(await ev(() => !__game.G.drive && !__game.bazou.R && Math.hypot(__game.G.P.x - __game.bazou.garage.x, __game.G.P.z - __game.bazou.garage.z) < 4), 'remorqué jusqu\'au garage');
+  // ---------- 3. 2e course : porte manquée, puis lente → l'IA gagne ----------
   await ev(() => { __game.S.cash = 100; __game.bazou.start(); }); await p.waitForFunction(() => __game.bazou.R.count <= 0, null, { timeout: 15000 });
+  await ev(() => { __game.bazou.R.aimOff = 12; }); await pilot(p, 'vite');
+  await p.waitForFunction(() => __game.G.car.z < -240, null, { timeout: 40000 }).catch(() => {});
+  ok((await ev(() => __game.bazou.R.cp)) === 0, 'porte 1 passée à côté (12 m) : pas comptée');
+  await ev(() => { const g = __game, c = g.G.car, N = g.gen.nord; c.z = -228; c.x = N.roadX(-228); c.v = 0; c.yaw = c.dir = 0; g.bazou.R.prevZ = c.z; g.bazou.R.aimOff = 0; });
   await pilot(p, 'lent');
+  await p.waitForFunction(() => __game.bazou.R.cp >= 1, null, { timeout: 30000 }).catch(() => {});
+  ok((await ev(() => __game.bazou.R.cp)) >= 1, 'revenu passer la porte 1 : comptée');
   const aiFin = await p.waitForFunction(() => __game.bazou.R.ai.some(a => a.fin != null), null, { timeout: 90000 }).then(() => true).catch(() => false);
   ok(aiFin, 'un rival franchit l\'arrivée : ' + await ev(() => __game.bazou.R.order.join(', ')));
   await ev(() => { const g = __game, c = g.G.car, N = g.gen.nord, R = g.bazou.R; R.cp = 4; c.z = -590; c.x = N.roadX(-590); c.v = 15; c.yaw = c.dir = 0; R.prevZ = c.z; });
-  await p.waitForFunction(() => __game.bazou.R.pos, null, { timeout: 20000 }).catch(() => {});
+  await p.waitForFunction(() => __game.bazou.R.pos, null, { timeout: 30000 }).catch(() => {});
   await stop(p);
   const r2 = await ev(() => ({ pos: __game.bazou.R && __game.bazou.R.pos, b: __game.S.bazou, lr: __game.G.lastRace }));
-  ok(r2.pos > 1 && r2.b.n === 2 && !r2.lr.rec && r2.b.best === r1.b.best, 'défaite : ' + r2.pos + 'e, record gardé ' + r2.b.best);
+  ok(r2.pos > 1 && r2.b.n === 2 && r2.b.w === 1 && !r2.lr.rec && r2.b.best === r1.b.best, 'défaite : ' + r2.pos + 'e, record gardé ' + r2.b.best);
   await ev(() => [...document.querySelectorAll('#bzResB .btn')].find(b => /RESTER/.test(b.textContent)).click()); await W(300);
   // ---------- 4. abandon (sortir du bazou) ----------
   await ev(() => { __game.S.cash = 100; __game.bazou.start(); }); await W(500); await ev(() => __game.pressed.add('KeyE')); await W(800);

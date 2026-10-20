@@ -271,14 +271,15 @@ body:not(.touch) #hkBtns { bottom: 30px; } body:not(.touch) #hkBtns .btn { paddi
 #bzSpd { position: absolute; left: 18px; bottom: 18px; background: rgba(8, 18, 32, .85); border-radius: 6px; padding: 6px 12px; font-size: 15px; min-width: 120px; }
 #bzSpd b { font-size: 30px; } #bzSpd small { opacity: .7; }
 #bzDmg { height: 8px; background: #3a1418; margin-top: 4px; } #bzDmg div { height: 100%; background: #6adf6a; width: 100%; }
-#bzAb { position: absolute; top: 64px; right: 12px; pointer-events: auto; padding: 4px 10px; font-size: 13px; }
+#bzAb { position: absolute; bottom: 104px; left: 18px; pointer-events: auto; padding: 4px 10px; font-size: 13px; }
+body.bzTouch #bzAb { bottom: 128px; left: 14px; }
 #bzRes { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(8, 18, 32, .95); border: 3px solid #ffd23a; border-radius: 8px; padding: 14px 20px; width: min(440px, 92vw); font-size: 16px; line-height: 1.5; pointer-events: auto; }
 #bzRes.hidden { display: none; } #bzRes .big { font-size: 24px; color: #ffd23a; } #bzRes tr.gold td { color: #ffd23a; } #bzResB .btn { margin: 8px 6px 0; }
 #bzPad, #bzPad2 { display: none; position: absolute; bottom: 22px; gap: 12px; pointer-events: auto; }
 #bzPad { left: 14px; } #bzPad2 { right: 14px; align-items: flex-end; }
 body.bzTouch #bzPad, body.bzTouch #bzPad2 { display: flex; }
-body.bzTouch #bzSpd { left: 50%; transform: translateX(-50%); bottom: auto; top: 64px; min-width: 0; padding: 3px 10px; }
-#bzPad .btn, #bzPad2 .btn { width: 84px; height: 84px; border-radius: 50%; padding: 0; font-size: 26px; touch-action: none; user-select: none; -webkit-user-select: none; flex: none; min-width: 0; }
-#bzPad2 .btn { font-size: 16px; } #bzPad2 [data-k="g"] { width: 104px; height: 104px; background: #2c8a3a; font-size: 20px; } #bzPad2 [data-k="b"] { background: #a8281e; }
+body.bzTouch #bzSpd { left: auto; right: 14px; bottom: 150px; min-width: 0; padding: 3px 10px; }
+#bzPad .btn, #bzPad2 .btn { width: 76px; height: 76px; border-radius: 50%; padding: 0; font-size: 26px; touch-action: none; user-select: none; -webkit-user-select: none; flex: none; min-width: 0; }
+#bzPad2 .btn { font-size: 16px; } #bzPad2 [data-k="g"] { width: 100px; height: 100px; background: #2c8a3a; font-size: 20px; } #bzPad2 [data-k="b"] { background: #a8281e; }
 body.bazou #touch .tb:not(#tPause), body.bazou #touch #stick, body.bazou #prompt, body.bazou #hotbar, body.bazou #weapon { display: none !important; }
 body.bazou #tTop .tb { display: none !important; } body.bazou #tTop #tPause { display: inline-block !important; }

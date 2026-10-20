@@ -37,7 +37,7 @@ export function createBazou(C) {
     const z0 = BAZOU.z0, yaw = roadDir(z0), slot = (k, lane) => { const z = z0 + 5 + k * 7; return { x: N().roadX(z) + lane, z }; };
     // ton bazou sur la grille (2e rangée, voie de droite), toi au volant
     const me = slot(1, 1.7), car = G.car; if (G.drive) C.exitCar();
-    s.car = { x: me.x, z: me.z, yaw: roadDir(me.z) }; C.placeCar(); G.P.x = me.x; G.P.z = me.z; C.enterCar(); car.dir = car.yaw; G.camYaw = car.yaw; G.camPitch = 0.3;
+    s.car = { x: me.x, z: me.z, yaw: roadDir(me.z) }; C.placeCar(); G.P.x = me.x; G.P.z = me.z; G.carHint = true; C.enterCar(); car.dir = car.yaw; G.camYaw = car.yaw; G.camPitch = 0.3;
     R = { t: 0, count: 3.2, cp: 0, cpT: [], ai: [], gates: [], tb: {}, dmg: 0, smokeT: 0, done: false, freeze: true, z0, prevZ: me.z, order: [] };
     BAZOU.rivaux.forEach((r, i) => { const sp = [slot(0, -1.7), slot(0, 1.7), slot(1, -1.7)][i], m = C.carModel(r.col, r.roof, r.box, r.tuque); m.g.rotation.order = 'YXZ'; scene.add(m.g);
       const lbl = C.makeLabel('npc', `<div class="nm">${r.name.replace(/ «.*»/, '')}</div>`);
