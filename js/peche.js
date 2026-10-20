@@ -18,8 +18,9 @@ export function createPeche(C) {
     const g = new THREE.Group(), w = 2.6, h = 2.1, t = 0.14, dark = new THREE.Color(c).multiplyScalar(0.6).getHex();
     box(g, w, h, t, c, 0, h / 2, w / 2); box(g, t, h, w, c, -w / 2, h / 2, 0); box(g, t, h, w, c, w / 2, h / 2, 0); // fond et côtés
     box(g, 0.85, h, t, c, -0.875, h / 2, -w / 2); box(g, 0.85, h, t, c, 0.875, h / 2, -w / 2); box(g, 0.9, 0.35, t, c, 0, h - 0.175, -w / 2); // façade, porte ouverte vers la rive
-    box(g, w + 0.4, 0.14, w + 0.4, dark, 0, h + 0.07, 0); box(g, w * 0.7, 0.12, w * 0.7, dark, 0, h + 0.2, 0);
-    box(g, 0.18, 0.7, 0.18, 0x3a3a3a, 0.8, h + 0.45, 0.6); box(g, 0.24, 0.06, 0.24, 0x2a2a2a, 0.8, h + 0.82, 0.6); // tuyau du poêle
+    const top = new THREE.Group(); g.add(top); g.userData.top = top; // toit à part : on l'enlève pendant la pêche pour voir dedans
+    box(top, w + 0.4, 0.14, w + 0.4, dark, 0, h + 0.07, 0); box(top, w * 0.7, 0.12, w * 0.7, dark, 0, h + 0.2, 0);
+    box(top, 0.18, 0.7, 0.18, 0x3a3a3a, 0.8, h + 0.45, 0.6); box(top, 0.24, 0.06, 0.24, 0x2a2a2a, 0.8, h + 0.82, 0.6); // tuyau du poêle
     box(g, 0.5, 0.35, 0.04, 0xfff0a0, w / 2 + 0.03, 1.3, 0.2, true); // fenêtre éclairée
     box(g, 0.8, 0.12, 0.35, 0x8a5a2c, 0, 0.45, 0.95); box(g, 0.1, 0.4, 0.1, 0x5a3a22, -0.3, 0.2, 0.95); box(g, 0.1, 0.4, 0.1, 0x5a3a22, 0.3, 0.2, 0.95); // banc
     box(g, 0.6, 0.02, 0.6, 0xc8d8e8, 0, 0.01, -0.1); // glace grattée
@@ -31,7 +32,9 @@ export function createPeche(C) {
     box(g, 0.3, 0.12, 0.02, 0x9ab8c8, 0.45, 1.3, -0.065); bake(g); return g;
   }
   const rented = () => S().peche.rent === S().day;
+  const roof = (h, v) => { const m = built && built[h.i]; if (m) m.userData.top.visible = v; };
   function update(dt) {
+    if (F && built) roof(F.h, false);
     const P = G.P, d = Math.hypot(P.x - X0, P.z - rz(X0));
     if (d < 140 && G.frozen && !built) { built = huts.map(h => { const m = hutModel(h.c); m.position.set(h.x, ice(h.x, h.z), h.z); scene.add(m); return m; }); }
     else if ((d >= 150 || !G.frozen) && built) { built.forEach(m => scene.remove(m)); built = null; }
@@ -73,7 +76,7 @@ export function createPeche(C) {
   }
   const $ = id => el.querySelector('#' + id);
   function start(h) {
-    ui(); const P = G.P; P.x = h.x; P.z = h.z + 0.3; P.vx = P.vz = 0; P.yaw = 0; G.state = 'peche'; C.unlock(); el.classList.remove('hidden');
+    ui(); const P = G.P; P.x = h.x; P.z = h.z + 0.3; P.vx = P.vz = 0; P.yaw = 0; G.state = 'peche'; C.unlock(); G.camPitch = Math.max(G.camPitch, 0.8); G.camDist = Math.min(Math.max(G.camDist, 4), 5); // vue plongeante, toit enlevé el.classList.remove('hidden');
     $('pkHelp').textContent = C.isTouch ? 'Garde TIRE enfoncé pour tirer, relâche pour donner du fil.' : 'Maintiens ESPACE ou le clic pour tirer, relâche pour donner du fil. Échap : sortir.';
     F = { h, ph: 'perce', t: 0, hold: false, tap: false, hole: null, mesh: null };
     C.audio.fx('dig'); show();
@@ -119,7 +122,7 @@ export function createPeche(C) {
   }
   function end(ok, msg) { F.ph = ok ? 'pris' : 'rate'; F.t = 0; F.msg = msg; F.ok = ok; if (!ok) C.audio.fx('deny'); G.fishLog = (G.fishLog || []).concat(ok ? 'pris:' + F.fish : 'rate'); }
   function again() { if (F) { wait(); show(); } }
-  function quit() { if (!F) return; if (F.hole) { scene.remove(F.hole); scene.remove(F.bob); } F = null; el.classList.add('hidden'); G.state = 'play'; C.writeSave(); }
+  function quit() { if (!F) return; if (F.hole) { scene.remove(F.hole); scene.remove(F.bob); } roof(F.h, true); F = null; el.classList.add('hidden'); G.state = 'play'; C.writeSave(); }
   function show() {
     const ph = F.ph, bar = ph === 'combat';
     $('pkBar').style.display = bar ? '' : 'none'; $('pkProg').style.display = bar ? '' : 'none'; $('pkTire').style.display = ph === 'pris' || ph === 'rate' ? 'none' : '';

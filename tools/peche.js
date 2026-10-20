@@ -39,7 +39,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   // ---------- 2. hiver : cabanes, quête, location ----------
   await ev(() => __game.setSeason(0)); await W(1500); await tp(PK.shore.x, PK.shore.z - 1, 1500);
   ok(await ev(() => __game.frozen) && (await ev(() => __game.peche.built)) === 5, 'hiver : fleuve gelé, 5 cabanes sur la glace');
-  await ev(([h]) => { const G = __game.G, P = G.P; P.x = h.x - 6; P.z = h.z - 13; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI + 0.35; G.camPitch = 0.28; G.camDist = 7; }, [PK.huts[2]]); await W(1500); await shot('cabanes', p);
+  await ev(([h]) => { const G = __game.G, P = G.P; P.x = h.x - 4; P.z = h.z - 12; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI + 0.3; G.camPitch = 0.42; G.camDist = 3.2; }, [PK.huts[2]]); await W(1500); await shot('cabanes', p);
   const t1 = await talk(); ok(/pêche blanche/i.test(t1 || '') && await btn('ACCEPTER'), 'quête « La pêche blanche » acceptée'); await close();
   await ev(() => __game.petGive('chien')); await W(500);
   const cash0 = await ev(() => __game.S.cash); await talk(); ok(await btn('LOUER'), 'bouton LOUER'); await close();
@@ -52,7 +52,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   ok(await phase(p, 'combat'), 'ça mord → ferré → combat');
   await p.waitForFunction(() => { const F = __game.peche.F; return F && (F.ph !== 'combat' || F.prog > 0.55); }, null, { timeout: 30000 }).catch(() => {});
   const sit = await ev(() => { const d = __game.G.pet, P = __game.G.P; return +Math.hypot(d.x - P.x, d.z - P.z).toFixed(1); });
-  await ev(() => { const G = __game.G; G.camYaw = 2.4; G.camPitch = 0.42; G.camDist = 3.6; }); await W(150); await shot('tension', p);
+  await ev(() => { const G = __game.G; G.camYaw = 2.6; G.camPitch = 0.85; G.camDist = 4.4; }); await W(150); await shot('tension', p);
   ok(sit < 3, 'Pistache assis à côté (' + sit + ' m)');
   let got = await phase(p, 'pris|rate'); let F = await ev(() => { const F = __game.peche.F; return { ph: F.ph, fish: F.fish, msg: F.msg }; });
   for (let k = 0; k < 3 && F.ph !== 'pris'; k++) { await ev(() => document.querySelector('#pkBtns .btn').click()); await phase(p, 'pris|rate'); F = await ev(() => { const F = __game.peche.F; return { ph: F.ph, fish: F.fish, msg: F.msg }; }); }
@@ -97,7 +97,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   await m.tap('#tTalk'); await m.waitForTimeout(400); ok((await m.evaluate(() => __game.G.state)) === 'peche', 'téléphone : mini-jeu lancé');
   await pilot(m, 'bon', true); await phase(m, 'combat');
   await m.waitForFunction(() => { const F = __game.peche.F; return F && (F.ph !== 'combat' || F.prog > 0.5); }, null, { timeout: 30000 }).catch(() => {});
-  await m.evaluate(() => { const G = __game.G; G.camYaw = 2.4; G.camPitch = 0.45; G.camDist = 3.6; }); await m.waitForTimeout(150); await shot('mobile', m);
+  await m.evaluate(() => { const G = __game.G; G.camYaw = 2.6; G.camPitch = 0.9; G.camDist = 4.6; }); await m.waitForTimeout(150); await shot('mobile', m);
   let mf = await phase(m, 'pris|rate'); for (let k = 0; k < 3 && (await m.evaluate(() => __game.peche.F.ph)) !== 'pris'; k++) { await m.evaluate(() => document.querySelector('#pkBtns .btn').click()); await phase(m, 'pris|rate'); }
   ok((await m.evaluate(() => __game.peche.F.ph)) === 'pris' && (await m.evaluate(() => __game.S.peche.n)) >= 1, 'téléphone : poisson pris au bouton TIRE (pointeurs tactiles)');
   ok(errs.length === 0, 'aucune erreur JS' + (errs.length ? ' : ' + errs.slice(0, 3).join(' | ') : ''));
