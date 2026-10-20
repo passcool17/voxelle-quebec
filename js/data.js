@@ -43,6 +43,7 @@ export const ITEMS = {
   charbon: { name: 'Charbon', slot: 'mat', desc: 'Trouvé dans la pierre. Noircit les mitaines.', price: 8 },
   fer: { name: 'Minerai de fer', slot: 'mat', desc: 'Du fer brut, plein de rouille et de promesses.', price: 14 },
   // v6.2 : pêche blanche (poissons crus = matériaux à vendre ou à cuisiner ; plats = conso)
+  coupe_mireille: { name: 'Coupe Mireille', slot: 'mat', desc: 'Le trophée de la ligue de garage du village. Plus de ruban adhésif que de métal, pis c’est à toi.', price: 0 },
   poulamon: { name: 'Poulamon', slot: 'mat', desc: 'Le petit poisson des chenaux. Y’en a des tonnes, pis c’est bon frit.', price: 4 },
   perchaude: { name: 'Perchaude', slot: 'mat', desc: 'Rayée, nerveuse, délicieuse en filets.', price: 8 },
   dore: { name: 'Doré jaune', slot: 'mat', desc: 'Le roi de la poêle. Les yeux brillent même sous la glace.', price: 16 },
@@ -271,3 +272,11 @@ const OBJ = {
 };
 for (const k in OBJ) QUESTS[k].obj = OBJ[k];
 QUESTS.permis.foe = 'bureau';
+
+// v6.3 : hockey sur la patinoire du village (noms fictifs)
+export const HOCKEY = {
+  bleus: { name: 'Bleus', coat: 0x2e5fa8, hat: 0xf2f2f2, skaters: ['Ti-Loup Fortier'], goalie: 'Mononc’ Rosaire' },
+  rouges: { name: 'Rouges du rang 4', coat: 0xc8282e, hat: 0x1a1a1a, skaters: ['Bertrand Pelchat', 'Josée Lapointe'], goalie: 'Le Mur Arsenault' },
+  temps: 180, buts: 3,
+  prix: { victoire: { cash: 50, xp: 180 }, nulle: { cash: 20, xp: 90 }, defaite: { cash: 10, xp: 60 } },
+};

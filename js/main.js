@@ -18,6 +18,7 @@ import * as FS from './fullscreen.js';
 import { SEASON_U, seasonTints } from './materials.js';
 import { SAISONS, DAYS, seasonOf, dayInSeason, seasonParams, weatherPick, FLIES, LEAVES } from './saisons.js';
 import { createPeche } from './peche.js';
+import { createHockey } from './hockey.js';
 import { FURN_ACT, inHome, inCabin, moveStack, CHEST_MAX, furnModel, winterDecor, sledModel } from './cabane.js';
 
 const $ = id => document.getElementById(id);
@@ -61,7 +62,7 @@ const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
     weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, tuto: 0, dunSeen: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0, crafted: 0, mined: 0 }, glider: true,
-    day: 2 * DAYS, home: false, furn: [], chest: [], spawn: null, homeT: -9, restedTo: 0, comp: { have: {}, act: null }, peche: { rent: -1, n: 0, rec: {} } }; // v4 : jour de jeu (début de l'été), ta cabane
+    day: 2 * DAYS, home: false, furn: [], chest: [], spawn: null, homeT: -9, restedTo: 0, comp: { have: {}, act: null }, peche: { rent: -1, n: 0, rec: {} }, hockey: { gp: 0, w: 0, l: 0, t: 0, gf: 0, ga: 0, buts: 0, best: 0, coupe: false } }; // v4 : jour de jeu (début de l'été), ta cabane
 }
 let S = null; // sauvegarde active
 function loadSave() {
@@ -79,6 +80,7 @@ function normSave(s) {
   if (typeof s.day !== 'number') s.day = f.day; for (const k of ['furn', 'chest']) if (!Array.isArray(s[k])) s[k] = []; // v4 : saisons, cabane
   if (!s.comp || typeof s.comp !== 'object' || !s.comp.have || typeof s.comp.have !== 'object') s.comp = { have: {}, act: null }; if (!PETS[s.comp.act] || !s.comp.have[s.comp.act]) s.comp.act = null; // v6 : compagnon
   if (!s.peche || typeof s.peche !== 'object' || !s.peche.rec || typeof s.peche.rec !== 'object') s.peche = { rent: -1, n: 0, rec: {} }; if (typeof s.peche.n !== 'number') s.peche.n = 0; // v6.2 : pêche blanche
+  { const h0 = { gp: 0, w: 0, l: 0, t: 0, gf: 0, ga: 0, buts: 0, best: 0, coupe: false }; if (!s.hockey || typeof s.hockey !== 'object') s.hockey = h0; else for (const k in h0) if (typeof s.hockey[k] !== typeof h0[k]) s.hockey[k] = h0[k]; } // v6.3 : hockey
   const sq = s.q.sirop; if (sq && typeof sq === 'object') { if (!Array.isArray(sq.keys)) sq.keys = []; if (typeof sq.left !== 'number') sq.left = null; } // v5c : minuterie de la sève
   s.home = !!s.home; if (typeof s.homeT !== 'number') s.homeT = -9; if (typeof s.restedTo !== 'number') s.restedTo = 0; if (!Array.isArray(s.spawn)) s.spawn = null;
   return s;
@@ -1059,7 +1061,7 @@ function petUpdate(dt) {
   const k = S.comp.act;
   if (G.pet && G.pet.kind !== k) { scene.remove(G.pet.M.g); G.pet.label.remove(); G.pet = null; }
   if (!k) return;
-  const P = G.P, T = PETS[k];
+  const P = G.petHold || G.P, T = PETS[k]; // v6.3 : pendant une game de hockey, il attend le long de la bande
   if (!G.pet) {
     const M = petModel(k); scene.add(M.g); addBlob(M.g, 0.34);
     G.pet = { kind: k, M, x: P.x, y: P.y, z: P.z, vx: 0, vy: 0, vz: 0, hw: 0.24, h: 0.6, ground: false, yaw: P.yaw, t: 0, hp: T.hp, ko: 0, cd: 0, atk: 0, stuck: 0, sniff: T.sniff * 0.5, dig: null, hits: 0, finds: 0, tps: 0 };
@@ -1105,7 +1107,7 @@ function petUpdate(dt) {
   if (want) { const ty = Math.atan2(-tvx, -tvz); p.yaw += Math.atan2(Math.sin(ty - p.yaw), Math.cos(ty - p.yaw)) * Math.min(1, dt * 10); }
   else if (!foe && !dig && d < 6) { const ty = Math.atan2(-dx, -dz); p.yaw += Math.atan2(Math.sin(ty - p.yaw), Math.cos(ty - p.yaw)) * Math.min(1, dt * 3); }
   p.M.g.position.set(p.x, p.y - (water ? 0.3 : 0), p.z); p.M.g.rotation.y = p.yaw;
-  animPet(p.M, p.t, mv, dig, p.atk, p.ko > 0); if (G.state === 'peche' && mv < 0.15 && !p.ko) { p.M.P.body.rotation.x = -0.32; p.M.P.body.position.y = 0.1; } // assis à côté de toi
+  animPet(p.M, p.t, mv, dig, p.atk, p.ko > 0); if ((G.state === 'peche' || G.petHold) && mv < 0.15 && !p.ko) { p.M.P.body.rotation.x = -0.32; p.M.P.body.position.y = 0.1; } // assis à côté de toi
   if (d < 30) placeLabel(p.label, p.x, p.y + 1.05, p.z); else p.label.style.display = 'none';
 }
 function petSniff() {
@@ -1131,6 +1133,10 @@ function petDigUp(g) {
 // v6.2 : pêche blanche (js/peche.js)
 const peche = createPeche({ G, gen, scene, get world() { return world; }, get sky() { return sky; }, S: () => S, get input() { return input; }, keys, pressed, isTouch, audio,
   toast: t => toast(t), banner: (a, b) => banner(a, b), addItem: (id, n) => addItem(id, n), questEvent: (k, w) => questEvent(k, w), burst: (...a) => burst(...a), makeLabel: (c, h) => makeLabel(c, h), placeLabel: (...a) => placeLabel(...a),
+  dlg: (t, h, b) => dlg(t, h, b), closeDialog: () => closeDialog(), unlock: () => unlock(), writeSave: () => writeSave() });
+// v6.3 : hockey sur la patinoire (js/hockey.js)
+const hockey = createHockey({ G, gen, scene, get world() { return world; }, S: () => S, get input() { return input; }, pressed, isTouch, audio, npcLook: (r, sd) => npcLook(r, sd), human, setWeapon, animHuman,
+  moveInput: () => moveInput(), toast: t => toast(t), banner: (a, b) => banner(a, b), addItem: (id, n) => addItem(id, n), gainXP: n => gainXP(n), burst: (...a) => burst(...a), makeLabel: (c, h) => makeLabel(c, h), placeLabel: (...a) => placeLabel(...a),
   dlg: (t, h, b) => dlg(t, h, b), closeDialog: () => closeDialog(), unlock: () => unlock(), writeSave: () => writeSave() });
 // ---------- quêtes ----------
 function questEvent(kind, what) {
@@ -1358,6 +1364,7 @@ function renderDialog(n, extra) {
   else if (n.role === 'acericulteur') txt = 'Mon sirop est le meilleur du rang. Le voisin dit la même chose, mais il ment.';
   else txt = n.chat;
   if (n.role === 'capitaine' && n.stop && (talkQ || ready || avail || active) && !extra) for (const st of gen.nord.stops) if (st.key !== n.stop && st.mode) add('TRAVERSIER : ' + st.label + ' · ' + FARE * 2 + ' $', () => { if (S.cash < FARE * 2) { audio.fx('deny'); toast('Pas assez de piasses pour le billet!'); return; } S.cash -= FARE * 2; closeDialog(); travel(st.key); });
+  if (n.role === 'animatrice' && !extra && !talkQ && !ready) hockey.talkAdd(add); // v6.3
   if (!btns.length || !btns.some(b => b.label === 'AU REVOIR')) add('AU REVOIR', close);
   $('dtext').innerHTML = pre + txt;
   const bb = $('dbtns'); bb.innerHTML = '';
@@ -1796,7 +1803,7 @@ function frame(now) {
       audio.combat += ((chasing ? 1 : 0) - audio.combat) * Math.min(1, dt * 0.8);
       audio.mode = sky.dayF < 0.3 ? 'night' : 'day'; audio.boss = G.boss ? 1 : 0;
       G.sndT = (G.sndT || 0) - dt; if (G.sndT <= 0) { G.sndT = 0.5; soundScape(); }
-    } else { for (const e of G.enemies) e.label.style.display = 'none'; if (st === 'peche') { peche.game(dt); petUpdate(dt); peche.update(dt); flushLabels(); } }
+    } else { for (const e of G.enemies) e.label.style.display = 'none'; if (st === 'peche') { peche.game(dt); petUpdate(dt); peche.update(dt); flushLabels(); } else if (st === 'hockey') { hockey.game(dt); petUpdate(dt); flushLabels(); } }
     world.update(P.x, P.z, 3);
     camUpdate(dt); partsUpdate(dt); ringsUpdate(dt); G.shake *= Math.pow(0.004, dt);
     const col = gen.column(Math.floor(P.x), Math.floor(P.z));
@@ -1866,5 +1873,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { peche, PETS, petGive, petSniff, petSwitch, tameRaton, die, setSeason, seasonParams, homeSetup, furnPlace, furnOpen, furnSync, openCoffre, sleep, goHome, useNear, inHome, closePanels, newDay, get season() { return G.season; }, get frozen() { return !!G.frozen; }, SEASON_U, H, PAT, tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { peche, hockey, PETS, petGive, petSniff, petSwitch, tameRaton, die, setSeason, seasonParams, homeSetup, furnPlace, furnOpen, furnSync, openCoffre, sleep, goHome, useNear, inHome, closePanels, newDay, get season() { return G.season; }, get frozen() { return !!G.frozen; }, SEASON_U, H, PAT, tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;

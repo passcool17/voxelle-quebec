@@ -242,3 +242,20 @@ body.touch #pkTire { padding: 22px 0; font-size: 24px; }
 table.rec { width: 100%; border-collapse: collapse; margin: 6px 0; }
 table.rec th, table.rec td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,.15); text-align: left; }
 body.peche #touch { display: none !important; }
+/* v6.3 : hockey */
+#hockey { position: fixed; inset: 0; pointer-events: none; z-index: 40; color: #fff; text-align: center; }
+#hockey.hidden { display: none; }
+#hkScore { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; background: rgba(8, 18, 32, .9); border: 3px solid #0c1420; border-radius: 6px; padding: 6px 14px; font-size: 20px; white-space: nowrap; }
+#hkScore .b { color: #8ab8ff; } #hkScore .r { color: #ff9a8a; } #hkScore b { font-size: 26px; color: #fff; }
+#hkClock { background: #111; color: #ffd23a; padding: 2px 10px; border-radius: 4px; font-size: 22px; min-width: 64px; }
+#hkMsg { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); font-size: 17px; text-shadow: 0 2px 0 #000; white-space: nowrap; }
+#hkBtns { position: absolute; right: 18px; bottom: 18px; display: flex; gap: 10px; align-items: flex-end; pointer-events: auto; }
+#hkBtns .btn { touch-action: none; user-select: none; -webkit-user-select: none; }
+body.touch #hkBtns { right: 12px; bottom: 26px; flex-direction: column-reverse; }
+body.touch #hkLance { width: 120px; height: 120px; border-radius: 50%; font-size: 22px; background: #c8282e; }
+body.touch #hkPasse { width: 92px; height: 92px; border-radius: 50%; font-size: 18px; }
+#hkHelp { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); opacity: .75; white-space: nowrap; text-shadow: 0 1px 0 #000; }
+body.touch #hkHelp { display: none; }
+#hkEnd { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(8, 18, 32, .94); border: 3px solid #ffd23a; border-radius: 8px; padding: 16px 22px; font-size: 17px; line-height: 1.6; pointer-events: auto; width: min(460px, 90vw); }
+#hkEnd.hidden { display: none; } #hkEnd .big { font-size: 24px; color: #ffd23a; } #hkEndBtns .btn { margin: 8px 6px 0; }
+body.hockey #touch .tb, body.hockey #tTop, body.hockey #prompt { display: none !important; }

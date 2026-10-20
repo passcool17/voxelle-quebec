@@ -32,6 +32,7 @@ const ART = {
   permis: ['..pppppppp..', '..pUUUUUUp..', '..pppppppp..', '..pSSSSSSp..', '..pppppppp..', '..pSSSSSSp..', '..pppppppp..', '..pSSSSppp..', '..ppppprrp..', '..ppppprrp..', '..pppppppp..', '............'],
   eau_erable: ['............', '...kkkkkk...', '..k......k..', '..ssssssss..', '..suuuuuus..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '...ssssss...', '............', '............'],
   sirop_coulee: ['....bb......', '....bb......', '...CCCC.....', '..CCCCCC....', '..CccccC....', '..CccccC....', '..CccccC....', '..CccccC....', '..CCCCCC....', '...CCCC.....', '............', '............'],
+  coupe_mireille: ['............', '..yyyyyyyy..', '.yyCyyyyCyy.', '.y.yyyyyy.y.', '.y.yyyyyy.y.', '..yyyyyyyy..', '....yyyy....', '.....yy.....', '.....yy.....', '...BBBBBB...', '...BBBBBB...', '............'],
   poulamon: ['............', '............', '............', '.....SSS....', '.k.SsSsSS...', '.kkSsSsSkS..', '.kkSSSSSSS..', '.k.SSSSSS...', '.....SSS....', '............', '............', '............'],
   perchaude: ['............', '............', '............', '.....yyy....', '.k.ygygyy...', '.kkygygyky..', '.kkyyyyyyy..', '.k.yyyyyy...', '.....yyy....', '............', '............', '............'],
   dore: ['............', '............', '............', '.....eee....', '.k.eCeCee...', '.kkeCeCeke..', '.kkeeeeeee..', '.k.eeeeee...', '.....eee....', '............', '............', '............'],

@@ -223,6 +223,7 @@ export class Audio {
       case 'level': [0, 4, 7, 12, 16].forEach((n, i) => tone('square', mtof(74 + n), 0, 0.18, 0.07, i * 0.08)); break;
       case 'quest': [0, 7, 12, 7, 12, 19].forEach((n, i) => tone('triangle', mtof(69 + n), 0, 0.2, 0.12, i * 0.09)); break;
       case 'accept': tone('triangle', mtof(74), 0, 0.12, 0.1); tone('triangle', mtof(81), 0, 0.2, 0.1, 0.1); break;
+      case 'sirene': tone('sawtooth', 131, 128, 1.6, 0.08); tone('square', 175, 170, 1.6, 0.05); break; // sirène de but
       case 'horn': tone('square', 233, 0, 0.35, 0.07); tone('square', 277, 0, 0.35, 0.07); break;
       case 'squeak': tone('square', 1400, 2200, 0.08, 0.05); tone('square', 1800, 1200, 0.08, 0.05, 0.09); break;
       case 'buzz': { const g = c.createGain(); g.connect(S); this.env(g, t, 0.05, 0.5, 0.05 * v); const o = this.osc('sawtooth', 210, t, 0.5, g); const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = 30; lg.gain.value = 30; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + 0.55); break; }
