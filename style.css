@@ -262,3 +262,23 @@ body.touch #hkHelp { display: none; }
 #hkEnd.hidden { display: none; } #hkEnd .big { font-size: 24px; color: #ffd23a; } #hkEndBtns .btn { margin: 8px 6px 0; }
 body.hockey #touch .tb, body.hockey #tTop, body.hockey #prompt, body.hockey #hotbar, body.hockey #weapon { display: none !important; }
 body:not(.touch) #hkBtns { bottom: 30px; } body:not(.touch) #hkBtns .btn { padding: 8px 18px; }
+/* v6.4 : course de bazous */
+#bazou { position: fixed; inset: 0; pointer-events: none; z-index: 40; color: #fff; text-align: center; }
+#bazou.hidden { display: none; }
+#bzTop { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; background: rgba(8, 18, 32, .9); border: 3px solid #0c1420; border-radius: 6px; padding: 6px 16px; font-size: 20px; white-space: nowrap; }
+#bzPos { color: #ffd23a; } #bzT { font-variant-numeric: tabular-nums; min-width: 72px; }
+#bzCount { position: absolute; top: 34%; left: 50%; transform: translate(-50%, -50%); font-size: 96px; color: #ffd23a; text-shadow: 0 5px 0 #000; }
+#bzSpd { position: absolute; left: 18px; bottom: 18px; background: rgba(8, 18, 32, .85); border-radius: 6px; padding: 6px 12px; font-size: 15px; min-width: 120px; }
+#bzSpd b { font-size: 30px; } #bzSpd small { opacity: .7; }
+#bzDmg { height: 8px; background: #3a1418; margin-top: 4px; } #bzDmg div { height: 100%; background: #6adf6a; width: 100%; }
+#bzAb { position: absolute; top: 64px; right: 12px; pointer-events: auto; padding: 4px 10px; font-size: 13px; }
+#bzRes { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(8, 18, 32, .95); border: 3px solid #ffd23a; border-radius: 8px; padding: 14px 20px; width: min(440px, 92vw); font-size: 16px; line-height: 1.5; pointer-events: auto; }
+#bzRes.hidden { display: none; } #bzRes .big { font-size: 24px; color: #ffd23a; } #bzRes tr.gold td { color: #ffd23a; } #bzResB .btn { margin: 8px 6px 0; }
+#bzPad, #bzPad2 { display: none; position: absolute; bottom: 22px; gap: 12px; pointer-events: auto; }
+#bzPad { left: 14px; } #bzPad2 { right: 14px; align-items: flex-end; }
+body.bzTouch #bzPad, body.bzTouch #bzPad2 { display: flex; }
+body.bzTouch #bzSpd { left: 50%; transform: translateX(-50%); bottom: auto; top: 64px; min-width: 0; padding: 3px 10px; }
+#bzPad .btn, #bzPad2 .btn { width: 84px; height: 84px; border-radius: 50%; padding: 0; font-size: 26px; touch-action: none; user-select: none; -webkit-user-select: none; flex: none; min-width: 0; }
+#bzPad2 .btn { font-size: 16px; } #bzPad2 [data-k="g"] { width: 104px; height: 104px; background: #2c8a3a; font-size: 20px; } #bzPad2 [data-k="b"] { background: #a8281e; }
+body.bazou #touch .tb:not(#tPause), body.bazou #touch #stick, body.bazou #prompt, body.bazou #hotbar, body.bazou #weapon { display: none !important; }
+body.bazou #tTop .tb { display: none !important; } body.bazou #tTop #tPause { display: inline-block !important; }

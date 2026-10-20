@@ -19,6 +19,7 @@ import { SEASON_U, seasonTints } from './materials.js';
 import { SAISONS, DAYS, seasonOf, dayInSeason, seasonParams, weatherPick, FLIES, LEAVES } from './saisons.js';
 import { createPeche } from './peche.js';
 import { createHockey } from './hockey.js';
+import { createBazou } from './bazou.js';
 import { FURN_ACT, inHome, inCabin, moveStack, CHEST_MAX, furnModel, winterDecor, sledModel } from './cabane.js';
 
 const $ = id => document.getElementById(id);
@@ -62,7 +63,7 @@ const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
     weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, tuto: 0, dunSeen: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0, crafted: 0, mined: 0 }, glider: true,
-    day: 2 * DAYS, home: false, furn: [], chest: [], spawn: null, homeT: -9, restedTo: 0, comp: { have: {}, act: null }, peche: { rent: -1, n: 0, rec: {} }, hockey: { gp: 0, w: 0, l: 0, t: 0, gf: 0, ga: 0, buts: 0, best: 0, coupe: false } }; // v4 : jour de jeu (début de l'été), ta cabane
+    day: 2 * DAYS, home: false, furn: [], chest: [], spawn: null, homeT: -9, restedTo: 0, comp: { have: {}, act: null }, peche: { rent: -1, n: 0, rec: {} }, hockey: { gp: 0, w: 0, l: 0, t: 0, gf: 0, ga: 0, buts: 0, best: 0, coupe: false }, bazou: { n: 0, w: 0, podium: 0, best: 0 } }; // v4 : jour de jeu (début de l'été), ta cabane
 }
 let S = null; // sauvegarde active
 function loadSave() {
@@ -81,6 +82,7 @@ function normSave(s) {
   if (!s.comp || typeof s.comp !== 'object' || !s.comp.have || typeof s.comp.have !== 'object') s.comp = { have: {}, act: null }; if (!PETS[s.comp.act] || !s.comp.have[s.comp.act]) s.comp.act = null; // v6 : compagnon
   if (!s.peche || typeof s.peche !== 'object' || !s.peche.rec || typeof s.peche.rec !== 'object') s.peche = { rent: -1, n: 0, rec: {} }; if (typeof s.peche.n !== 'number') s.peche.n = 0; // v6.2 : pêche blanche
   { const h0 = { gp: 0, w: 0, l: 0, t: 0, gf: 0, ga: 0, buts: 0, best: 0, coupe: false }; if (!s.hockey || typeof s.hockey !== 'object') s.hockey = h0; else for (const k in h0) if (typeof s.hockey[k] !== typeof h0[k]) s.hockey[k] = h0[k]; } // v6.3 : hockey
+  { const b0 = { n: 0, w: 0, podium: 0, best: 0 }; if (!s.bazou || typeof s.bazou !== 'object') s.bazou = b0; else for (const k in b0) if (typeof s.bazou[k] !== 'number' || !isFinite(s.bazou[k])) s.bazou[k] = 0; } // v6.4 : bazou
   const sq = s.q.sirop; if (sq && typeof sq === 'object') { if (!Array.isArray(sq.keys)) sq.keys = []; if (typeof sq.left !== 'number') sq.left = null; } // v5c : minuterie de la sève
   s.home = !!s.home; if (typeof s.homeT !== 'number') s.homeT = -9; if (typeof s.restedTo !== 'number') s.restedTo = 0; if (!Array.isArray(s.spawn)) s.spawn = null;
   return s;
@@ -790,7 +792,7 @@ function npcsUpdate(dt) {
     if (s.type === 'chantier' || s.type === 'grand') continue;
     if (Math.hypot(s.x - P.x, s.z - P.z) > 100 || !world.loadedAround(s.x, s.z, 1)) continue;
     const m = layout(s);
-    (s.type === 'ville' && s.i === 0 && s.j === 0 && !s.reg && !s.nord ? m.npcs.concat([{ role: 'cabanier', x: peche.shore.x, z: peche.shore.z }]) : m.npcs).forEach((n, k) => {
+    (s.type === 'ville' && s.i === 0 && s.j === 0 && !s.reg && !s.nord ? m.npcs.concat([{ role: 'cabanier', x: peche.shore.x, z: peche.shore.z }, { role: 'garagiste', x: 14.5, z: -123.5 }]) : m.npcs).forEach((n, k) => {
       const key = s.i + ',' + s.j + ':' + k; if (G.npcs.has(key) || (n.season != null && n.season !== G.season)) return;
       const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g); addBlob(model.g, 0.42);
       const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.reg ? 'Aubergiste de ' + s.name : s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? ({ etape: 'Comptoir de L’Étape', charlevoix: 'Boutique du terroir', perce: 'Poissonnerie de Percé', montreal: 'Dépanneur ouvert 24 h (sauf travaux)', montmagny: 'Épicerie de l’Oie blanche' }[n.shop] || (s.nord ? 'Dépanneur du Royaume' : 'Dépanneur')) : NPCS[n.role].name;
@@ -926,15 +928,18 @@ function exitCar() {
 }
 function driveUpdate(dt) {
   const C = G.car, P = G.P;
-  const { mx, mz, run } = moveInput(), thr = -mz, vmax = run ? 30 : 21;
+  const { mx, mz, run } = moveInput(), thr = -mz, Rc = G.race, vmax = Rc ? Rc.vmax(run) : run ? 30 : 21;
   if (thr > 0.1) C.v += (C.v < 0 ? 24 : 9) * thr * dt; else if (thr < -0.1) C.v -= (C.v > 0 ? 24 : 6) * -thr * dt; else C.v *= Math.pow(0.5, dt);
   C.v = Math.max(-7, Math.min(vmax, C.v)); if (Math.abs(C.v) < 0.08 && Math.abs(thr) < 0.1) C.v = 0;
-  C.yaw -= mx * dt * 1.7 * Math.max(-1, Math.min(1, C.v / 5));
-  const fx = -Math.sin(C.yaw), fz = -Math.cos(C.yaw), nx = C.x + fx * C.v * dt, nz = C.z + fz * C.v * dt;
+  if (Rc && Rc.freeze) C.v = 0;
+  C.yaw -= mx * dt * (Rc ? 1.9 : 1.7) * Math.max(-1, Math.min(1, C.v / 5));
+  // v6.4 en course : le bazou dérape (le cap de la vitesse suit le capot avec du retard, plus à grande vitesse)
+  if (Rc) { if (C.dir == null) C.dir = C.yaw; C.dir += Math.atan2(Math.sin(C.yaw - C.dir), Math.cos(C.yaw - C.dir)) * Math.min(1, dt * Math.max(2.2, 9 - Math.abs(C.v) * 0.28)); } else C.dir = null;
+  const hd = Rc ? C.dir : C.yaw, fx = -Math.sin(hd), fz = -Math.cos(hd), nx = C.x + fx * C.v * dt, nz = C.z + fz * C.v * dt;
   if (!world.loadedAround(nx, nz, 1)) C.v *= Math.pow(0.05, dt);
   else if (C.v) {
     const sg = Math.sign(C.v), px = nx + fx * 2.1 * sg, pz = nz + fz * 2.1 * sg, gy = world.ground(px, pz, C.y + 1.5), wet = world.get(px, gy - 0.25, pz) === B.WATER;
-    if (gy > C.y + 1.05 || wet) { if (Math.abs(C.v) > 6) { audio.fx('bonk'); burst(px, C.y + 1, pz, 0x8a8a8e, 6, 3); } C.v = -C.v * 0.25; if (wet && !G.wetHint) { G.wetHint = true; toast('Le bazou flotte pas. Pas encore.'); } }
+    if (gy > C.y + 1.05 || wet) { if (Math.abs(C.v) > 6) { audio.fx('bonk'); burst(px, C.y + 1, pz, 0x8a8a8e, 6, 3); if (Rc) Rc.hit(Math.abs(C.v)); } C.v = -C.v * 0.25; if (wet && !G.wetHint) { G.wetHint = true; toast('Le bazou flotte pas. Pas encore.'); } }
     else { C.x = nx; C.z = nz; }
   }
   const g0 = world.ground(C.x, C.z, C.y + 1.5);
@@ -1069,6 +1074,8 @@ function petUpdate(dt) {
     if (G.petAt) { Object.assign(G.pet, G.petAt); G.petAt = null; } else petTp();
   }
   const p = G.pet; p.t += dt; p.cd -= dt; if (p.atk > 0) p.atk = Math.max(0, p.atk - dt * 3);
+  if (G.drive && G.car) { const c = G.car, cy = Math.cos(c.yaw), sy = Math.sin(c.yaw); p.M.g.visible = true; p.label.style.display = 'none'; p.away = true; // v6.4 : passager, la tête à la fenêtre
+    p.M.g.position.set(c.x + cy * 0.45 + sy * 0.1, c.y + 0.95, c.z - sy * 0.45 + cy * 0.1); p.M.g.rotation.y = c.yaw; animPet(p.M, p.t, 0, false, 0, false); return; }
   if (G.drive || P.sled) { p.M.g.visible = false; p.label.style.display = 'none'; p.away = true; return; } // dans le bazou ou en traîne : il attend… puis te rejoint
   if (p.away) { p.away = false; p.M.g.visible = true; petTp(); }
   const dx = P.x - p.x, dz = P.z - p.z, d = Math.hypot(dx, dz), dy = P.y - p.y;
@@ -1134,6 +1141,9 @@ function petDigUp(g) {
 const peche = createPeche({ G, gen, scene, get world() { return world; }, get sky() { return sky; }, S: () => S, get input() { return input; }, keys, pressed, isTouch, audio,
   toast: t => toast(t), banner: (a, b) => banner(a, b), addItem: (id, n) => addItem(id, n), questEvent: (k, w) => questEvent(k, w), burst: (...a) => burst(...a), makeLabel: (c, h) => makeLabel(c, h), placeLabel: (...a) => placeLabel(...a),
   dlg: (t, h, b) => dlg(t, h, b), closeDialog: () => closeDialog(), unlock: () => unlock(), writeSave: () => writeSave() });
+// v6.4 : course de bazous sur la 175 (js/bazou.js)
+const bazou = createBazou({ G, gen, scene, get world() { return world; }, S: () => S, get input() { return input; }, isTouch, audio, carModel, placeCar: () => placeCar(), enterCar: () => enterCar(), exitCar: () => exitCar(),
+  toast: t => toast(t), banner: (a, b) => banner(a, b), gainXP: n => gainXP(n), burst: (...a) => burst(...a), makeLabel: (c, h) => makeLabel(c, h), placeLabel: (...a) => placeLabel(...a), closeDialog: () => closeDialog(), writeSave: () => writeSave() });
 // v6.3 : hockey sur la patinoire (js/hockey.js)
 const hockey = createHockey({ G, gen, scene, get world() { return world; }, S: () => S, get input() { return input; }, pressed, isTouch, audio, npcLook: (r, sd) => npcLook(r, sd), human, setWeapon, animHuman,
   moveInput: () => moveInput(), toast: t => toast(t), banner: (a, b) => banner(a, b), addItem: (id, n) => addItem(id, n), gainXP: n => gainXP(n), burst: (...a) => burst(...a), makeLabel: (c, h) => makeLabel(c, h), placeLabel: (...a) => placeLabel(...a),
@@ -1334,6 +1344,7 @@ function renderDialog(n, extra) {
   if (n.role === 'gaston' && !extra && S.q.nouvelles && S.q.nouvelles.st === 'active') { addItem('gazette'); questEvent('collect', 'gazette'); pre = 'Des nouvelles pour le Saguenay? Tiens, la <b class="gold">Gazette des remparts</b>, encore chaude. Dis-leur que le pont tient!<br><br>'; }
   if (extra) txt = extra;
   else if (talkQ) { const q = QUESTS[talkQ[0]]; txt = q.done + reward(q.reward); add('MERCI!', () => renderDialog(n)); }
+  else if (n.role === 'garagiste') txt = bazou.talk(add); // v6.4
   else if (n.role === 'cabanier' && !ready && !avail) { txt = peche.talk(add, () => renderDialog(n)); if (active) txt += '<br><span class="gold">' + QUESTS[active[0]].title + ' : ' + Math.min(S.q[active[0]].n, QUESTS[active[0]].n) + ' / ' + QUESTS[active[0]].n + '</span>'; }
   else if (ready) { const [id, q] = ready; S.q[id].st = 'done'; txt = q.done + reward(q.reward); if (id === 'permis') S.inv = S.inv.filter(i => i.id !== 'permis'); if (id === 'nouvelles') S.inv = S.inv.filter(i => i.id !== 'gazette'); G.dirtyQ = true; add('MERCI!', () => renderDialog(n)); }
   else if (avail) { const [id, q] = avail; txt = (q.chap ? '<span class="chap">Récit · chapitre ' + q.chap + '</span><br>' : '') + '<b class="gold">' + q.title + '</b><br>' + q.intro + '<br><span class="rw">Récompense : ' + rewardTxt(q.reward) + '</span>'; add('ACCEPTER', () => { S.q[id] = { st: 'active', n: 0 }; if (q.give) addItem(q.give); if (q.gift) { for (const k in q.gift.items || {}) addItem(k, q.gift.items[k]); for (const b in q.gift.blocks || {}) S.blocks[b] = (S.blocks[b] || 0) + q.gift.blocks[b]; G.dirtyHot = true; } audio.fx('accept'); toast((q.chap ? 'Chapitre ' + q.chap + ' : ' : 'Nouvelle quête : ') + q.title); G.dirtyQ = true; writeSave(); closeDialog(); }, true); add('PLUS TARD', close); }
@@ -1786,7 +1797,7 @@ function frame(now) {
     const P = G.P;
     if (st === 'play') {
       const gd = G.hitstop > 0 ? dt * 0.08 : dt; G.hitstop = Math.max(0, G.hitstop - dt); // arrêt sur image à l'impact
-      if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); petUpdate(gd); npcsUpdate(dt); peche.update(dt); dunUpdate(gd); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
+      if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); petUpdate(gd); npcsUpdate(dt); peche.update(dt); bazou.update(dt); dunUpdate(gd); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
       crittersUpdate(dt);
       { const nt = sky.t + dt / DAY_LEN; if (nt >= 1) newDay(); sky.t = nt % 1; }
       G.weatherT -= dt; if (G.weatherT <= 0) { const w = weatherPick(G.season, Math.random()); sky.snowT = w === 'neige' ? 1 : 0; sky.rainT = w === 'pluie' ? 1 : 0; G.weatherT = 90 + Math.random() * 150; } // météo pondérée par la saison
@@ -1873,5 +1884,5 @@ const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { peche, hockey, PETS, petGive, petSniff, petSwitch, tameRaton, die, setSeason, seasonParams, homeSetup, furnPlace, furnOpen, furnSync, openCoffre, sleep, goHome, useNear, inHome, closePanels, newDay, get season() { return G.season; }, get frozen() { return !!G.frozen; }, SEASON_U, H, PAT, tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { peche, hockey, bazou, PETS, petGive, petSniff, petSwitch, tameRaton, die, setSeason, seasonParams, homeSetup, furnPlace, furnOpen, furnSync, openCoffre, sleep, goHome, useNear, inHome, closePanels, newDay, get season() { return G.season; }, get frozen() { return !!G.frozen; }, SEASON_U, H, PAT, tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;

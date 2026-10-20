@@ -399,17 +399,17 @@ export function pickupModel(kind, o) {
 }
 
 // le « bazou » : vieux pick-up rouge rouillé, conduisible (avant = −z)
-export function carModel() {
+export function carModel(col = 0xa8281e, roof = 0x7a1a14, box2 = 0x6a1a12, tuque = 0x1f4fa8) {
   const g = new THREE.Group(), P = {};
   const body = pivot(g, 0, 0, 0); P.body = body;
-  box(body, 1.9, 0.55, 4.2, 0xa8281e, 0, 0.75, 0); box(body, 1.92, 0.12, 4.22, 0x2a2a2a, 0, 0.5, 0);
-  box(body, 1.7, 0.75, 1.6, 0xa8281e, 0, 1.38, 0.1); box(body, 1.6, 0.5, 0.04, 0x8fd0ff, 0, 1.45, -0.71); box(body, 0.04, 0.42, 1.2, 0x8fd0ff, -0.86, 1.45, 0.15); box(body, 0.04, 0.42, 1.2, 0x8fd0ff, 0.86, 1.45, 0.15);
-  box(body, 1.72, 0.06, 1.62, 0x7a1a14, 0, 1.77, 0.1);
-  box(body, 1.8, 0.3, 1.5, 0x6a1a12, 0, 1.1, 1.3); box(body, 1.6, 0.1, 1.4, 0x3a2a1a, 0, 1.0, 1.3); // boîte
+  box(body, 1.9, 0.55, 4.2, col, 0, 0.75, 0); box(body, 1.92, 0.12, 4.22, 0x2a2a2a, 0, 0.5, 0);
+  box(body, 1.7, 0.75, 1.6, col, 0, 1.38, 0.1); box(body, 1.6, 0.5, 0.04, 0x8fd0ff, 0, 1.45, -0.71); box(body, 0.04, 0.42, 1.2, 0x8fd0ff, -0.86, 1.45, 0.15); box(body, 0.04, 0.42, 1.2, 0x8fd0ff, 0.86, 1.45, 0.15);
+  box(body, 1.72, 0.06, 1.62, roof, 0, 1.77, 0.1);
+  box(body, 1.8, 0.3, 1.5, box2, 0, 1.1, 1.3); box(body, 1.6, 0.1, 1.4, 0x3a2a1a, 0, 1.0, 1.3); // boîte
   for (const [x, z, w, d] of [[0.5, -1.5, 0.4, 0.3], [-0.6, 1.4, 0.5, 0.4], [0.7, 0.9, 0.3, 0.5]]) box(body, w, 0.04, d, 0x8a5a2a, x, 1.04, z); // rouille
   for (const sx of [-1, 1]) { box(body, 0.32, 0.2, 0.04, 0xfff4c0, sx * 0.62, 0.85, -2.11, true); box(body, 0.24, 0.14, 0.04, 0xff3030, sx * 0.72, 0.85, 2.11, true); }
   box(body, 1.4, 0.16, 0.06, 0xc9ced6, 0, 0.55, -2.13); box(body, 1.94, 0.12, 0.08, 0xc9ced6, 0, 0.5, 2.12);
-  box(body, 0.36, 0.42, 0.36, 0xf0c8a0, -0.4, 1.45, 0.25); box(body, 0.4, 0.2, 0.4, 0x1f4fa8, -0.4, 1.7, 0.25); // chauffeur à tuque
+  box(body, 0.36, 0.42, 0.36, 0xf0c8a0, -0.4, 1.45, 0.25); box(body, 0.4, 0.2, 0.4, tuque, -0.4, 1.7, 0.25); // chauffeur à tuque
   box(body, 0.5, 0.12, 0.3, 0x111111, 0.55, 1.85, 0.1); // galerie
   P.wheels = [];
   for (const [x, z] of [[-0.9, -1.35], [0.9, -1.35], [-0.9, 1.35], [0.9, 1.35]]) { const w = pivot(body, x, 0.42, z); box(w, 0.28, 0.82, 0.82, 0x161616, 0, 0, 0); box(w, 0.3, 0.36, 0.36, 0x9a9a9a, 0, 0, 0); P.wheels.push(w); }

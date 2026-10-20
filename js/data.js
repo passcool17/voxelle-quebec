@@ -132,6 +132,7 @@ export const NPCS = {
   notaire: { name: 'Me Hortense Brisebois, notaire', quest: true, look: { coat: 0x2b2f3a, hatType: 'bun', hair: 0x6a4a3a, glasses: true, sash: false, mitt: 0xf0c8a0 } },
   animatrice: { name: 'Mireille, loisirs du village', quest: true, look: { coat: 0x2c8a8a, hat: 0xf2c12e, pom: 0xf2f2f2, hair: 0x2a1e18, sash: false } },
   eleveuse: { name: 'Mme Gagnon, chenil du village', quest: true, look: { coat: 0x5a7a3a, hat: 0xc07a20, hair: 0x6a4a2a, sash: false, mitt: 0x8a5a2c } },
+  garagiste: { name: 'Ti-Gus Lavoie, garage du rang', look: { coat: 0x3a4a6a, hat: 0xc8282e, pom: 0x1a1a1a, beard: 0x5a3a22, mitt: 0x2a2a2a } },
   cabanier: { name: 'Ti-Guy Bouchard, cabanes à pêche', quest: true, look: { coat: 0xd8a020, hat: 0xc02020, pom: 0xf2f2f2, beard: 0x8a6a4a, mitt: 0x5a3a22 } },
   guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
 };
@@ -279,4 +280,14 @@ export const HOCKEY = {
   rouges: { name: 'Rouges du rang 4', coat: 0xc8282e, hat: 0x1a1a1a, skaters: ['Bertrand Pelchat', 'Josée Lapointe'], goalie: 'Le Mur Arsenault' },
   temps: 180, buts: 3,
   prix: { victoire: { cash: 50, xp: 180 }, nulle: { cash: 20, xp: 90 }, defaite: { cash: 10, xp: 60 } },
+};
+// v6.4 : course de bazous sur la 175 (noms fictifs)
+export const BAZOU = {
+  z0: -150, cps: [-235, -320, -410, -500, -600], frais: 10,
+  rivaux: [
+    { name: 'Raymond « Le Pic » Gauthier', col: 0x2e6a3a, roof: 0x1e4a2a, box: 0x1a3a22, tuque: 0xf2c12e, vmax: 21.4 },
+    { name: 'Linda Bergeron', col: 0xd8c040, roof: 0xa89020, box: 0x8a7418, tuque: 0xc8282e, vmax: 22.2 },
+    { name: 'Fernand Ouellet', col: 0x3a5aa8, roof: 0x24407a, box: 0x1c3260, tuque: 0xf2f2f2, vmax: 20.6 },
+  ],
+  prix: [{ cash: 90, xp: 220 }, { cash: 45, xp: 140 }, { cash: 20, xp: 90 }, { cash: 0, xp: 50 }],
 };
