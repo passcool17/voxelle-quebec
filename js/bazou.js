@@ -43,6 +43,7 @@ export function createBazou(C) {
       const lbl = C.makeLabel('npc', `<div class="nm">${r.name.replace(/ «.*»/, '')}</div>`);
       R.ai.push({ ...r, m, lbl, s: z0 - sp.z, v: 0, lane: sp.x - N().roadX(sp.z), lane0: sp.x - N().roadX(sp.z), y: ground(sp.x, sp.z), pitch: 0, fin: null, wob: Math.random() * 6 }); });
     BAZOU.cps.forEach((z, i) => R.gates.push(gate(z, i === BAZOU.cps.length - 1)));
+    R.L = z0 - BAZOU.cps[BAZOU.cps.length - 1]; for (const a of R.ai) aiStep(a, 0, 0); // rivaux posés sur la grille
     G.race = { freeze: true, vmax: run => (run ? 29 : 24) * (1 - Math.min(0.35, R.dmg * 0.004)), hit: v => hurt(Math.min(25, v * 0.9)) };
     el.classList.remove('hidden'); $('bzRes').classList.add('hidden'); document.body.classList.add('bazou'); document.body.classList.toggle('bzTouch', !!C.isTouch);
     C.toast(C.isTouch ? 'GAZ pour avancer, ◀ ▶ pour tourner, FREIN pour ralentir.' : 'W : gaz · S : frein · A/D : tourner · Maj : turbo. Passe les 5 portes!');
