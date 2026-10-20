@@ -20,7 +20,7 @@ html, body { margin: 0; height: 100%; height: 100dvh; overflow: hidden; backgrou
 #mapbox { position: absolute; right: 2vh; top: 2vh; width: calc(var(--u) * 7.2); text-align: center; }
 #mini { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 3px #0c1420; background: #203040; image-rendering: pixelated; }
 #where { font-size: calc(var(--u) * .9); color: #cfe8ff; margin-top: 2px; white-space: normal; line-height: 1; width: calc(var(--u) * 10); margin-left: calc(var(--u) * -2.8); text-align: right; }
-#clock { font-size: calc(var(--u) * .85); color: #fff; width: calc(var(--u) * 10); align-self: center; }
+#clock { font-size: calc(var(--u) * .85); color: #fff; width: calc(var(--u) * 10); text-align: right; }
 /* ordi : le suivi est dans la colonne de la mini-carte (main.js), sous le lieu et l'heure, quelle que soit leur hauteur ; il déborde à gauche */
 #mapbox { display: flex; flex-direction: column; align-items: flex-end; }
 #tracker { width: min(30vw, 330px); text-align: right; font-size: calc(var(--u) * .9); margin-top: 8px; flex: none; }
