@@ -47,7 +47,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   // ---------- 3. entrer, pêcher, réussir ----------
   const H = PK.huts[2]; await tp(H.x, H.z, 1500);
   const pr = await ev(() => document.getElementById('prompt').textContent); ok(/Pêcher sur la glace/.test(pr), 'dans la cabane : « ' + pr + ' »');
-  await ev(() => __game.pressed.add('KeyE')); await W(400); ok((await ev(() => __game.G.state)) === 'peche', 'mini-jeu lancé (état peche)');
+  await ev(() => __game.pressed.add('KeyE')); await W(400); ok((await ev(() => __game.G.state)) === 'peche' && await ev(() => getComputedStyle(document.getElementById('peche')).display !== 'none' && document.getElementById('prompt').classList.contains('hidden')), 'mini-jeu lancé (état peche, panneau visible)');
   await pilot(p, 'bon');
   ok(await phase(p, 'combat'), 'ça mord → ferré → combat');
   await p.waitForFunction(() => { const F = __game.peche.F; return F && (F.ph !== 'combat' || F.prog > 0.55); }, null, { timeout: 30000 }).catch(() => {});
@@ -94,7 +94,7 @@ const PORT = +(process.env.PORT || 8938), PFX = process.argv[2] || 'apres-v6-pec
   await boot(m, true); await m.evaluate(() => { const g = __game; g.setSeason(0); g.S.peche.rent = g.S.day; g.petGive('raton'); }); await m.waitForTimeout(1000);
   await tpm(H.x, H.z, 1800);
   const tt = await m.evaluate(() => { const t = document.getElementById('tTalk'); return t.classList.contains('hidden') ? '' : t.textContent; }); ok(tt === 'PÊCHE', 'téléphone : bouton « ' + tt + ' » dans la cabane');
-  await m.tap('#tTalk'); await m.waitForTimeout(400); ok((await m.evaluate(() => __game.G.state)) === 'peche', 'téléphone : mini-jeu lancé');
+  await m.tap('#tTalk'); await m.waitForTimeout(400); ok((await m.evaluate(() => __game.G.state)) === 'peche' && await m.evaluate(() => getComputedStyle(document.getElementById('peche')).display !== 'none' && getComputedStyle(document.getElementById('touch')).display === 'none'), 'téléphone : mini-jeu lancé (panneau visible, manettes cachées)');
   await pilot(m, 'bon', true); await phase(m, 'combat');
   await m.waitForFunction(() => { const F = __game.peche.F; return F && (F.ph !== 'combat' || F.prog > 0.5); }, null, { timeout: 30000 }).catch(() => {});
   await m.evaluate(() => { const G = __game.G; G.camYaw = 2.6; G.camPitch = 0.9; G.camDist = 4.6; }); await m.waitForTimeout(150); await shot('mobile', m);

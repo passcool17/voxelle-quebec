@@ -76,7 +76,8 @@ export function createPeche(C) {
   }
   const $ = id => el.querySelector('#' + id);
   function start(h) {
-    ui(); const P = G.P; P.x = h.x; P.z = h.z + 0.3; P.vx = P.vz = 0; P.yaw = 0; G.state = 'peche'; C.unlock(); G.camPitch = Math.max(G.camPitch, 0.8); G.camDist = Math.min(Math.max(G.camDist, 4), 5); // vue plongeante, toit enlevé el.classList.remove('hidden');
+    ui(); const P = G.P; P.x = h.x; P.z = h.z + 0.3; P.vx = P.vz = 0; P.yaw = 0; G.state = 'peche'; C.unlock(); G.camPitch = Math.max(G.camPitch, 0.8); G.camDist = Math.min(Math.max(G.camDist, 4), 5); // vue plongeante, toit enlevé
+    el.classList.remove('hidden'); document.body.classList.add('peche'); const pm = document.getElementById('prompt'); if (pm) pm.classList.add('hidden');
     $('pkHelp').textContent = C.isTouch ? 'Garde TIRE enfoncé pour tirer, relâche pour donner du fil.' : 'Maintiens ESPACE ou le clic pour tirer, relâche pour donner du fil. Échap : sortir.';
     F = { h, ph: 'perce', t: 0, hold: false, tap: false, hole: null, mesh: null };
     C.audio.fx('dig'); show();
@@ -122,7 +123,7 @@ export function createPeche(C) {
   }
   function end(ok, msg) { F.ph = ok ? 'pris' : 'rate'; F.t = 0; F.msg = msg; F.ok = ok; if (!ok) C.audio.fx('deny'); G.fishLog = (G.fishLog || []).concat(ok ? 'pris:' + F.fish : 'rate'); }
   function again() { if (F) { wait(); show(); } }
-  function quit() { if (!F) return; if (F.hole) { scene.remove(F.hole); scene.remove(F.bob); } roof(F.h, true); F = null; el.classList.add('hidden'); G.state = 'play'; C.writeSave(); }
+  function quit() { if (!F) return; if (F.hole) { scene.remove(F.hole); scene.remove(F.bob); } roof(F.h, true); F = null; el.classList.add('hidden'); document.body.classList.remove('peche'); G.state = 'play'; C.writeSave(); }
   function show() {
     const ph = F.ph, bar = ph === 'combat';
     $('pkBar').style.display = bar ? '' : 'none'; $('pkProg').style.display = bar ? '' : 'none'; $('pkTire').style.display = ph === 'pris' || ph === 'rate' ? 'none' : '';

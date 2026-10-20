@@ -241,3 +241,4 @@ body.touch #pkTire { padding: 22px 0; font-size: 24px; }
 #pkHelp { display: block; opacity: .7; margin-top: 4px; }
 table.rec { width: 100%; border-collapse: collapse; margin: 6px 0; }
 table.rec th, table.rec td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,.15); text-align: left; }
+body.peche #touch { display: none !important; }
