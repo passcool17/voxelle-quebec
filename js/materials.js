@@ -12,26 +12,28 @@ export function terrainMaterial() {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, SEASON_U);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float tex; attribute float kd; varying float vTex; varying float vKd; varying vec3 vVox; varying vec3 vNw;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTex = tex; vKd = kd; vVox = (modelMatrix * vec4(position, 1.0)).xyz * 2.0; vNw = normal;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uSnow, uIce, uGreen, uFall, uFresh; varying float vTex; varying float vKd; varying vec3 vVox; varying vec3 vNw;' + HASH)
+    // saison, par sommet (pas par pixel : SwiftShader et les petits GPU paient chaque instruction du nuanceur de pixels) :
+    // kd bits 0-2 = classe (blocks.js SEASON), bit 3 = dessus à ciel ouvert, bits 4-7 = ombrage AO×face /15
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uSnow, uIce, uGreen, uFall, uFresh; attribute float tex; attribute float kd; varying float vTex; varying vec3 vVox; varying vec3 vNw; varying vec4 vSn; varying float vVar;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+vTex = tex; vVox = (modelMatrix * vec4(position, 1.0)).xyz * 2.0; vNw = normal;
+{ float kq = floor(kd * 255.0 + 0.5), cls = mod(kq, 8.0), opn = mod(floor(kq / 8.0), 2.0), shd = floor(kq / 16.0) / 15.0, top = step(0.5, normal.y); vec3 c = color; vVar = 0.0;
+  if (cls == 1.0) c = mix(mix(c, shd * vec3(0.66, 0.58, 0.27), uFall * 0.7 * top), shd * vec3(0.42, 0.72, 0.26), uFresh * 0.45 * top);
+  else if (cls == 2.0) { c = mix(c, shd * vec3(0.28, 0.52, 0.19), uGreen); vVar = 0.4 * uGreen; }
+  else if (cls == 3.0) { c = mix(c, shd * vec3(0.9, 0.7, 0.16), uFall); vVar = 0.3 * uFall; }
+  else if (cls == 5.0) c = mix(c, shd * vec3(0.78, 0.89, 0.97), uIce);
+  else if (cls == 6.0) c = mix(mix(c, c * vec3(1.35, 1.05, 0.5) + shd * 0.05, uFall * 0.8), shd * vec3(0.9, 0.93, 0.97), uSnow * 0.8);
+  if (cls == 2.0 || cls == 3.0) c = mix(c, shd * mix(vec3(0.45, 0.39, 0.33), vec3(0.93, 0.95, 0.98), 0.25 + 0.65 * top), uSnow * 0.85); /* feuillus givrés */
+  vColor = c; vSn = vec4(shd * vec3(0.95, 0.97, 1.0), opn * (cls == 5.0 ? 0.0 : uSnow)); }`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vTex; varying vec3 vVox; varying vec3 vNw; varying vec4 vSn; varying float vVar;' + HASH)
       .replace('#include <color_fragment>', `#include <color_fragment>
       { vec3 inside = vVox - vNw * 0.5; vec3 cell = floor(inside);
         float tb = floor(vTex * 255.0 + 0.5), bevF = step(127.5, tb), amp = mod(tb, 128.0) / 127.0;
-        // saison : classe du bloc (kd bits 0-2), dessus à ciel ouvert (bit 3), ombrage AO×face (bits 4-7)
-        float kq = floor(vKd * 255.0 + 0.5), cls = mod(kq, 8.0), opn = mod(floor(kq / 8.0), 2.0), shd = floor(kq / 16.0) / 15.0;
-        if (kq > 0.5) { vec3 c = diffuseColor.rgb; float hv = vqHash(cell + 7.0), top = step(0.5, vNw.y);
-          if (cls == 1.0) c = mix(mix(c, shd * vec3(0.66, 0.58, 0.27), uFall * 0.7 * top), shd * vec3(0.42, 0.72, 0.26), uFresh * 0.45 * top);
-          else if (cls == 2.0) c = mix(c, shd * vec3(0.28, 0.52, 0.19) * (0.8 + 0.4 * hv), uGreen);
-          else if (cls == 3.0) c = mix(c, shd * vec3(0.9, 0.7, 0.16) * (0.85 + 0.3 * hv), uFall);
-          else if (cls == 5.0) c = mix(c, shd * vec3(0.78, 0.89, 0.97) * (0.96 + 0.08 * hv), uIce);
-          else if (cls == 6.0) c = mix(mix(c, c * vec3(1.35, 1.05, 0.5) + shd * 0.05, uFall * 0.8), shd * vec3(0.9, 0.93, 0.97), uSnow * 0.8);
-          if (cls == 2.0 || cls == 3.0) c = mix(c, shd * mix(vec3(0.45, 0.39, 0.33), vec3(0.93, 0.95, 0.98), 0.25 + 0.65 * top), uSnow * 0.85); // feuillus givrés
-          if (opn > 0.5 && cls != 5.0) { float nz = vqNoise(cell.xz * 0.11) * 0.6 + vqHash(cell + 3.0) * 0.4, cov = smoothstep(nz - 0.08, nz + 0.08, uSnow * 1.16 - 0.08);
-            c = mix(c, shd * vec3(0.95, 0.97, 1.0), cov); amp *= 1.0 - 0.75 * cov; }
-          diffuseColor.rgb = c; }
-        float px = length(fwidth(vVox)); float near = 1.0 - smoothstep(0.3, 1.0, px);
         float h1 = vqHash(cell), mac = vqNoise(cell.xz * 0.045 + cell.y * 0.02);
+        // neige d'hiver sur les dessus à ciel ouvert, en plaques (mêmes bruits que le grain)
+        float nz = mac * 0.6 + h1 * 0.4, cov = smoothstep(nz - 0.08, nz + 0.08, vSn.a * 1.16 - 0.08);
+        diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 + (h1 - 0.5) * vVar), vSn.rgb, cov); amp *= 1.0 - 0.75 * cov;
+        float px = length(fwidth(vVox)); float near = 1.0 - smoothstep(0.3, 1.0, px);
         float v = (h1 - 0.5) * 0.2 * amp + (mac - 0.5) * 0.34 * amp;
         diffuseColor.rgb *= 1.0 + v;
         // plaques plus sèches / plus fraîches (teinte)
