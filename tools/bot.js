@@ -56,8 +56,10 @@ const brain = require('./brain');
   const bp = await ev(async () => { const g = __game, G = g.G, P = G.P; G.camPitch = 0.75; await new Promise(r => setTimeout(r, 400)); const t = G.target; if (!t) return { err: 'pas de cible' };
     const before = g.world.get(t.x, t.y, t.z), cnt0 = JSON.stringify(g.S.blocks); g.pressed.add('KeyF'); for (let k = 0; k < 40 && g.world.get(t.x, t.y, t.z) === before; k++) await new Promise(r => setTimeout(r, 100)); // minage : prend la dureté du bloc
     const after = g.world.get(t.x, t.y, t.z); await new Promise(r => setTimeout(r, 400)); const t2 = G.target;
-    g.input.rmbP = true; await new Promise(r => setTimeout(r, 300)); const placed = t2 ? g.world.get(t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2]) : -9;
-    return { broke: [t.x, t.y, t.z, before, after], placed: t2 ? [t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2], placed] : null, cnt0, cnt1: JSON.stringify(g.S.blocks), stats: g.S.stats }; });
+    const st0 = g.S.stats.placed; g.input.rmbP = true; for (let k = 0; k < 30 && g.input.rmbP; k++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 150)); // attend que la boucle de jeu ait traité le clic (machine lente)
+    const diag = { consumed: !g.input.rmbP, placedStat: g.S.stats.placed - st0, P: [P.x, P.y, P.z].map(v => +v.toFixed(2)), t2: t2 && [t2.x, t2.y, t2.z, t2.n], enemies: G.enemies.length, hot: g.S.hot };
+    const placed = t2 ? g.world.get(t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2]) : -9;
+    return { broke: [t.x, t.y, t.z, before, after], placed: t2 ? [t2.x + t2.n[0], t2.y + t2.n[1], t2.z + t2.n[2], placed] : null, cnt0, cnt1: JSON.stringify(g.S.blocks), stats: g.S.stats, diag }; });
   console.log('blocs', JSON.stringify(bp));
   await ev(() => { __game.G.camPitch = 0.3; });
   // 6. sac à dos (équiper le lance-balles)
