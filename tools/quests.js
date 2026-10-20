@@ -39,7 +39,10 @@ const PORT = +(process.env.PORT || 8915), SH = __dirname + '/../shots/';
   // 3. sirop
   res.sirop_dlg = await talk('pepere', gen.cabane); await p.screenshot({ path: SH + 'cabane_pepere.png' }); res.sirop_acc = await btn('ACCEPTER'); await ev(() => __game.closeDialog && __game.G.state === 'dialog' && __game.closeDialog());
   const pails = await ev(() => __game.G.pickups.filter(p => p.kind === 'chaudiere').map(p => [p.x, p.z]));
-  for (const [x, z] of pails.slice(0, 5)) { await ev(([x, z]) => { const P = __game.G.P; P.x = x; P.z = z; P.y = __game.world.ground(x, z); P.vy = 0; }, [x, z]);
+  // v5c : 10 chaudières éparpillées (16 à 38 m) : on fait le tour de l'érablière pour toutes les charger
+  for (const [dx, dz] of [[30, 0], [-30, 0], [0, 30], [0, -30], [24, 24], [-24, -24], [24, -24], [-24, 24]]) await tp(gen.cabane[0] + dx, gen.cabane[1] + dz);
+  pails.push(...(await ev(() => __game.G.pickups.filter(p => p.kind === 'chaudiere').map(p => [p.x, p.z]))).filter(([x, z]) => !pails.some(q => q[0] === x && q[1] === z)));
+  for (const [x, z] of pails.slice(0, 12)) { if ((await ev(() => __game.S.q.sirop.st)) !== 'active') break; await ev(() => { const P = __game.G.P; P.hp = 200; for (const e of __game.G.enemies) if (e.guardOf) { e.hp = 0; e.dead = true; e.model.g.visible = false; e.label.remove(); } }); await ev(([x, z]) => { const P = __game.G.P; P.x = x; P.z = z; P.y = __game.world.ground(x, z); P.vy = 0; }, [x, z]);
     await p.waitForFunction(([x, z]) => !__game.G.pickups.some(q => q.kind === 'chaudiere' && q.x === x && q.z === z), [x, z], { timeout: 15000 }).catch(() => console.log('chaudière non ramassée', x, z)); }
   res.sirop_ready = await ev(() => __game.S.q.sirop && __game.S.q.sirop.st);
   await talk('pepere', gen.cabane); await btn('MERCI'); await ev(() => __game.closeDialog());

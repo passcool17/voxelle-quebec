@@ -981,7 +981,7 @@ function pickupsUpdate(dt) {
     p.m.position.set(p.x, p.y + Math.sin(p.t * 3) * 0.1, p.z); p.m.rotation.y = p.t * 2;
     if (d > 150 && !p.still) p.life = 0;
     // v5c : chaudières gardées par des ratons (seulement pendant la quête, quand tu approches)
-    if (p.guard && !p.guarded && sirA && d < 40) { p.guarded = true; for (let g = 0; g < p.guard; g++) { const a = p.t * 7 + g * 2.6; spawnEnemy('raton', p.x + Math.cos(a) * 2.6, p.z + Math.sin(a) * 2.6); } }
+    if (p.guard && !p.guarded && sirA && d < 40) { p.guarded = true; for (let g = 0; g < p.guard; g++) { const a = p.t * 7 + g * 2.6; const e = spawnEnemy('raton', p.x + Math.cos(a) * 2.6, p.z + Math.sin(a) * 2.6); e.guardOf = p.key; } }
     if (d < 1.4 && p.t > 0.3 && p.kind === 'feuille_terne') { if (S.q.feuilles && S.q.feuilles.st === 'active' && (!G.cdHint || G.t - G.cdHint > 6)) { G.cdHint = G.t; toast('Trop terne… Pépère veut juste les feuilles rouge vif.'); } continue; }
     if (d < 1.4 && p.t > 0.3) {
       const tp = ['tire_printemps', 'Le temps des sucres de Pépère Tremblay… il en aura besoin au printemps.', 'Pépère a eu sa tire.'];
