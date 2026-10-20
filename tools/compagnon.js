@@ -50,7 +50,7 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-com
   await ev(() => { const g = __game, P = g.G.P; const e = g.spawnEnemy('cone', P.x + 3, P.z + 2, { lvl: 1 }); e.hp = e.hpMax = 400; e.state = 'chase'; window.__foe = e; });
   await p.waitForFunction(() => __game.G.pet.hits >= 2, null, { timeout: 25000 }).catch(() => {});
   q = await pet(); ok(q.hits >= 2 && (await ev(() => __foe.hp < 400)), 'il attaque l’ennemi qui te poursuit : ' + q.hits + ' coups (cône ' + (await ev(() => Math.round(__foe.hp))) + '/400)');
-  await ev(() => { const G = __game.G, f = __foe, d = G.pet; G.camYaw = Math.atan2(G.P.x - f.x, G.P.z - f.z) + 0.35; G.camPitch = 0.38; G.camDist = 6.5; }); await W(400); await shot('combat');
+  await ev(() => { const G = __game.G, f = __foe, d = G.pet; G.camYaw = Math.atan2(G.P.x - f.x, G.P.z - f.z) + 1.5; G.camPitch = 0.38; G.camDist = 6.5; }); await W(400); await shot('combat');
   await ev(() => { __game.G.pet.hp = 1; }); await p.waitForFunction(() => __game.G.pet.ko > 0, null, { timeout: 30000 }).catch(() => {});
   q = await pet(); ok(q.ko > 0 && /K\.-O\./.test(await ev(() => __game.G.pet.nm.textContent)), 'K.-O. (' + q.ko + ' s), pas de mort');
   await calm(); await ev(() => { __game.G.pet.ko = 0.3; }); await W(1200);
