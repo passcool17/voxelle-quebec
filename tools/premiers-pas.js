@@ -62,7 +62,7 @@ const inter = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y 
     console.log(dev, 'ch2', JSON.stringify(c2), 'sans repère', JSON.stringify(all), 'fin', JSON.stringify(fin), JSON.stringify(fin2));
     ok[T('toutesQuetes')] = all.length === 0; ok[T('apresCh7')] = !/Explore/.test(fin.tr) && fin.wp && fin2.length > 0 && fin2[0].endsWith('@');
     // ---- 3) tactile, étiquettes, arrière-plan, pluriel
-    await ev(() => { const g = __game; g.S.q = { cones: { st: 'done', n: 6 }, permis: { st: 'active', n: 0 } }; g.G.dirtyQ = true; const s = g.gen.cell(0, 0), P = g.G.P; P.x = g.gen.VX + 2.5; P.z = g.gen.VZ + 10.5; P.y = g.gen.VH + 1; g.G.camYaw = Math.PI; }); await W(2500);
+    await ev(() => { const g = __game; g.S.q = { cones: { st: 'done', n: 6 }, permis: { st: 'active', n: 0 } }; g.G.dirtyQ = true; const s = g.gen.cell(0, 0), P = g.G.P; P.x = g.gen.VX + 2.5; P.z = g.gen.VZ + 10.5; P.y = g.gen.VH + 1; g.G.camYaw = Math.PI; g.G.camPitch = 0.32; g.G.camDist = 5.8; }); await W(2500); // tangage et distance fixés (sinon hérités des étapes d'avant : caméra au ras du sol, aucune étiquette)
     const lab = await ev(() => { const R = id => { const e = document.getElementById(id); return e && e.offsetParent !== null ? e.getBoundingClientRect().toJSON() : null; };
       const hud = ['stats', 'mapbox', 'tTop', 'hotbar'].map(R).filter(Boolean), it = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
       const nm = [...document.querySelectorAll('#labels .lb')].filter(e => e.style.display !== 'none').map(e => (e.querySelector('.nm') || e).getBoundingClientRect().toJSON()).filter(r => r.width);
