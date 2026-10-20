@@ -20,8 +20,10 @@ html, body { margin: 0; height: 100%; height: 100dvh; overflow: hidden; backgrou
 #mapbox { position: absolute; right: 2vh; top: 2vh; width: calc(var(--u) * 7.2); text-align: center; }
 #mini { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 3px #0c1420; background: #203040; image-rendering: pixelated; }
 #where { font-size: calc(var(--u) * .9); color: #cfe8ff; margin-top: 2px; white-space: normal; line-height: 1; width: calc(var(--u) * 10); margin-left: calc(var(--u) * -2.8); text-align: right; }
-#clock { font-size: calc(var(--u) * .85); color: #fff; }
-#tracker { position: absolute; right: 2vh; top: calc(2vh + var(--u) * 10.2); width: min(30vw, 330px); text-align: right; font-size: calc(var(--u) * .9); }
+#clock { font-size: calc(var(--u) * .85); color: #fff; width: calc(var(--u) * 10); align-self: center; }
+/* ordi : le suivi est dans la colonne de la mini-carte (main.js), sous le lieu et l'heure, quelle que soit leur hauteur ; il déborde à gauche */
+#mapbox { display: flex; flex-direction: column; align-items: flex-end; }
+#tracker { width: min(30vw, 330px); text-align: right; font-size: calc(var(--u) * .9); margin-top: 8px; flex: none; }
 #tracker .q { margin-bottom: 6px; background: rgba(8,16,28,.55); padding: 4px 8px; border-right: 4px solid var(--gold); }
 #tracker .q b { color: var(--gold); font-weight: normal; display: block; }
 #tracker .q.ready { border-color: var(--green); } #tracker .q.ready b { color: var(--green); }
@@ -192,3 +194,31 @@ body.touch #stats { width: min(36vw, 360px, calc(50% - 190px)); } body.touch #st
 #wp.off i { left: -12px; top: -12px; width: 24px; height: 24px; transform-origin: 12px 12px; clip-path: polygon(100% 50%, 0 0, 25% 50%, 0 100%); }
 #wp span { position: absolute; left: 0; top: 0; transform: translate(-50%, 2px); white-space: nowrap; font-size: calc(var(--u) * .85); color: var(--gold); }
 #wp.off span { transform: translate(-50%, 14px); }
+
+/* téléphone en portrait : tout était en vh (pensé pour le paysage) → stats écrasées à 6 px (50% - 190px), boutons du haut hors écran
+   et sur la mini-carte, boutons ronds de 22 vh sur le bâton. Ici : unités en vw, rangée du haut sur toute la largeur, stats à gauche
+   de la mini-carte, barre de blocs et invite au-dessus des boutons, grappe de boutons sans chevauchement. */
+@media (orientation: portrait) {
+  body.touch { --u: clamp(12px, 3.8vw, 17px); }
+  body.touch #tTop { left: 6px; right: 6px; top: 6px; transform: none; justify-content: space-between; gap: 4px; }
+  body.touch #tTop .tb.sm { min-height: 34px; min-width: 0; padding: 0 6px; font-size: calc(var(--u) * .85); flex: 1 1 auto; }
+  body.touch #tTop #tFs.tb.sm { flex: none; min-width: 34px; }
+  body.touch #mapbox { right: 8px; top: 48px; align-items: center; }
+  body.touch #where, body.touch #clock { width: calc(var(--u) * 7.6); margin-left: 0; text-align: center; align-self: center; }
+  body.touch #stats { left: 8px; top: 48px; width: calc(100% - var(--u) * 7.6 - 28px); }
+  body.touch #hotbar { top: auto; bottom: calc(3vh + 64vw + 8px); }
+  body.touch #prompt { bottom: calc(3vh + 64vw + var(--u) * 2.3 + 24px); max-width: 94vw; white-space: normal; text-align: center; }
+  body.touch #bossbox { top: auto; bottom: calc(3vh + 64vw + var(--u) * 2.3 + 64px); width: 84vw; }
+  body.touch #banner { top: 34%; white-space: normal; width: 94vw; }
+  body.touch #toast { top: 44%; }
+  #stick { left: 4vw; bottom: 3vh; width: 36vw; height: 36vw; }
+  #tAtk { right: 4vw; bottom: 3vh; width: 26vw; height: 26vw; }
+  #tJump { right: 32vw; bottom: 3vh; width: 17vw; height: 17vw; }
+  #tRoll { right: 32vw; bottom: calc(3vh + 19vw); width: 17vw; height: 17vw; }
+  #tBrk { right: 6vw; bottom: calc(3vh + 28vw); width: 16vw; height: 16vw; }
+  #tPlace { right: 32vw; bottom: calc(3vh + 38vw); width: 16vw; height: 16vw; }
+  #tTalk { right: 13vw; bottom: calc(3vh + 46vw); width: 16vw; height: 16vw; }
+  .tb { font-size: calc(var(--u) * .85); }
+  #tEat, #tSwap { right: auto; left: 4vw; min-height: 34px; }
+  #tEat { bottom: calc(3vh + 38vw); } #tSwap { bottom: calc(3vh + 38vw + 42px); }
+}

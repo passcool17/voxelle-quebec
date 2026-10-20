@@ -24,6 +24,7 @@ const Q = new URLSearchParams(location.search);
 const isTouch = Q.has('touch') || (matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window);
 const mobile = isTouch || Q.has('mobile') || /Android|iPhone|iPad/.test(navigator.userAgent);
 if (isTouch) { document.body.classList.add('touch'); $('stats').appendChild($('tracker')); } // tactile : le suivi sous les barres, à gauche
+else $('mapbox').appendChild($('tracker')); // ordi : sous la mini-carte, le lieu et l'heure (ne les chevauche plus)
 // v2 : monde en voxels fins (0,5 m) ; les sauvegardes v1 sont reprises sans les blocs modifiés
 const SEED = 20261018, SAVE_KEY = 'voxelle-quebec-v2', OLD_SAVE_KEY = 'voxelle-quebec-v1', OPT_KEY = 'voxelle-quebec-opts';
 const DAY_LEN = 600;
@@ -1276,8 +1277,8 @@ function wpUpdate() {
   if (!on) { const k = Math.max(Math.abs(x) / MX, Math.abs(yy) / MY, 1e-6); x /= k; yy /= k; if (behind && Math.abs(yy) < 0.2) yy = -MY; }
   wpEl.style.display = 'block'; wpEl.classList.toggle('off', !on);
   let sx = (x * 0.5 + 0.5) * innerWidth, sy = (-yy * 0.5 + 0.5) * innerHeight;
-  // jamais par-dessus un bouton tactile, le bâton, la mini-carte ou la barre de blocs : on le pousse à côté (le plus près)
-  if (G.t - wpRectT > 1 || wpRectN !== resizeN) { wpRectT = G.t; wpRectN = resizeN; wpRects = [...document.querySelectorAll('#touch .tb, #stick, #mapbox, #hotbar')].filter(e => e.offsetParent !== null).map(e => e.getBoundingClientRect()); }
+  // jamais par-dessus un bouton tactile, le bâton, la mini-carte, la barre de blocs, les stats ou le suivi : on le pousse à côté (le plus près)
+  if (G.t - wpRectT > 1 || wpRectN !== resizeN) { wpRectT = G.t; wpRectN = resizeN; wpRects = [...document.querySelectorAll('#touch .tb, #stick, #mapbox, #hotbar, #stats, #tracker')].filter(e => e.offsetParent !== null).map(e => e.getBoundingClientRect()); }
   const free = (x, y) => x > 30 && x < innerWidth - 30 && y > 28 && y < innerHeight - 36 && !wpRects.some(r => x + 30 > r.left && x - 30 < r.right && y + 34 > r.top && y - 26 < r.bottom);
   if (!free(sx, sy)) search: for (let rad = 12; rad < innerWidth + innerHeight; rad += 12) for (let k = 0; k < 16; k++) { // place libre la plus proche (anneaux)
     const x = sx + Math.cos(k * Math.PI / 8) * rad, y = sy + Math.sin(k * Math.PI / 8) * rad; if (free(x, y)) { sx = x; sy = y; break search; } }

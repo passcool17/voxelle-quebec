@@ -24,7 +24,8 @@ const ONLY = (process.argv[3] || Object.keys(ALL).join(',')).split(',');
       if (extra) { const tk = document.querySelector('#tTalk'); tk.classList.remove('hidden'); const pr = document.querySelector('#prompt'); pr.textContent = 'E  Parler à Ginette, cantine du village'; pr.classList.remove('hidden'); }
       const box = {}; const st = document.querySelector('#stats');
       box.barres = union([...st.children].filter(c => c.id !== 'tracker'));
-      for (const id of ['tracker', 'mapbox', 'hotbar', 'stick', 'prompt', 'weapon']) { const e = document.getElementById(id); if (vis(e) && e.innerHTML.trim() !== '') box[id] = R(e); }
+      box.mapbox = union([...document.querySelector('#mapbox').children].filter(c => c.id !== 'tracker'));
+      for (const id of ['tracker', 'hotbar', 'stick', 'prompt', 'weapon']) { const e = document.getElementById(id); if (vis(e) && e.innerHTML.trim() !== '') box[id] = R(e); }
       document.querySelectorAll('#tTop .tb').forEach(e => { if (vis(e)) box['haut:' + e.id] = R(e); });
       document.querySelectorAll('#touch > .tb').forEach(e => { if (vis(e)) box[e.id] = R(e); });
       const wp = document.getElementById('wp'); if (wp.style.display !== 'none') box.wp = union([...wp.children]);
@@ -44,9 +45,9 @@ const ONLY = (process.argv[3] || Object.keys(ALL).join(',')).split(',');
     const m1 = await measure(false); await p.screenshot({ path: SH + PFX + '-' + name + '-hud.png' });
     const m2 = t ? await measure(true) : { ov: [] }; if (t) await p.screenshot({ path: SH + PFX + '-' + name + '-hud-parle.png' });
     // repère : 8 caps
-    let wpOv = 0; for (let a = 0; a < 8; a++) { await ev(a => { __game.G.camYaw = a / 8 * Math.PI * 2; document.querySelector('#tTalk').classList.add('hidden'); }, a); await W(400); const m = await measure(false); wpOv += m.ov.filter(o => o.includes('wp')).length; }
+    let wpOv = 0; const wpL = []; for (let a = 0; a < 8; a++) { await ev(a => { __game.G.camYaw = a / 8 * Math.PI * 2; document.querySelector('#tTalk').classList.add('hidden'); }, a); await W(400); const m = await measure(false); const f = m.ov.filter(o => o.includes('wp')); wpOv += f.length; wpL.push(...f.map(o => a + ':' + o)); }
     const n = m1.ov.length + m2.ov.length + wpOv; total += n;
-    rep.push(`${name} : ${n} chevauchement(s) [${[...m1.ov, ...m2.ov.map(o => 'parle:' + o)].join(', ')}${wpOv ? ', repère ' + wpOv : ''}] ; barre de vie ${m1.hpW}px, ligne niveau/piasses ${m1.statsRowLines} ligne(s), suivi ${m1.trackerW}px, ${m1.qWords} mots sur ${m1.qLines} lignes (${m1.wordsPerLine}/ligne)`);
+    rep.push(`${name} : ${n} chevauchement(s) [${[...m1.ov, ...m2.ov.map(o => 'parle:' + o)].join(', ')}${wpOv ? ', repère ' + wpL.join(' ') : ''}] ; barre de vie ${m1.hpW}px, ligne niveau/piasses ${m1.statsRowLines} ligne(s), suivi ${m1.trackerW}px, ${m1.qWords} mots sur ${m1.qLines} lignes (${m1.wordsPerLine}/ligne)`);
     await ctx.close();
   }
   console.log(rep.join('\n')); console.log('TOTAL chevauchements', total); console.log(errs.join('\n') || 'aucune erreur'); console.log('HUD FIN');
