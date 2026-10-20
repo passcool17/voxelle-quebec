@@ -130,5 +130,5 @@ export function createPeche(C) {
       const mk = (l, fn) => { const e = document.createElement('button'); e.className = 'btn'; e.textContent = l; e.onclick = fn; b.appendChild(e); };
       if (want === 'end') mk('ENCORE', again); mk('SORTIR', quit); }
   }
-  return { update, useNear, talk, game, quit, showBoard, huts, shore, board, get F() { return F; }, X0 };
+  return { update, useNear, talk, game, quit, showBoard, huts, shore, board, get F() { return F; }, get built() { return built ? built.length : 0; }, X0 };
 }
