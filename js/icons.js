@@ -30,6 +30,8 @@ const ART = {
   sirop: ['....ww......', '....ww......', '...cccc..c..', '..cccccccc..', '..cccwwccc..', '..ccwrrwcc..', '..ccwrrwcc..', '..cccwwccc..', '..cccccccc..', '..cccccccc..', '............', '............'],
   tourtiere: ['............', '............', '...CCCCCC...', '..CmCCCCmC..', '.CCCCmmCCCC.', '.CmCCCCCCmC.', '.CCCCCCCCCC.', '.SSSSSSSSSS.', '..SSSSSSSS..', '............', '............', '............'],
   permis: ['..pppppppp..', '..pUUUUUUp..', '..pppppppp..', '..pSSSSSSp..', '..pppppppp..', '..pSSSSSSp..', '..pppppppp..', '..pSSSSppp..', '..ppppprrp..', '..ppppprrp..', '..pppppppp..', '............'],
+  eau_erable: ['............', '...kkkkkk...', '..k......k..', '..ssssssss..', '..suuuuuus..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '...ssssss...', '............', '............'],
+  sirop_coulee: ['....bb......', '....bb......', '...CCCC.....', '..CCCCCC....', '..CccccC....', '..CccccC....', '..CccccC....', '..CccccC....', '..CCCCCC....', '...CCCC.....', '............', '............'],
   chaudiere: ['............', '...kkkkkk...', '..k......k..', '..ssssssss..', '..sccccccs..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '..ssssssss..', '...ssssss...', '............', '............'],
   ble: ['............', '...ssssss...', '..ssssssss..', '..yyyyyyyy..', '..yyUUUyyy..', '..yUyyyUyy..', '..yyUUUyyy..', '..yyyyyyyy..', '..ssssssss..', '...ssssss...', '............', '............'],
   gazette: ['............', '.pppppppppp.', '.pkkkkkkkkp.', '.pppppppppp.', '.pSSSp.SSSp.', '.pSSSp.pppp.', '.pSSSp.SSSp.', '.pppppppppp.', '.pSSSSSSSSp.', '.pppppppppp.', '............', '............'],

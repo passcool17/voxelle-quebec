@@ -348,7 +348,7 @@ export function critterModel(kind) {
   bake(g); return { g, P, kind };
 }
 // ---------- objets au sol ----------
-export function pickupModel(kind) {
+export function pickupModel(kind, o) {
   const g = new THREE.Group();
   if (kind === 'piasse') { box(g, 0.32, 0.32, 0.08, 0xe8c040, 0, 0, 0, true); box(g, 0.18, 0.18, 0.1, 0xb08a20, 0, 0, 0); }
   else if (kind === 'chaudiere') { box(g, 0.4, 0.45, 0.4, 0xc9ced6, 0, 0, 0); box(g, 0.34, 0.06, 0.34, 0xc07a20, 0, 0.21, 0, true); box(g, 0.44, 0.04, 0.04, 0x555555, 0, 0.3, 0); }
@@ -360,7 +360,10 @@ export function pickupModel(kind) {
   else if (kind === 'plume') { box(g, 0.08, 0.5, 0.12, 0xf2f6fb, 0, 0, 0, true); box(g, 0.04, 0.12, 0.04, 0x2a2a2a, 0, -0.28, 0); }
   else if (kind === 'accordeon') { box(g, 0.55, 0.36, 0.28, 0xc8282e, 0, 0, 0); box(g, 0.2, 0.32, 0.32, 0x1a1a1a, -0.32, 0, 0); box(g, 0.2, 0.32, 0.32, 0x1a1a1a, 0.32, 0, 0); box(g, 0.5, 0.28, 0.22, 0xe8d8c0, 0, 0, 0, true); }
   else if (kind === 'pinceau') { box(g, 0.06, 0.06, 0.5, 0xb98b52, 0, 0, 0); box(g, 0.08, 0.08, 0.08, 0xc9ced6, 0, 0, -0.28); box(g, 0.08, 0.08, 0.12, 0x2e7fd8, 0, 0, -0.38, true); }
-  else if (kind === 'feuille') { box(g, 0.44, 0.04, 0.36, 0xc8361e, 0, 0, 0, true); box(g, 0.2, 0.045, 0.5, 0xd8481e, 0, 0, 0, true); box(g, 0.04, 0.05, 0.22, 0x6b4a2b, 0, 0, 0.3); }
+  else if (kind === 'feuille') { box(g, 0.5, 0.04, 0.4, 0xe0261a, 0, 0, 0, true); box(g, 0.22, 0.045, 0.56, 0xf03a1e, 0, 0, 0, true); box(g, 0.04, 0.05, 0.22, 0x6b4a2b, 0, 0, 0.32); }
+  else if (kind === 'feuille_terne') { const c = o && o.tone ? [0xa8903e, 0x9a8236] : [0x7a5634, 0x6c4a2c]; box(g, 0.44, 0.04, 0.36, c[0], 0, 0, 0); box(g, 0.2, 0.045, 0.5, c[1], 0, 0, 0); box(g, 0.04, 0.05, 0.22, 0x5a4028, 0, 0, 0.3); }
+  else if (kind === 'eau') { box(g, 0.4, 0.45, 0.4, 0xc9ced6, 0, 0, 0); box(g, 0.34, 0.06, 0.34, 0x9fd8ef, 0, 0.21, 0, true); box(g, 0.08, 0.06, 0.16, 0x777777, 0, 0.12, 0.26); box(g, 0.04, 0.12, 0.04, 0x9fd8ef, 0, 0.0, 0.32, true); }
+  else if (kind === 'neige') { box(g, 0.5, 0.3, 0.44, 0xf4f8ff, 0, 0, 0, true); box(g, 0.3, 0.2, 0.3, 0xe6eefa, 0.06, 0.22, -0.04, true); }
   else if (kind === 'casier') { box(g, 0.6, 0.4, 0.44, 0x8b6a3e, 0, 0, 0); box(g, 0.5, 0.3, 0.46, 0x2a3a3a, 0, 0, 0, true); box(g, 0.62, 0.06, 0.46, 0xc8282e, 0, 0.21, 0); }
   else { box(g, 0.4, 0.4, 0.4, 0x9a6adf, 0, 0, 0, true); box(g, 0.46, 0.08, 0.46, 0xf2c12e, 0, 0.1, 0); }
   return bake(g);

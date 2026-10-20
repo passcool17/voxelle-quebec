@@ -76,6 +76,7 @@ function normSave(s) {
   s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0; if (!s.tal || typeof s.tal !== 'object') s.tal = {};
   if (typeof s.tuto !== 'number') s.tuto = -1; // vieille partie : pas de premiers pas forcés (Pause → Revoir)
   if (typeof s.day !== 'number') s.day = f.day; for (const k of ['furn', 'chest']) if (!Array.isArray(s[k])) s[k] = []; // v4 : saisons, cabane
+  const sq = s.q.sirop; if (sq && typeof sq === 'object') { if (!Array.isArray(sq.keys)) sq.keys = []; if (typeof sq.left !== 'number') sq.left = null; } // v5c : minuterie de la sève
   s.home = !!s.home; if (typeof s.homeT !== 'number') s.homeT = -9; if (typeof s.restedTo !== 'number') s.restedTo = 0; if (!Array.isArray(s.spawn)) s.spawn = null;
   return s;
 }
@@ -791,7 +792,9 @@ function npcsUpdate(dt) {
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
     if (s.type === 'cabane' && G.season === 1 && Math.hypot(s.x - P.x, s.z - P.z) < 80 && Math.random() < dt * 6) burst(s.x + 1 + (Math.random() - 0.5) * 0.6, s.h + 11.2, s.z + 0.5, 0xf2f2f2, 1, 0.5, -1.5); // printemps : l'évaporateur bouille
-    m.items.forEach((it, k) => { const key = 'c' + s.i + ',' + s.j + ':' + k; if ((it.season != null && it.season !== G.season) || S.taken[key] || G.pickups.some(p => p.key === key) || (it.y != null && !world.loadedAround(it.x, it.z, 0))) return; dropPickup(it.kind, it.x, world.ground(it.x, it.z, it.y) + 0.4, it.z, { key, still: true }); });
+    m.items.forEach((it, k) => { const key = it.id ? it.id + (it.yearly ? '@' + Math.floor((S.day - 1) / (4 * DAYS)) : '') : 'c' + s.i + ',' + s.j + ':' + k; if ((it.season != null && it.season !== G.season) || S.taken[key] || G.pickups.some(p => p.key === key) || ((it.y != null || it.nudge) && !world.loadedAround(it.x, it.z, 0))) return;
+      let x = it.x, z = it.z; if (it.nudge) { const c = (G.nudge || (G.nudge = {}))[it.id || key] || (G.nudge[it.id || key] = freeSpot(it.x, it.z)); x = c.x; z = c.z; }
+      dropPickup(it.kind, x, world.ground(x, z, it.y) + 0.4, z, { key, still: true, guard: it.guard || 0, tone: it.tone }); });
     if (m.traps) m.traps.forEach((t, k) => { const key = 't' + s.i + ',' + s.j + ':' + k; if (!G.traps.has(key)) G.traps.set(key, trapMake(t, key)); });
   }
   let talk = null, td = 2.6;
@@ -943,13 +946,32 @@ function travel(key) {
 }
 // ---------- objets au sol ----------
 const beamGeo = new THREE.BoxGeometry(0.12, 2.4, 0.12).translate(0, 1.2, 0);
+// v5c : objet posé dans l'érablière — pas sur une souche, un tronc ou une roche : au sol naturel le plus proche (≤ 4 m)
+const NATGROUND = new Set([B.GRASS, B.DIRT, B.SAND, B.SNOW, B.GRAVEL, B.FIELD, B.PATH, B.SNOWGRASS, B.MOSS, B.PEBBLE]);
+function freeSpot(x0, z0) {
+  for (let r = 0; r <= 4; r++) for (let a = 0; a < (r ? 8 : 1); a++) {
+    const x = Math.floor(x0 + Math.cos(a * 0.785) * r) + 0.5, z = Math.floor(z0 + Math.sin(a * 0.785) * r) + 0.5, y = world.ground(x, z);
+    if (NATGROUND.has(world.get(x, y - VS / 2, z)) && Math.abs(world.ground(x + 1, z) - y) < 1.1 && Math.abs(world.ground(x, z + 1) - y) < 1.1) return { x, z };
+  }
+  return { x: x0, z: z0 };
+}
+// v5c : la sève de Pépère gèle (minuterie de la quête sirop) : les chaudières rapportées retournent dans l'érablière
+function sapUpdate(dt) {
+  const s = S.q.sirop; if (!s || s.st !== 'active' || s.left == null) return;
+  s.left -= dt; const sec = Math.max(0, Math.ceil(s.left)); if (sec !== G.sapSec) { G.sapSec = sec; G.dirtyQ = true; if (sec === 30) toast('La sève commence à figer : 30 secondes!'); }
+  if (s.left > 0) return;
+  for (const k of s.keys || []) delete S.taken[k];
+  s.keys = []; s.n = 0; s.left = null; G.dirtyQ = true; audio.fx('deny');
+  banner('LA SÈVE A GELÉ!', 'Tes chaudières ont figé : retourne les chercher dans l’érablière');
+}
 function dropPickup(kind, x, y, z, o) {
-  const m = pickupModel(kind === 'gear' ? 'gear' : kind); m.position.set(x, y, z); scene.add(m);
+  const m = pickupModel(kind === 'gear' ? 'gear' : kind, o); m.position.set(x, y, z); scene.add(m);
   if (kind === 'gear') { const c = new THREE.Color(RARITY[o.r || 0].c), beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35 + 0.12 * (o.r || 0), depthWrite: false, blending: THREE.AdditiveBlending })); beam.scale.y = 1 + (o.r || 0) * 0.6; m.add(beam); }
   G.pickups.push(Object.assign({ kind, m, x, y, z, vy: o.still ? 0 : 4, vx: o.still ? 0 : (Math.random() - 0.5) * 3, vz: o.still ? 0 : (Math.random() - 0.5) * 3, t: 0, life: o.still ? 1e9 : 90 }, o));
 }
 function pickupsUpdate(dt) {
-  const P = G.P;
+  const P = G.P; sapUpdate(dt);
+  const sirA = S.q.sirop && S.q.sirop.st === 'active';
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const p = G.pickups[i]; p.t += dt; p.life -= dt;
     const gy = world.ground(p.x, p.z, p.y + 0.5) + 0.35;
@@ -958,8 +980,12 @@ function pickupsUpdate(dt) {
     if (p.kind === 'piasse' && d < 3.5 && p.t > 0.4) { p.x += dx / d * dt * 10; p.z += dz / d * dt * 10; p.y += dy / d * dt * 10; }
     p.m.position.set(p.x, p.y + Math.sin(p.t * 3) * 0.1, p.z); p.m.rotation.y = p.t * 2;
     if (d > 150 && !p.still) p.life = 0;
+    // v5c : chaudières gardées par des ratons (seulement pendant la quête, quand tu approches)
+    if (p.guard && !p.guarded && sirA && d < 40) { p.guarded = true; for (let g = 0; g < p.guard; g++) { const a = p.t * 7 + g * 2.6; spawnEnemy('raton', p.x + Math.cos(a) * 2.6, p.z + Math.sin(a) * 2.6); } }
+    if (d < 1.4 && p.t > 0.3 && p.kind === 'feuille_terne') { if (S.q.feuilles && S.q.feuilles.st === 'active' && (!G.cdHint || G.t - G.cdHint > 6)) { G.cdHint = G.t; toast('Trop terne… Pépère veut juste les feuilles rouge vif.'); } continue; }
     if (d < 1.4 && p.t > 0.3) {
-      const gate = { chaudiere: ['sirop', 'Une chaudière d’eau d’érable… Pépère Tremblay en cherche peut-être.', 'Pépère a déjà son sirop.'], ble: ['pate', 'Une canne de blé d’Inde en crème… La cuisinière de L’Étape en cherche peut-être.', 'Rolande a déjà son blé d’Inde.'] }[p.kind];
+      const tp = ['tire_printemps', 'Le temps des sucres de Pépère Tremblay… il en aura besoin au printemps.', 'Pépère a eu sa tire.'];
+      const gate = { eau: tp, neige: tp, chaudiere: ['sirop', 'Une chaudière d’eau d’érable… Pépère Tremblay en cherche peut-être.', 'Pépère a déjà son sirop.'], ble: ['pate', 'Une canne de blé d’Inde en crème… La cuisinière de L’Étape en cherche peut-être.', 'Rolande a déjà son blé d’Inde.'] }[p.kind];
       if (!gate && ITEMS[p.kind] && ITEMS[p.kind].slot === 'quete' && p.key) { const qid = Object.keys(QUESTS).find(id => QUESTS[id].item === p.kind); if (qid && !(S.q[qid] && S.q[qid].st === 'active')) { if (!G.cdHint || G.t - G.cdHint > 6) { G.cdHint = G.t; toast(S.q[qid] && S.q[qid].st === 'done' ? 'Tu as déjà rapporté tout ça.' : ITEMS[p.kind].name + '… ' + NPCS[QUESTS[qid].giver].name.split(',')[0] + ' en cherche peut-être.'); } continue; } }
       if (gate && !(S.q[gate[0]] && S.q[gate[0]].st === 'active')) { if (!G.cdHint || G.t - G.cdHint > 6) { G.cdHint = G.t; toast(S.q[gate[0]] && S.q[gate[0]].st === 'done' ? gate[2] : gate[1]); } continue; }
       collect(p); p.life = 0;
@@ -970,6 +996,12 @@ function pickupsUpdate(dt) {
 function collect(p) {
   if (p.kind === 'piasse') { S.cash += p.val || 1; audio.fx('coin'); floatTxt(p.x, p.y + 0.6, p.z, '+' + (p.val || 1) + ' $', '#8dff6a'); }
   else if (p.kind === 'poutine') { addItem('poutine'); audio.fx('coin'); toast('Poutine ramassée!'); }
+  else if (p.kind === 'eau') { S.taken[p.key] = 1; addItem('eau_erable'); audio.fx('coin'); toast('Eau d’érable : ' + invCnt('eau_erable') + ' (3 par canne de sirop)'); G.dirtyQ = true; }
+  else if (p.kind === 'neige') { S.taken[p.key] = 1; S.blocks[B.SNOW] = (S.blocks[B.SNOW] || 0) + 1; audio.fx('dig'); toast('Neige propre : ' + S.blocks[B.SNOW]); G.dirtyHot = true; G.dirtyQ = true; }
+  else if (p.kind === 'chaudiere' && S.q.sirop && S.q.sirop.st === 'active') { const s = S.q.sirop; S.taken[p.key] = 1; audio.fx('coin');
+    if (!Array.isArray(s.keys)) s.keys = []; s.keys.push(p.key);
+    if (s.left == null && s.n + 1 < QUESTS.sirop.n) { s.left = QUESTS.sirop.timer; banner('LA SÈVE COULE!', 'Ramasse tes ' + QUESTS.sirop.n + ' chaudières avant qu’elle gèle : 4 minutes'); }
+    questEvent('collect', 'chaudiere'); if (s.st !== 'active') { s.left = null; s.keys = []; } }
   else if (p.kind === 'chaudiere' || p.kind === 'ble' || p.kind === 'pinceau' || p.kind === 'casier' || p.kind === 'plume' || p.kind === 'accordeon' || p.kind === 'feuille') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
   else if (p.kind === 'coffre' || p.kind === 'coffre_or') openChest(p);
   else if (p.kind === 'permis') { audio.fx('quest'); questEvent('collect', 'permis'); }
@@ -1009,7 +1041,10 @@ function questTargetPos(id) {
   const foe = q.foe || (q.type === 'kill' && q.target), near = (x, z) => Math.hypot(x - P.x, z - P.z);
   let best = null, bd = 70;
   if (foe) for (const e of G.enemies) if (!e.dead && e.type === foe && near(e.x, e.z) < bd) { bd = near(e.x, e.z); best = { x: e.x, z: e.z, y: e.y + e.T.h + 0.6 }; }
-  if (q.item) for (const p of G.pickups) if (p.kind === q.item && near(p.x, p.z) < bd) { bd = near(p.x, p.z); best = { x: p.x, z: p.z, y: p.y + 1 }; }
+  const tst = id === 'tire_printemps' && tireStep(), qi = tst ? tst.item : q.item;
+  if (tst && tst.at === 'cabane') { const c = gen.cell(1, 0); return { x: c.x, z: c.z }; }
+  if (tst && tst.at === 'atelier') return null;
+  if (qi) for (const p of G.pickups) if (p.kind === qi && near(p.x, p.z) < bd) { bd = near(p.x, p.z); best = { x: p.x, z: p.z, y: p.y + 1 }; }
   if (best) return best;
   if (q.home) { const p = gen.reg.places[q.at || q.home]; return p ? { x: p.x, z: p.z } : null; }
   if (q.where) { const c = gen.cell(...q.where); return { x: c.x, z: c.z }; }
@@ -1390,7 +1425,18 @@ function renderInv() {
   const s = $('iSell'); if (s) s.onclick = () => { S.cash += sellPrice(sel); if (sel.n > 1) sel.n--; else { S.inv.splice(invSel, 1); invSel = null; } audio.fx('coin'); renderInv(); };
 }
 function sellPrice(it) { return Math.round((ITEMS[it.id].price || 40) * 0.3 * RARITY[it.r || 0].m); }
-function objTxt(id) { const q = QUESTS[id], s = S.q[id]; if (q.type === 'visit') return q.obj; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.obj || (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name)) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
+const invCnt = id => S.inv.filter(i => i.id === id).reduce((a, i) => a + (i.n || 1), 0);
+// v5c : le temps des sucres, étape par étape (eau → évaporateur → neige → tire)
+function tireStep() {
+  const need = QUESTS.tire_printemps.n - S.q.tire_printemps.n, sir = invCnt('sirop_coulee'), eau = invCnt('eau_erable'), sn = S.blocks[B.SNOW] || 0;
+  if (sir < 1) return eau >= 3 ? { t: 'Fais bouillir l’eau d’érable à l’évaporateur de la cabane (atelier)', at: 'cabane' } : { t: 'Ramasse l’eau d’érable dans l’érablière (' + eau + ' / 3)', item: 'eau' };
+  if (sn < 2) return { t: 'Ramasse de la neige propre à l’ombre de la cabane (' + sn + ' / 2)', item: 'neige' };
+  return { t: 'Fais de la tire de Pépère à l’atelier' + (need > 1 && sir < need ? ' (puis un autre sirop)' : ''), at: 'atelier' };
+}
+const mmss = t => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+function objTxt(id) { const q = QUESTS[id], s = S.q[id];
+  if (s.st === 'active' && id === 'tire_printemps') return tireStep().t + ' · tires : ' + Math.min(s.n, q.n) + ' / ' + q.n;
+  if (s.st === 'active' && id === 'sirop' && s.left != null) return 'Chaudières : ' + Math.min(s.n, q.n) + ' / ' + q.n + ' · <span class="' + (s.left < 30 ? 'red' : 'gold') + '">gel dans ' + mmss(Math.max(0, s.left)) + '</span>'; if (q.type === 'visit') return q.obj; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.obj || (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name)) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
 // journal : récit principal par chapitres (fait / en cours / à venir), quêtes secondaires, contrats
 function renderQuests() {
   const main = Object.entries(QUESTS).filter(([, q]) => q.chap).sort((a, b) => a[1].chap - b[1].chap), side = Object.entries(QUESTS).filter(([, q]) => !q.chap);
@@ -1439,21 +1485,27 @@ function nearBench() {
   return false;
 }
 let craftSel = 0;
+// v5c : l'évaporateur de Pépère (recette « Faire bouillir »)
+function nearCab() { const c = gen.cell(1, 0); return Math.hypot(G.P.x - c.x, G.P.z - c.z) < 18; }
+const rcpVis = r => !r.quest || (S.q[r.quest] && S.q[r.quest].st === 'active');
 function renderCraft() {
-  const nb = nearBench(), ing = (r) => [...Object.entries(r.inb || {}).map(([b, n]) => `<span class="${(S.blocks[b] || 0) >= n ? '' : 'red'}"><img src="${blockIcon(+b)}">${n} ${NAME[b]}</span>`), ...Object.entries(r.ini || {}).map(([id, n]) => `<span class="${S.inv.filter(i => i.id === id).reduce((a, i) => a + (i.n || 1), 0) >= n ? '' : 'red'}"><img src="${itemIcon(id)}">${n} ${ITEMS[id].name}</span>`)].join(' ');
+  const nb = nearBench(), nc = nearCab(), ing = (r) => [...Object.entries(r.inb || {}).map(([b, n]) => `<span class="${(S.blocks[b] || 0) >= n ? '' : 'red'}"><img src="${blockIcon(+b)}">${n} ${NAME[b]}</span>`), ...Object.entries(r.ini || {}).map(([id, n]) => `<span class="${S.inv.filter(i => i.id === id).reduce((a, i) => a + (i.n || 1), 0) >= n ? '' : 'red'}"><img src="${itemIcon(id)}">${n} ${ITEMS[id].name}</span>`)].join(' ');
   const outIcon = r => r.out.b ? blockIcon(r.out.b) : itemIcon(r.out.i);
   let h = `<p class="cnote">${nb ? '<span class="green">Établi à côté : toutes les recettes.</span>' : 'Sans établi, seulement les recettes de base. Fabrique un <b>Établi</b> (4 planches) et pose-le.'}</p><div class="recipes">`;
-  RECIPES.forEach((r, i) => { const miss = missing(S, r, nb); h += `<div class="rcp${miss.length ? ' no' : ''}${i === craftSel ? ' sel' : ''}" data-i="${i}"><img src="${outIcon(r)}"><div><b>${r.name}${(r.out.n || 1) > 1 ? ' ×' + r.out.n : ''}</b>${r.bench ? ' <small class="gold">établi</small>' : ''}<br><small>${ing(r)}</small></div></div>`; });
-  const r = RECIPES[craftSel], miss = missing(S, r, nb), D = r.out.i ? ITEMS[r.out.i] : null;
-  h += `</div><div id="cdesc"><b>${r.name}</b> — ${D ? D.desc : 'Bloc : ' + NAME[r.out.b] + ' ×' + (r.out.n || 1) + '.'}${r.note ? ' ' + r.note : ''}<br>${miss.length ? '<span class="red">Il manque : ' + miss.map(m => m === 'établi' ? 'un établi à côté' : m[0] === 'b' && !isNaN(+m.slice(1)) ? NAME[+m.slice(1)] : ITEMS[m].name).join(', ') + '</span>' : '<button class="btn" id="cGo">FABRIQUER</button>'}</div>`;
+  if (!rcpVis(RECIPES[craftSel])) craftSel = 0;
+  RECIPES.forEach((r, i) => { if (!rcpVis(r)) return; const miss = missing(S, r, nb, nc); h += `<div class="rcp${miss.length ? ' no' : ''}${i === craftSel ? ' sel' : ''}" data-i="${i}"><img src="${outIcon(r)}"><div><b>${r.name}${(r.out.n || 1) > 1 ? ' ×' + r.out.n : ''}</b>${r.bench ? ' <small class="gold">établi</small>' : ''}${r.at ? ' <small class="gold">cabane</small>' : ''}<br><small>${ing(r)}</small></div></div>`; });
+  const r = RECIPES[craftSel], miss = missing(S, r, nb, nc), D = r.out.i ? ITEMS[r.out.i] : null;
+  h += `</div><div id="cdesc"><b>${r.name}</b> — ${D ? D.desc : 'Bloc : ' + NAME[r.out.b] + ' ×' + (r.out.n || 1) + '.'}${r.note ? ' ' + r.note : ''}<br>${miss.length ? '<span class="red">Il manque : ' + miss.map(m => m === 'établi' ? 'un établi à côté' : m === 'cabane' ? 'l’évaporateur de la cabane à sucre de Pépère' : m[0] === 'b' && !isNaN(+m.slice(1)) ? NAME[+m.slice(1)] : ITEMS[m].name).join(', ') + '</span>' : '<button class="btn" id="cGo">FABRIQUER</button>'}</div>`;
   $('craftbody').innerHTML = h;
   $('craftbody').querySelectorAll('.rcp').forEach(c => c.onclick = () => { craftSel = +c.dataset.i; audio.fx('ui'); renderCraft(); });
   const go = $('cGo'); if (go) go.onclick = () => { craft(RECIPES[craftSel].id); renderCraft(); };
 }
 function craft(id) {
-  const r = RECIPES.find(q => q.id === id); if (!r || missing(S, r, nearBench()).length) { audio.fx('deny'); return false; }
+  const r = RECIPES.find(q => q.id === id); if (!r || missing(S, r, nearBench(), nearCab()).length) { audio.fx('deny'); return false; }
   consume(S, r);
   if (r.out.b) S.blocks[r.out.b] = (S.blocks[r.out.b] || 0) + (r.out.n || 1) * (r.bench && G.tf.foreman ? 2 : 1); else addItem(r.out.i, r.out.n || 1, 0);
+  if (r.id === 'bouillir') { for (let k = 0; k < 14; k++) burst(G.P.x + (Math.random() - 0.5) * 2, G.P.y + 1.5, G.P.z + (Math.random() - 0.5) * 2, 0xf2f2f2, 2, 1.2, -1.5); banner('ÇA BOUILLE!', 'L’évaporateur fume : une canne de sirop de la coulée'); }
+  G.dirtyQ = true;
   S.stats.crafted++; audio.fx('craft'); toast('Fabriqué : ' + r.name + ((r.out.n || 1) > 1 ? ' ×' + r.out.n : '')); G.dirtyHot = true; questEvent('craft', id);
   return true;
 }

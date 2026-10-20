@@ -60,6 +60,9 @@ export const ITEMS = {
   tapis: { name: 'Tapis tressé', slot: 'meuble', desc: 'Fait de retailles de tissu, chaud sous les bas de laine.', price: 20 },
   acte: { name: 'Acte de propriété', slot: 'quete', desc: 'Un bout de terrain à l’est du village, à ton nom. Signé, paraphé, en trois copies.' },
   feuille: { name: 'Feuille d’érable rouge', slot: 'quete', desc: 'Une feuille parfaite, rouge comme une tuque.' },
+  // v5c : temps des sucres de Pépère (ramassé au printemps, bouilli à l'évaporateur de la cabane)
+  eau_erable: { name: 'Eau d’érable', slot: 'quete', desc: 'Claire comme de l’eau, à peine sucrée. Il en faut trois chaudières pour une canne de sirop.' },
+  sirop_coulee: { name: 'Sirop de la coulée', slot: 'quete', desc: 'Bouilli à l’évaporateur de Pépère, encore tiède. Pour la tire!' },
 };
 export const SHOPS = { montmagny: ['tourtiere_oie', 'poutine', 'sirop', 'tarte', 'raquettes', 'manteau'], charlevoix: ['fromage', 'tarte', 'sirop', 'tourtiere', 'raquettes', 'pic_fer', 'hache'], perce: ['guedille', 'poutine', 'bleuets', 'manteau', 'bottes', 'casque_hockey'], montreal: ['bagel', 'poutine', 'casque_chantier', 'dossard', 'grattoir', 'gants_travail', 'epaulettes'], etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau', 'dossard'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone', 'epaulettes'] };
 export const RARITY = [{ n: 'commun', c: '#e8e8e8', m: 1 }, { n: 'rare', c: '#5ab8ff', m: 1.25 }, { n: 'épique', c: '#d07aff', m: 1.55 }, { n: 'légendaire', c: '#ffa83a', m: 1.9 }];
@@ -150,9 +153,9 @@ export const QUESTS = {
   permis: { chap: 2, giver: 'lapaperasse', requires: ['cones'], title: 'Le formulaire B-52', type: 'collect', item: 'permis', n: 1, reward: { cash: 80, xp: 200, item: 'tuque_patrimoine' },
     intro: 'Un bureaucrate zombie est parti avec le formulaire B-52, en trois copies. Sans lui, personne peut bâtir. Les zombies traînent la nuit, mais il y en a le jour aussi, dans la campagne.',
     wait: 'Le formulaire B-52 : en trois copies, agrafé en haut à gauche. Un bureaucrate zombie l’a sur lui.', done: 'Parfait, tout est en règle! Voici une tuque du patrimoine, approuvée par le comité.' },
-  sirop: { giver: 'pepere', title: 'Le sirop de Pépère', type: 'collect', item: 'chaudiere', n: 5, reward: { cash: 50, xp: 150, item: 'mitaines', give: { sirop: 3 } },
-    intro: 'Bonjour mon jeune! Mes chaudières d’eau d’érable sont restées accrochées aux érables autour de la cabane. Ramène-m’en cinq avant que les ratons les trouvent.',
-    wait: 'Les chaudières sont autour de la cabane, au pied des érables.', done: 'Ça va faire du bon sirop! Tiens, des mitaines pis trois cannes de sirop.' },
+  sirop: { giver: 'pepere', title: 'Le sirop de Pépère', type: 'collect', item: 'chaudiere', n: 10, timer: 240, reward: { cash: 90, xp: 260, item: 'mitaines', give: { sirop: 4 } },
+    intro: 'Bonjour mon jeune! Mes chaudières d’eau d’érable sont restées accrochées partout dans l’érablière, pis les ratons rôdent autour. Ramène-m’en dix. Mais grouille : dès que t’en prends une, t’as quatre minutes avant que la sève gèle!',
+    wait: 'Les chaudières sont éparpillées loin dans l’érablière. Dix, en quatre minutes, sinon la sève gèle pis faut tout recommencer.', done: 'Dix chaudières, pas une de gelée! Ça va faire du bon sirop. Tiens, des mitaines pis quatre cannes de sirop.' },
   poutine: { giver: 'ginette', title: 'Les voleurs de poutine', type: 'kill', target: 'raton', n: 4, reward: { cash: 70, xp: 180, item: 'pelle' },
     intro: 'Mes poutines disparaissent! Des ratons laveurs masqués rôdent autour du village, surtout la nuit. Chasse-m’en quatre, pis je te donne ma vieille pelle.',
     wait: 'Les ratons, c’est des voleurs masqués. Ils sortent surtout le soir.', done: 'Merci! Tiens, ma pelle à neige. Elle a déneigé trois générations d’entrées.' },
@@ -214,26 +217,26 @@ Object.assign(QUESTS, {
   glissade: { giver: 'animatrice', season: 0, title: 'La butte à Frimousse', type: 'act', act: 'glissade', n: 3, reward: { cash: 40, xp: 140, give: { tire: 2 } },
     intro: 'C’est le carnaval du village! Frimousse le bonhomme de neige surveille la butte. Monte en haut, prends une traîne sauvage pis descends trois fois. Pas de freins, c’est normal.',
     wait: 'La butte est à côté de la patinoire, au sud du village. En haut : E (manette B, tactile GLISSE).', done: 'Trois descentes, pas une égratignure! Tiens, de la tire pour te réchauffer.' },
-  tire_printemps: { giver: 'pepere', season: 1, title: 'Le temps des sucres', type: 'craft', recipe: 'tire', n: 2, gift: { items: { sirop: 2 }, blocks: { 6: 4 } }, reward: { cash: 50, xp: 160, give: { sirop: 3 } },
-    intro: 'Les érables coulent en masse, la cabane bouille jour et nuit! Prends ce sirop pis cette neige propre : fais-moi deux tires sur la neige à l’atelier, que je goûte si t’as la main.',
-    wait: 'L’atelier (recette « Tire sur la neige ») : du sirop chaud sur de la neige.', done: 'Ah! Ça, c’est de la tire! T’es engagé pour l’an prochain.' },
+  tire_printemps: { giver: 'pepere', season: 1, title: 'Le temps des sucres', type: 'craft', recipe: 'tire_pepere', n: 2, reward: { cash: 80, xp: 240, give: { sirop: 4 } },
+    intro: 'Les érables coulent en masse! Cette année, c’est toi qui fais tout : ramasse l’eau d’érable dans les chaudières de l’érablière, fais-la bouillir à mon évaporateur, trouve de la neige propre à l’ombre de la cabane, pis fais-moi deux tires.',
+    wait: 'Trois chaudières d’eau d’érable par canne de sirop, bouillies à l’évaporateur de la cabane (atelier, « Faire bouillir »). La neige reste à l’ombre, au nord de la cabane.', done: 'Ah! Ça, c’est de la tire! De l’eau à la palette, t’as tout fait. T’es engagé pour l’an prochain.' },
   mouches_ete: { giver: 'animatrice', season: 2, title: 'Le fléau de juillet', type: 'kill', target: 'mouches', n: 8, reward: { cash: 60, xp: 180, give: { bleuets: 2 } },
     intro: 'L’été, c’est beau, mais les mouches noires ont pris le contrôle du terrain de balle. Va en écraser huit, dans le bois pis au bord de l’eau.',
     wait: 'Les mouches noires aiment le bois et les bords de l’eau, le jour.', done: 'Huit de moins! On va pouvoir finir la partie. Des bleuets pour la peine.' },
-  feuilles: { giver: 'pepere', season: 3, title: 'Les plus belles feuilles', type: 'collect', item: 'feuille', n: 6, reward: { cash: 50, xp: 160, give: { tarte: 1, sirop: 1 } },
-    intro: 'Mon petit-fils fait un herbier pour l’école. Ramasse-moi six belles feuilles rouges sous les érables, autour de la cabane. Les plus rouges!',
-    wait: 'Les feuilles sont tombées sous les érables, autour de la cabane à sucre.', done: 'Six beautés! Le petit va avoir la meilleure note de la classe.' },
+  feuilles: { giver: 'pepere', season: 3, title: 'Les plus belles feuilles', type: 'collect', item: 'feuille', n: 10, reward: { cash: 85, xp: 250, give: { tarte: 1, sirop: 2 } },
+    intro: 'Mon petit-fils fait un herbier pour l’école, pis son professeur est difficile. Ramasse-moi dix feuilles, mais juste les plus rouges : les brunes pis les jaunes, ça compte pas!',
+    wait: 'Seulement les feuilles rouge vif, éparpillées loin dans l’érablière. Laisse faire les brunes pis les jaunes.', done: 'Dix beautés, rouges comme une tuque! Le petit va avoir la meilleure note de la classe.' },
 });
 export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches', 'raton', 'orignal'], 3: ['raton', 'mouches', 'bureau'], 4: ['plow', 'mouches'], 0: ['trou', 'raton'], 5: ['bureau'] };
 // objectifs concrets affichés dans le suivi (quoi faire, où) ; foe = ennemi qui porte l'objet à ramasser
 const OBJ = {
   cones: 'Démolis des cônes-golems au chantier, au nord des remparts', permis: 'Bats des bureaucrates zombies (campagne, surtout la nuit) : l’un d’eux a le formulaire',
-  sirop: 'Ramasse les chaudières au pied des érables, autour de la cabane', poutine: 'Bats des ratons autour du village, surtout le soir',
+  sirop: 'Ramasse les chaudières éparpillées dans l’érablière (ratons!)', poutine: 'Bats des ratons autour du village, surtout le soir',
   pate: 'Ramasse les cannes de blé d’Inde aux travaux de la 175', nouvelles: 'Va chercher la gazette chez Gaston, à la Vieille-Ville',
   supreme: 'Bats le Cône Suprême au Grand Chantier, au nord-est', souffleuses: 'Bats des souffleuses à neige (campagne et collines, surtout la nuit)',
   goelands: 'Bats des goélands au-dessus du port de Chicoutimi', comite: 'Déloge le Comité au chantier de la 175',
   accordeon: 'Trouve l’accordéon sur les battures, à l’ouest de Montmagny', oies: 'Ramasse des plumes sur les battures', pinceaux: 'Ramasse les pinceaux autour du Belvédère',
-  terrain: 'Va voir ton terrain, à l’est du village (balisé)', glissade: 'Descends la butte en traîne sauvage, à côté de la patinoire', tire_printemps: 'Fabrique de la tire sur la neige à l’atelier', mouches_ete: 'Bats des mouches noires (bois, bord de l’eau)', feuilles: 'Ramasse les feuilles rouges sous les érables de la cabane',
+  terrain: 'Va voir ton terrain, à l’est du village (balisé)', glissade: 'Descends la butte en traîne sauvage, à côté de la patinoire', tire_printemps: 'Fais de la tire de Pépère à l’atelier', mouches_ete: 'Bats des mouches noires (bois, bord de l’eau)', feuilles: 'Ramasse seulement les feuilles rouge vif, loin dans l’érablière',
   casiers: 'Ramasse les casiers sur la grève de Percé', nids: 'Bats des nids-de-poule dans les rues autour de la place', piste: 'Bats des cônes-golems dans les rues de Montréal',
 };
 for (const k in OBJ) QUESTS[k].obj = OBJ[k];

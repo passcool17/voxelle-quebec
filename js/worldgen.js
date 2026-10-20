@@ -376,10 +376,22 @@ export function layout(s) {
     m.gates.push({ x: s.x, z: s.z - 34 - 3 }, { x: s.x, z: s.z + 34 + 3 });
   } else if (s.type === 'cabane') {
     m.npcs.push({ role: s.i === 1 && s.j === 0 ? 'pepere' : 'acericulteur', x: s.x + 1.5, z: s.z + 5 }, { role: 'villageois', x: s.x - 2.5, z: s.z + 7 });
-    for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283 + 0.3; m.items.push({ kind: 'chaudiere', x: s.x + Math.cos(a) * 13 + 0.5, z: s.z + Math.sin(a) * 13 + 0.5 + 1.2 }); }
-    // printemps : le temps des sucres, la cabane déborde de monde ; automne : feuilles rouges sous les érables
+    const pep = s.i === 1 && s.j === 0;
+    // éparpillé dans l'érablière : angle au hasard (graine de la cabane), rayon r0..r1 ; nudge = déplacé au sol libre au besoin (main.js)
+    const spot = (r0, r1) => { const a = r() * 6.283, d = r0 + r() * (r1 - r0); return { x: Math.floor(s.x + Math.cos(a) * d) + 0.5, z: Math.floor(s.z + 1.2 + Math.sin(a) * d) + 0.5, nudge: true }; };
+    if (!pep) for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283 + 0.3; m.items.push({ kind: 'chaudiere', x: s.x + Math.cos(a) * 13 + 0.5, z: s.z + Math.sin(a) * 13 + 0.5 + 1.2 }); }
+    else {
+      // v5c : 12 chaudières loin dans l'érablière (16 à 38 m), une sur trois gardée par des ratons ; clés à part (b…) : les vieilles parties gardent leur S.taken sans effet
+      for (let k = 0; k < 12; k++) m.items.push(Object.assign(spot(16, 38), { kind: 'chaudiere', id: 'b1,0:' + k, guard: k % 3 === 0 ? 1 + (k % 2) : 0 }));
+      // printemps : eau d'érable à bouillir (10, chaque printemps) et mottes de neige restées à l'ombre (8)
+      for (let k = 0; k < 10; k++) m.items.push(Object.assign(spot(12, 34), { kind: 'eau', id: 'e1,0:' + k, season: 1, yearly: true }));
+      for (let k = 0; k < 8; k++) { const a = Math.PI * (1.2 + 0.6 * k / 7); m.items.push({ kind: 'neige', id: 'n1,0:' + k, x: Math.floor(s.x + Math.cos(a) * (9 + (k % 3) * 3)) + 0.5, z: Math.floor(s.z + Math.sin(a) * (9 + (k % 3) * 3)) + 0.5, season: 1, yearly: true, nudge: true }); }
+      // automne : 14 feuilles bien rouges parmi 20 feuilles ternes (brunes, jaunes) qui ne comptent pas, de 8 à 42 m
+      for (let k = 0; k < 14; k++) m.items.push(Object.assign(spot(8, 42), { kind: 'feuille', id: 'f1,0:' + k, season: 3 }));
+      for (let k = 0; k < 20; k++) m.items.push(Object.assign(spot(6, 42), { kind: 'feuille_terne', id: 'g1,0:' + k, season: 3, tone: k % 2 }));
+    }
+    // printemps : le temps des sucres, la cabane déborde de monde
     for (let k = 0; k < 4; k++) m.npcs.push({ role: 'villageois', x: s.x - 4 + k * 2.6, z: s.z + 9 + (k & 1) * 1.5, season: 1, act: 'jase' });
-    if (s.i === 1 && s.j === 0) for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283 + 0.7; m.items.push({ kind: 'feuille', x: s.x + Math.cos(a) * 10 + 0.5, z: s.z + Math.sin(a) * 10 + 1.5, season: 3 }); }
   } else if (s.type === 'patinoire') {
     m.npcs.push({ role: 'animatrice', x: s.x - 12.5, z: s.z + 3.5 });
     for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x - 6 + k * 3, z: s.z + ((k & 1) ? 2 : -2), rink: k * 1.25 });

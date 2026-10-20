@@ -28,6 +28,9 @@ export const RECIPES = [
   { id: 'etabli', name: 'Établi', out: { b: B.BENCH, n: 1 }, inb: { [B.PLANK]: 4 }, note: 'Pose-le pour débloquer les recettes avancées.' },
   { id: 'flambeau', name: 'Flambeaux', out: { b: B.TORCH, n: 4 }, inb: { [B.PLANK]: 1 }, ini: { charbon: 1 } },
   { id: 'tire', name: 'Tire sur la neige', out: { i: 'tire', n: 2 }, inb: { [B.SNOW]: 2 }, ini: { sirop: 1 } },
+  // v5c : le temps des sucres de Pépère (visibles seulement pendant la quête) ; at = à faire sur place
+  { id: 'bouillir', name: 'Faire bouillir l’eau d’érable', out: { i: 'sirop_coulee', n: 1 }, ini: { eau_erable: 3 }, at: 'cabane', quest: 'tire_printemps', note: 'À l’évaporateur de la cabane à sucre de Pépère.' },
+  { id: 'tire_pepere', name: 'Tire de Pépère', out: { i: 'tire', n: 2 }, inb: { [B.SNOW]: 2 }, ini: { sirop_coulee: 1 }, quest: 'tire_printemps', note: 'Avec ton propre sirop de la coulée, sur ta neige.' },
   { id: 'pave', name: 'Pavé', out: { b: B.COBBLE, n: 2 }, inb: { [B.STONE]: 2 }, bench: true },
   { id: 'vitre', name: 'Fenêtres', out: { b: B.GLASS, n: 2 }, inb: { [B.SAND]: 2 }, ini: { charbon: 1 }, bench: true },
   { id: 'brique', name: 'Briques', out: { b: B.BRICK, n: 3 }, inb: { [B.DIRT]: 2, [B.SAND]: 1 }, ini: { charbon: 1 }, bench: true },
@@ -48,9 +51,10 @@ export const RECIPES = [
   { id: 'tapis', name: 'Tapis tressé', out: { i: 'tapis' }, inb: { [B.HAY]: 2 }, bench: true, note: 'Meuble : installe-le sur ton terrain.' },
 ];
 const cnt = (S, id) => S.inv.filter(i => i.id === id).reduce((a, i) => a + (i.n || 1), 0);
-export function missing(S, r, nearBench) {
+export function missing(S, r, nearBench, nearCab) {
   const out = [];
   if (r.bench && !nearBench) out.push('établi');
+  if (r.at === 'cabane' && !nearCab) out.push('cabane');
   for (const b in r.inb || {}) if ((S.blocks[b] || 0) < r.inb[b]) out.push('b' + b);
   for (const id in r.ini || {}) if (cnt(S, id) < r.ini[id]) out.push(id);
   return out;
