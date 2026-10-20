@@ -996,7 +996,7 @@ function questTargetPos(id) {
   if (best) return best;
   if (q.home) { const p = gen.reg.places[q.at || q.home]; return p ? { x: p.x, z: p.z } : null; }
   if (q.where) { const c = gen.cell(...q.where); return { x: c.x, z: c.z }; }
-  const Z = { terrain: () => gen.home, glissade: () => ({ x: gen.extras[0].butte.x0 + 0.5, z: gen.extras[0].z + 0.5, y: gen.home.h + 7 }), feuilles: () => gen.cell(1, 0), sirop: () => gen.cell(1, 0), poutine: () => gen.cell(-1, 0), permis: () => gen.cell(-1, 0), souffleuses: () => gen.cell(2, -1), pate: () => NP.travaux, comite: () => NP.travaux, goelands: () => NP.port }[id];
+  const Z = { terrain: () => gen.home, glissade: () => ({ x: gen.extras[0].butte.x0 + 0.5, z: gen.extras[0].z + 0.5, y: gen.home.h + 7 }), feuilles: () => gen.cell(1, 0), sirop: () => gen.cell(1, 0), tire_printemps: () => gen.cell(1, 0) /* la cabane à sucre de pépère */, mouches_ete: () => gen.cell(1, 0) /* érablière : mouches le jour */, poutine: () => gen.cell(-1, 0), permis: () => gen.cell(-1, 0), souffleuses: () => gen.cell(2, -1), pate: () => NP.travaux, comite: () => NP.travaux, goelands: () => NP.port }[id];
   const c = Z && Z(); return c ? { x: c.x, z: c.z } : null;
 }
 // ---------- premiers pas (tutoriel du premier lancement) ----------

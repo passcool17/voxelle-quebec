@@ -48,7 +48,8 @@ const inter = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y 
     const unpause = () => ev(() => { const G = __game.G; if (G.state === 'pause') { document.getElementById('pause').classList.add('hidden'); G.state = 'play'; } });
     await unpause(); const re = await tuto(); let skip;
     if (mob) { await p.waitForSelector('#tracker .tskip', { timeout: 5000 }); await p.tap('#tracker .tskip'); await W(300); skip = await tuto(); }
-    else { await press('Escape'); await W(300); const lb2 = await ev(() => document.getElementById('bTuto').textContent); await p.click('#bTuto'); await W(300); skip = (await tuto()) === -1 && /PASSER/.test(lb2) ? -1 : 'x'; await unpause(); }
+    else { await press('Escape'); await W(300); const lb2 = await ev(() => document.getElementById('bTuto').textContent); console.log('lb2', lb2, await ev(() => __game.S.tuto)); await p.click('#bTuto'); await W(300); skip = (await tuto()) === -1 && /PASSER/.test(lb2) ? -1 : 'x'; await unpause(); }
+    console.log(dev, 'revoir/passer', JSON.stringify({ lb1, re, skip, st: await ev(() => __game.G.state) }));
     ok[T('revoirPasser')] = /REVOIR/.test(lb1) && re === 0 && skip === -1;
     // ---- 2) suivi : chapitre 2, toutes les quêtes, après le ch. 7
     await ev(() => { const g = __game; g.S.q = { cones: { st: 'done', n: 6 }, permis: { st: 'active', n: 0 } }; g.G.dirtyQ = true; }); await W(1200);
