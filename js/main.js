@@ -453,7 +453,9 @@ function flushLabels() {
   if (G.t - hudRectT > 1) { hudRectT = G.t; hudRects = ['stats', 'mapbox', 'tracker', 'tTop', 'hotbar', 'bossbox'].map(id => $(id)).filter(e => e && e.offsetParent !== null).map(e => e.getBoundingClientRect()); }
   lblQ.sort((a, b) => a.d - b.d); const done = [];
   for (const L of lblQ) {
-    const el = L.el, w = el._w || (el.style.display === 'none' ? 90 : (el._w = Math.max(40, (el.querySelector('.nm') || el).offsetWidth))), h = 32;
+    // taille de toute l'étiquette (la bulle de jasette l'élargit et la grandit) : remesurée quand la bulle apparaît ou disparaît
+    const el = L.el; if (!el._w) { if (el.style.display === 'none') el.style.display = ''; el._w = Math.max(40, el.offsetWidth); el._h = Math.max(32, el.offsetHeight); } // mesurée même cachée (sinon taille par défaut une image)
+    const w = el._w, h = el._h;
     const x0 = L.sx - w / 2, x1 = L.sx + w / 2, y0 = L.sy - h, y1 = L.sy;
     const hide = hudRects.some(r => x1 > r.left && x0 < r.right && y1 > r.top && y0 < r.bottom) || done.some(o => x1 > o[0] && x0 < o[1] && y1 > o[2] && y0 < o[3]);
     if (hide) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
@@ -831,7 +833,7 @@ function npcsUpdate(dt) {
     else if (n.act === 'jase' && d >= 4) { if (Math.sin(n.t * 0.9) > 0.3) { A.armL.rotation.x = 0.8 + Math.sin(n.t * 5) * 0.4; A.armL.rotation.z = -0.2; } }
     if (n.role === 'villageois' && d < 7 && d > 2.6 && !(G.t - (n.greetT ?? -99) < 90) && G.state === 'play') { n.greetT = G.t; n.waveT = 1.6; say(n, pick(sky.dayF < 0.3 ? AMBIENT.nuit : AMBIENT.salut)); }
     if (n.waveT > 0) { n.waveT -= dt; A.armR.rotation.x = 2.7; A.armR.rotation.z = 0.35 + Math.sin(n.t * 14) * 0.35; }
-    if (n.sayEl.style.display !== 'none' && G.t > n.sayUntil) n.sayEl.style.display = 'none';
+    if (n.sayEl.style.display !== 'none' && G.t > n.sayUntil) { n.sayEl.style.display = 'none'; n.label._w = 0; }
     const mk = npcMark(n); n.mkEl.textContent = mk === 'ready' ? '?' : mk === 'avail' ? '!' : ''; n.mkEl.className = 'mk' + (mk === 'ready' ? ' rdy' : '');
     placeLabel(n.label, n.x, n.y + 2.3, n.z, 30);
     if (d < td && Math.abs(P.y - n.y) < 2.5) { td = d; talk = n; }
@@ -848,7 +850,7 @@ function npcsUpdate(dt) {
   else { pr.classList.add('hidden'); $('tTalk').classList.add('hidden'); }
 }
 const pick = a => a[(Math.random() * a.length) | 0];
-function say(n, txt) { n.sayEl.textContent = txt; n.sayEl.style.display = 'block'; n.sayUntil = G.t + 4.5; }
+function say(n, txt) { n.sayEl.textContent = txt; n.sayEl.style.display = 'block'; n.label._w = 0; n.sayUntil = G.t + 4.5; }
 // ---------- animaux d'ambiance : écureuils (fuient), chats de ruelle (en ville et au village), volée d'oies (le jour) ----------
 function critterSpawn(kind, x, z) { const M = critterModel(kind); scene.add(M.g); const c = { kind, M, x, z, y: world.ground(x, z), vx: 0, vz: 0, t: Math.random() * 9, yaw: Math.random() * 6.28, hopT: 0, pause: Math.random() * 2 }; G.critters.push(c); return c; }
 function crittersUpdate(dt) {
