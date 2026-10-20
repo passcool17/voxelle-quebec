@@ -45,12 +45,12 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-com
   ok(q.lbl && /Pistache/.test(q.lbl), 'étiquette « ' + q.lbl + ' »');
   const tps0 = q.tps; const far = await ev(() => [__game.G.P.x + 60, __game.G.P.z + 10]); await tp(far[0], far[1], 1500);
   q = await pet(); ok(q.d < 3.5 && q.tps > tps0, 'trop loin → il te rejoint (téléporté) : ' + q.d + ' m');
-  // ---------- 3. combat ----------
-  await calm();
+  // ---------- 3. combat (dans un champ dégagé) ----------
+  await tp(V.x + 30, V.z + 25, 1500); await calm();
   await ev(() => { const g = __game, P = g.G.P; const e = g.spawnEnemy('cone', P.x + 3, P.z + 2, { lvl: 1 }); e.hp = e.hpMax = 400; e.state = 'chase'; window.__foe = e; });
   await p.waitForFunction(() => __game.G.pet.hits >= 2, null, { timeout: 25000 }).catch(() => {});
   q = await pet(); ok(q.hits >= 2 && (await ev(() => __foe.hp < 400)), 'il attaque l’ennemi qui te poursuit : ' + q.hits + ' coups (cône ' + (await ev(() => Math.round(__foe.hp))) + '/400)');
-  await ev(() => { const G = __game.G, f = __foe, d = G.pet; G.camYaw = Math.atan2(d.z - f.z, -(d.x - f.x)); G.camPitch = 0.3; G.camDist = 5; G.P.x = (d.x + f.x) / 2 + Math.sin(G.camYaw) * 1.5; G.P.z = (d.z + f.z) / 2 + Math.cos(G.camYaw) * 1.5; }); await W(400); await shot('combat');
+  await ev(() => { const G = __game.G, f = __foe, d = G.pet; G.camYaw = Math.atan2(G.P.x - f.x, G.P.z - f.z) + 0.35; G.camPitch = 0.38; G.camDist = 6.5; }); await W(400); await shot('combat');
   await ev(() => { __game.G.pet.hp = 1; }); await p.waitForFunction(() => __game.G.pet.ko > 0, null, { timeout: 30000 }).catch(() => {});
   q = await pet(); ok(q.ko > 0 && /K\.-O\./.test(await ev(() => __game.G.pet.nm.textContent)), 'K.-O. (' + q.ko + ' s), pas de mort');
   await calm(); await ev(() => { __game.G.pet.ko = 0.3; }); await W(1200);
@@ -98,7 +98,7 @@ const PORT = +(process.env.PORT || 8937), PFX = process.argv[2] || 'apres-v6-com
   await m.goto(`http://localhost:${PORT}/`); await m.evaluate(() => { localStorage.clear(); localStorage.setItem('voxelle-quebec-opts', JSON.stringify({ qual: 'mid', view: 3, fsAuto: false })); }); await m.reload(); await m.waitForTimeout(2500);
   await m.tap('#bNew'); await m.tap('#bPersoGo'); await m.waitForFunction(() => __game.G.state === 'play', null, { timeout: 120000 });
   await m.evaluate(() => { const g = __game; g.S.tuto = -1; g.G.spawnT = 1e9; g.petGive('chien'); g.G.dirtyQ = true; }); await m.waitForTimeout(4500);
-  await m.evaluate(() => { const G = __game.G; G.camYaw = G.P.yaw + 2.3; G.camPitch = 0.35; G.camDist = 4.5; }); await m.waitForTimeout(1000); await shot('mobile', m);
+  await m.evaluate(() => { const G = __game.G; G.camYaw = G.P.yaw + 2.6; G.camPitch = 0.4; G.camDist = 6.5; }); await m.waitForTimeout(1000); await shot('mobile', m);
   await m.evaluate(() => { const g = __game, P = g.G.P; const e = g.spawnEnemy('raton', P.x + 1.5, P.z - 1, { lvl: 1 }); e.hp = Math.ceil(e.hpMax * 0.36) + 1; g.damageEnemy(e, 2, 0, 0, 0); e.docile = 30; e.vx = e.vz = 0; g.G.camPitch = 0.35; g.G.camDist = 5; }); await m.waitForTimeout(1500);
   const mb = await m.evaluate(() => { const t = document.getElementById('tTalk'), p = __game.G.pet, P = __game.G.P; return { hid: t.classList.contains('hidden'), txt: t.textContent, pet: !!p, d: p && +Math.hypot(p.x - P.x, p.z - P.z).toFixed(1) }; });
   ok(mb.pet && mb.d < 4 && !mb.hid && mb.txt === 'APPRIVOISE', 'téléphone : Pistache suit (' + mb.d + ' m), bouton « ' + mb.txt + ' » près du raton docile');
