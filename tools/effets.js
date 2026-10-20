@@ -38,11 +38,11 @@ const fails = []; const ok = (c, m) => { console.log((c ? 'OK   ' : 'ÉCHEC ') +
   const rainU = await ev(() => __game.sky.rain); ok(rainU > 0.9, 'pluie active pour les ronds sur l’eau (' + rainU.toFixed(2) + ')');
   await shot('eau-pluie');
   // 3. érablière : feuilles qui tombent
-  if (spots.er) { await go(spots.er[0], spots.er[1]); await cam(0.4, 0.2, 7, 0.42); await gw(5);
+  if (spots.er) { await ev(() => __game.setSeason && __game.setSeason(3)); /* v4 : la pluie de feuilles, c'est l'automne */ await go(spots.er[0], spots.er[1]); await cam(0.4, 0.2, 7, 0.42); await gw(5);
     const L = await ev(() => ({ v: __game.amb.leaf.p.visible, a: __game.amb.leafA })); ok(L.v && L.a > 0.5, 'feuilles d’érable qui tombent (alpha ' + L.a.toFixed(2) + ')'); await shot('erabliere-feuilles'); }
   else ok(false, 'aucune érablière trouvée');
   // 4. lucioles la nuit en campagne
-  if (spots.ca) { await go(spots.ca[0], spots.ca[1]); await cam(0.8, 0.12, 6, 0.03); await gw(6);
+  if (spots.ca) { await ev(() => __game.setSeason && __game.setSeason(2)); /* lucioles : l'été */ await go(spots.ca[0], spots.ca[1]); await cam(0.8, 0.12, 6, 0.03); await gw(6);
     const F = await ev(() => ({ v: __game.amb.fly.p.visible, a: __game.amb.flyA })); ok(F.v && F.a > 0.4, 'lucioles la nuit (alpha ' + F.a.toFixed(2) + ')'); await shot('lucioles'); }
   // 5. brume du matin au village
   const vil = await ev(() => { const c = __game.gen.cell(-1, 0); return [c.x, c.z]; });

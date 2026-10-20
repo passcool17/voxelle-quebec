@@ -55,8 +55,8 @@ export function meshChunk(pad, S, H, sc, ox, oz, sprites) {
   for (let y = 0; y < H; y++) { let any = false; for (let z = 0; z < S && !any; z++) for (let x = 0; x < S; x++) { const b = pad[(x + 1) + (z + 1) * P + y * PP]; if (b && b !== B.BEDROCK) { any = true; break; } } if (any) { if (y < ymin) ymin = y; ymax = y; } }
   if (ymin > ymax) return { op: op.out(), wa: wa.out(), gl: gl.out() };
   ymin = Math.max(0, ymin - 1);
-  // dessus de chaque colonne (plus haut voxel opaque) : seules ces faces reçoivent la neige d'hiver
-  const ctop = new Int16Array(S * S); for (let z = 0; z < S; z++) for (let x = 0; x < S; x++) { let y = ymax; while (y > 0 && !OPAQUE[pad[(x + 1) + (z + 1) * P + y * PP]]) y--; ctop[x + z * S] = y; }
+  // dessus de chaque colonne (plus haut voxel opaque ou eau : le fond sous la glace reste sans neige) : seules ces faces reçoivent la neige d'hiver
+  const ctop = new Int16Array(S * S); for (let z = 0; z < S; z++) for (let x = 0; x < S; x++) { let y = ymax; while (y > 0 && !OPAQUE[pad[(x + 1) + (z + 1) * P + y * PP]] && pad[(x + 1) + (z + 1) * P + y * PP] !== B.WATER) y--; ctop[x + z * S] = y; }
   const mask = new Int32Array(Math.max(S, H) * Math.max(S, H));
   // axes : a (normale), u, v ; signe du produit u×v par rapport à +a
   const AX = [[0, 2, 1, -1], [1, 0, 2, -1], [2, 0, 1, 1]];

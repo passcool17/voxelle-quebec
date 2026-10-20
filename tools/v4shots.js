@@ -33,7 +33,7 @@ const SAISONS = ['hiver', 'printemps', 'ete', 'automne'];
       // 2) hiver : patinoire au sud du village, puis debout sur le fleuve
       await season(0);
       await go(V.vx - 2, V.vz + 19, Math.PI, 0.32, 8, 3000); await shot('patinoire');
-      await go(V.vx + 6, V.rz - V.rw * 0.4, Math.PI * 0.85, 0.2, 7, 3000); await shot('fleuve');
+      await go(V.vx + 6, V.rz - V.rw * 0.4, Math.PI * 0.85, 0.2, 7, 3000); await ev(() => { const g = __game, P = g.G.P; P.y = g.world.ground(P.x, P.z) + 0.05; P.vy = 0; }); await W(1500); await shot('fleuve'); // sur l'eau (v3 : à la nage) / la glace (v4)
       await season(2);
     }
     // 3) la cabane meublée (terrain à l'est du village), intérieur
