@@ -16,9 +16,9 @@ export class Ambiance {
     this.leaf = mk(mobile ? 40 : 90, 0.14, THREE.NormalBlending, [0xd8481e, 0xe8902a, 0xf2c12e, 0xb02a14]);
     this.flyA = 0; this.leafA = 0;
   }
-  // night 0..1, forest : feuillus/conifères autour, maple : érablière (feuilles rouges)
-  update(dt, P, t, night, forest, maple, weather) {
-    const tf = night * (forest ? 1 : 0.5) * (1 - weather), tl = (maple ? 1 : forest ? 0.35 : 0) * (1 - night * 0.5);
+  // night 0..1, forest : feuillus/conifères autour, leaf : feuilles qui tombent 0..1 (saison et lieu), fly : lucioles selon la saison
+  update(dt, P, t, night, forest, leaf, weather, fly = 1) {
+    const tf = night * (forest ? 1 : 0.5) * (1 - weather) * fly, tl = leaf * (1 - night * 0.5);
     this.flyA += (tf - this.flyA) * Math.min(1, dt * 0.6); this.leafA += (tl - this.leafA) * Math.min(1, dt * 0.6);
     for (const [S, a, fall] of [[this.fly, this.flyA, false], [this.leaf, this.leafA, true]]) {
       S.p.visible = a > 0.02; if (!S.p.visible) continue; S.m.opacity = a * (fall ? 0.95 : 0.9 * (0.6 + 0.4 * Math.sin(t * 3)));

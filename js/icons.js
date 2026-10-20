@@ -50,6 +50,14 @@ const ART = {
   grattoir: ['............', '.uuuuuuu....', '.wwwwwwwu...', '..uuuuuuu...', '.....uu.....', '.....uu.....', '.....rr.....', '.....rr.....', '.....rr.....', '.....rr.....', '............', '............'],
   raquettes: ['............', '..bbb..bbb..', '.b.k.bb.k.b.', '.bkkkbbkkkb.', '.b.k.bb.k.b.', '.bkkkbbkkkb.', '.b.k.bb.k.b.', '..bbb..bbb..', '...b....b...', '...b....b...', '............', '............'],
   tire: ['.........cC.', '........cCc.', '.......cCc..', '......cCc...', '......Cc....', '.....b......', '....b.......', '...b........', '..b.........', '.b..........', 'b...........', '............'],
+  lit: ['............', '............', 'B...........', 'Bww.........', 'BwwrruuyyrrB', 'BwwrruuyyrrB', 'BBBBBBBBBBBB', 'B..........B', 'B..........B', '............', '............', '............'],
+  coffre_m: ['............', '............', '..bbbbbbbb..', '.bBbbbbbbBb.', '.bBbbbbbbBb.', '.kkkkekkkkk.', '.bBbbbbbbBb.', '.bBbbbbbbBb.', '.bBbbbbbbBb.', '.bbbbbbbbbb.', '............', '............'],
+  poele: ['........kk..', '........kk..', '........kk..', '........kk..', '..nnnnnnnnn.', '..nSSSSSSSn.', '..nnnnnnnnn.', '..nnoooonnn.', '..nnoyyonnn.', '..nnnnnnnnn.', '..n.......n.', '............'],
+  table: ['............', '............', '............', '.....wc.....', '.bbbbbbbbbb.', '.BBBBBBBBBB.', '..B......B..', '..B......B..', '..B......B..', '..B......B..', '............', '............'],
+  chaise: ['............', '...bbbb.....', '...b..b.....', '...bbbb.....', '...b..b.....', '...bbbbbbb..', '...BBBBBBB..', '...B.....B..', '...B.....B..', '.BBBBBBBBBBB', '............', '............'],
+  cadre: ['............', '.BBBBBBBBBB.', '.BggggggggB.', '.BgegggegB.', '.BgegggegB.', '.BgggggggB.', '.BgggegggB.', '.BBBBBBBBBB.', '..bbbbbbbb..', '..b......b..', '..b......b..', '............'],
+  tapis: ['............', '............', '............', '.rrrrrrrrrr.', '.pppppppppp.', '.uuuuuuuuuu.', '.pppppppppp.', '.gggggggggg.', '.pppppppppp.', '.cccccccccc.', '............', '............'],
+  feuille: ['.....r......', '....rrr.....', '.r..rrr..r..', '.rr.rrr.rr..', '..rrrrrrr...', 'rrrrrrrrrrr.', '.rrrrrrrrr..', '...rrrrr....', '..r..m..r...', '.....m......', '.....m......', '............'],
   glider: ['............', 'rrruurryyrrr', '.rruurryyrr.', '..ruurryyr..', '...uurryy...', '....rryy....', '.....rr.....', '.....BB.....', '....B..B....', '...B....B...', '............', '............'],
 };
 export function itemIcon(id) {

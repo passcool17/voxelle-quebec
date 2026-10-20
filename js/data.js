@@ -50,6 +50,16 @@ export const ITEMS = {
   raquettes: { name: 'Raquettes', slot: 'pieds', def: 2, spd: 0.09, desc: 'Comme pépère dans le bois. Vont plus vite que les bottes.', price: 60 },
   tire: { name: 'Tire sur la neige', slot: 'conso', heal: 30, buff: 10, desc: 'Sirop bouillant sur la neige, roulé sur un bâton. Rend 30 PV et donne de la vitesse.', price: 14 },
   tarte: { name: 'Tarte aux bleuets', slot: 'conso', heal: 70, buff: 15, desc: 'Rend 70 PV et donne de la vitesse. Tache les dents.', price: 30 },
+  // ta cabane : meubles (s'installent sur ton terrain, depuis le sac) et quêtes de saison
+  lit: { name: 'Lit à courtepointe', slot: 'meuble', desc: 'Dors jusqu’au matin, reprends tes forces, et c’est là que tu te réveilles si tu tombes au combat.', price: 60 },
+  coffre_m: { name: 'Coffre de cèdre', slot: 'meuble', desc: 'Range ton stock à la maison. Le contenu reste même si tu changes de saison.', price: 40 },
+  poele: { name: 'Poêle à bois', slot: 'meuble', desc: 'Chauffe la cabane : tu reprends des forces deux fois plus vite chez toi.', price: 70 },
+  table: { name: 'Table de cuisine', slot: 'meuble', desc: 'Une bonne table en pin, pour la soupe aux pois.', price: 25 },
+  chaise: { name: 'Chaise berçante', slot: 'meuble', desc: 'Elle berce toute seule quand personne regarde.', price: 15 },
+  cadre: { name: 'Cadre des trophées', slot: 'meuble', desc: 'Un trophée par boss vaincu. Le mur parle pour toi.', price: 30 },
+  tapis: { name: 'Tapis tressé', slot: 'meuble', desc: 'Fait de retailles de tissu, chaud sous les bas de laine.', price: 20 },
+  acte: { name: 'Acte de propriété', slot: 'quete', desc: 'Un bout de terrain à l’est du village, à ton nom. Signé, paraphé, en trois copies.' },
+  feuille: { name: 'Feuille d’érable rouge', slot: 'quete', desc: 'Une feuille parfaite, rouge comme une tuque.' },
 };
 export const SHOPS = { montmagny: ['tourtiere_oie', 'poutine', 'sirop', 'tarte', 'raquettes', 'manteau'], charlevoix: ['fromage', 'tarte', 'sirop', 'tourtiere', 'raquettes', 'pic_fer', 'hache'], perce: ['guedille', 'poutine', 'bleuets', 'manteau', 'bottes', 'casque_hockey'], montreal: ['bagel', 'poutine', 'casque_chantier', 'dossard', 'grattoir', 'gants_travail', 'epaulettes'], etape: ['pate', 'poutine', 'tarte', 'sirop', 'tourtiere', 'bottes', 'manteau', 'dossard'], chicoutimi: ['bleuets', 'tarte', 'poutine', 'tourtiere', 'mitaines_doublees', 'pelle_alu', 'baton_carbone', 'epaulettes'] };
 export const RARITY = [{ n: 'commun', c: '#e8e8e8', m: 1 }, { n: 'rare', c: '#5ab8ff', m: 1.25 }, { n: 'épique', c: '#d07aff', m: 1.55 }, { n: 'légendaire', c: '#ffa83a', m: 1.9 }];
@@ -93,9 +103,13 @@ export const NPCS = {
   gardienne: { name: 'Madeleine, gardienne du phare', look: { coat: 0xc02020, hat: 0xf2f2f2, hatBand: 0xc02020, pom: 0xc02020, hair: 0xb8b8c0, sash: false } },
   contremaitre: { name: 'Raymond, contremaître de la Ville', quest: true, look: { coat: 0xff7a1a, hatType: 'casque', hair: 0x5a3a22, beard: 0x5a3a22, sash: false, mitt: 0xc89a5a } },
   cycliste: { name: 'Josée, cycliste du Plateau', quest: true, look: { coat: 0x2c8a4a, hatType: 'casque', hair: 0xc89a3a, queue: true, cils: true, sash: false, mitt: 0x222222 } },
+  notaire: { name: 'Me Hortense Brisebois, notaire', quest: true, look: { coat: 0x2b2f3a, hatType: 'bun', hair: 0x6a4a3a, glasses: true, sash: false, mitt: 0xf0c8a0 } },
+  animatrice: { name: 'Mireille, loisirs du village', quest: true, look: { coat: 0x2c8a8a, hat: 0xf2c12e, pom: 0xf2f2f2, hair: 0x2a1e18, sash: false } },
   guide: { name: 'Guide du Fjordorama', look: { coat: 0x2c8a8a, hatType: 'none', hair: 0x2a2a2a, glasses: true, sash: false } },
 };
 export const ROLE_CHAT = {
+  notaire: ['Un acte notarié, c’est comme une tourtière : ça se signe en trois exemplaires.', 'Votre clôture est mitoyenne avec personne. C’est rare, profitez-en.'],
+  animatrice: ['L’hiver : patinoire pis butte. L’été : dek hockey. Le reste du temps : réunions du comité des loisirs.', 'Frimousse revient chaque hiver. On sait pas d’où. On pose pas de questions.'],
   accordeoniste: ['Un bon reel, ça part les pieds tout seuls. Même les oies tapent du pied.', 'Le Carrefour mondial? Y’a plus d’accordéons que de voitures, certains week-ends.'],
   oiseleur: ['Montmagny, capitale de l’oie blanche! Des dizaines de milliers chaque automne. Pis chaque printemps. Pis… souvent en juin aussi.', 'Compte-les pas toutes. Y’en a qui reviennent pour le Festival.'],
   peintre: ['Le fleuve change de bleu aux cinq minutes. Moi, je change de pinceau aux cinq minutes.', 'Les côtes de Charlevoix sont tellement à pic que mon chevalet roule tout seul.'],
@@ -192,6 +206,24 @@ Object.assign(QUESTS, {
     wait: 'Le Comité tient sa réunion au chantier de la 175, au sud de L’Étape. Saute par-dessus les ondes, roule hors des charges.',
     done: 'Le Comité est dissous! Pas de procès-verbal, pas de prolongation. La 175 est libre, pis toute la province respire. Tiens : le Casque doré du Grand Plan. Y l’avait commandé pour lui-même. En trois exemplaires.' },
 });
+// v4 : ta cabane et les saisons (season : 0 hiver, 1 printemps, 2 été, 3 automne ; la quête ne s'offre qu'en saison)
+Object.assign(QUESTS, {
+  terrain: { giver: 'notaire', requires: ['cones'], title: 'Ton bout de terrain', type: 'visit', n: 1, give: 'acte', reward: { cash: 0, xp: 120, give: { lit: 1, coffre_m: 1 } },
+    intro: 'Ah, te voilà! Ta grand-tante Rose-Aimée t’a laissé un bout de terrain juste à l’est du village, avec un camp en bois rond. Tout est signé. Va voir ça, la clôture est en bon état… presque.',
+    wait: 'Ton terrain est à l’est du village, la clôture de bois. Il est marqué sur ta carte.', done: 'Bienvenue chez vous! Le lit et le coffre sont dans ton sac : installe-les où tu veux sur ton terrain.' },
+  glissade: { giver: 'animatrice', season: 0, title: 'La butte à Frimousse', type: 'act', act: 'glissade', n: 3, reward: { cash: 40, xp: 140, give: { tire: 2 } },
+    intro: 'C’est le carnaval du village! Frimousse le bonhomme de neige surveille la butte. Monte en haut, prends une traîne sauvage pis descends trois fois. Pas de freins, c’est normal.',
+    wait: 'La butte est à côté de la patinoire, au sud du village. En haut : E (manette B, tactile GLISSE).', done: 'Trois descentes, pas une égratignure! Tiens, de la tire pour te réchauffer.' },
+  tire_printemps: { giver: 'pepere', season: 1, title: 'Le temps des sucres', type: 'craft', recipe: 'tire', n: 2, gift: { items: { sirop: 2 }, blocks: { 6: 4 } }, reward: { cash: 50, xp: 160, give: { sirop: 3 } },
+    intro: 'Les érables coulent en masse, la cabane bouille jour et nuit! Prends ce sirop pis cette neige propre : fais-moi deux tires sur la neige à l’atelier, que je goûte si t’as la main.',
+    wait: 'L’atelier (recette « Tire sur la neige ») : du sirop chaud sur de la neige.', done: 'Ah! Ça, c’est de la tire! T’es engagé pour l’an prochain.' },
+  mouches_ete: { giver: 'animatrice', season: 2, title: 'Le fléau de juillet', type: 'kill', target: 'mouches', n: 8, reward: { cash: 60, xp: 180, give: { bleuets: 2 } },
+    intro: 'L’été, c’est beau, mais les mouches noires ont pris le contrôle du terrain de balle. Va en écraser huit, dans le bois pis au bord de l’eau.',
+    wait: 'Les mouches noires aiment le bois et les bords de l’eau, le jour.', done: 'Huit de moins! On va pouvoir finir la partie. Des bleuets pour la peine.' },
+  feuilles: { giver: 'pepere', season: 3, title: 'Les plus belles feuilles', type: 'collect', item: 'feuille', n: 6, reward: { cash: 50, xp: 160, give: { tarte: 1, sirop: 1 } },
+    intro: 'Mon petit-fils fait un herbier pour l’école. Ramasse-moi six belles feuilles rouges sous les érables, autour de la cabane. Les plus rouges!',
+    wait: 'Les feuilles sont tombées sous les érables, autour de la cabane à sucre.', done: 'Six beautés! Le petit va avoir la meilleure note de la classe.' },
+});
 export const CONTRACT_TARGETS = { 1: ['trou', 'raton', 'bureau'], 2: ['mouches', 'raton', 'orignal'], 3: ['raton', 'mouches', 'bureau'], 4: ['plow', 'mouches'], 0: ['trou', 'raton'], 5: ['bureau'] };
 // objectifs concrets affichés dans le suivi (quoi faire, où) ; foe = ennemi qui porte l'objet à ramasser
 const OBJ = {
@@ -201,6 +233,7 @@ const OBJ = {
   supreme: 'Bats le Cône Suprême au Grand Chantier, au nord-est', souffleuses: 'Bats des souffleuses à neige (campagne et collines, surtout la nuit)',
   goelands: 'Bats des goélands au-dessus du port de Chicoutimi', comite: 'Déloge le Comité au chantier de la 175',
   accordeon: 'Trouve l’accordéon sur les battures, à l’ouest de Montmagny', oies: 'Ramasse des plumes sur les battures', pinceaux: 'Ramasse les pinceaux autour du Belvédère',
+  terrain: 'Va voir ton terrain, à l’est du village (balisé)', glissade: 'Descends la butte en traîne sauvage, à côté de la patinoire', tire_printemps: 'Fabrique de la tire sur la neige à l’atelier', mouches_ete: 'Bats des mouches noires (bois, bord de l’eau)', feuilles: 'Ramasse les feuilles rouges sous les érables de la cabane',
   casiers: 'Ramasse les casiers sur la grève de Percé', nids: 'Bats des nids-de-poule dans les rues autour de la place', piste: 'Bats des cônes-golems dans les rues de Montréal',
 };
 for (const k in OBJ) QUESTS[k].obj = OBJ[k];

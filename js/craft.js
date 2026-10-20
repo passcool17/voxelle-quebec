@@ -38,6 +38,14 @@ export const RECIPES = [
   { id: 'grattoir', name: 'Grattoir à pare-brise', out: { i: 'grattoir' }, inb: { [B.PLANK]: 1 }, ini: { fer: 2 }, bench: true },
   { id: 'raquettes', name: 'Raquettes', out: { i: 'raquettes' }, inb: { [B.PLANK]: 3, [B.LOG]: 1 }, bench: true },
   { id: 'cone', name: 'Cône recyclé', out: { b: B.CONE, n: 2 }, ini: { plastique: 2 }, bench: true, note: 'Les cônes-golems laissent du plastique orange.' },
+  // meubles de ta cabane (à installer sur ton terrain, depuis le sac)
+  { id: 'lit', name: 'Lit à courtepointe', out: { i: 'lit' }, inb: { [B.PLANK]: 6, [B.HAY]: 2 }, bench: true, note: 'Meuble : installe-le sur ton terrain (sac → INSTALLER).' },
+  { id: 'coffre_m', name: 'Coffre de cèdre', out: { i: 'coffre_m' }, inb: { [B.PLANK]: 8 }, ini: { fer: 1 }, bench: true, note: 'Meuble : installe-le sur ton terrain.' },
+  { id: 'poele', name: 'Poêle à bois', out: { i: 'poele' }, inb: { [B.COBBLE]: 2 }, ini: { fer: 4 }, bench: true, note: 'Meuble : installe-le sur ton terrain.' },
+  { id: 'table', name: 'Table de cuisine', out: { i: 'table' }, inb: { [B.PLANK]: 4 }, bench: true, note: 'Meuble : installe-le sur ton terrain.' },
+  { id: 'chaise', name: 'Chaise berçante', out: { i: 'chaise' }, inb: { [B.PLANK]: 3 }, bench: true, note: 'Meuble : installe-la sur ton terrain.' },
+  { id: 'cadre', name: 'Cadre des trophées', out: { i: 'cadre' }, inb: { [B.PLANK]: 3, [B.GLASS]: 1 }, bench: true, note: 'Montre un trophée par boss vaincu.' },
+  { id: 'tapis', name: 'Tapis tressé', out: { i: 'tapis' }, inb: { [B.HAY]: 2 }, bench: true, note: 'Meuble : installe-le sur ton terrain.' },
 ];
 const cnt = (S, id) => S.inv.filter(i => i.id === id).reduce((a, i) => a + (i.n || 1), 0);
 export function missing(S, r, nearBench) {

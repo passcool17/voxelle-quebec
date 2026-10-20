@@ -15,6 +15,9 @@ import { blockIcon, itemIcon } from './icons.js';
 import { mulberry, smooth } from './noise.js';
 import { DUN, dunPlan, dunInside, dunRoomAt } from './donjons.js';
 import * as FS from './fullscreen.js';
+import { SEASON_U } from './materials.js';
+import { SAISONS, DAYS, seasonOf, dayInSeason, seasonParams, weatherPick, FLIES, LEAVES } from './saisons.js';
+import { FURN_ACT, inHome, inCabin, moveStack, CHEST_MAX, furnModel, winterDecor, sledModel } from './cabane.js';
 
 const $ = id => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -55,7 +58,8 @@ function addBlob(g, r) { const b = new THREE.Mesh(blobGeo, blobMat); b.scale.set
 const G = { state: 'title', t: 0, P: null, enemies: [], npcs: new Map(), pickups: [], projs: [], parts: [], rings: [], critters: [], flock: null, flockT: 25, sayT: 4, hitstop: 0, shake: 0, dbg: { fin: 0, hs: 0 }, camps: new Map(), spawnT: 0, saveT: 0, frameAvg: 16, lastStruct: null, weatherT: 60, fps: 60, regSeen: {}, regKey: null, car: null, drive: false, mapZ: 0 };
 function freshSave() {
   return { v: 2, pos: [gen.VX + 2.5, gen.VH + 1, gen.VZ + 10.5], yaw: Math.PI, hp: 100, lvl: 1, xp: 0, cash: 15, inv: [{ id: 'poutine', n: 3 }], equip: { arme: { id: 'baton' }, tete: { id: 'tuque' }, mains: null, corps: null, pieds: null },
-    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, tuto: 0, dunSeen: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0, crafted: 0, mined: 0 }, glider: true };
+    weapons: [{ id: 'baton' }], wi: 0, blocks: { [B.PLANK]: 96, [B.COBBLE]: 64, [B.LAMP]: 16, [B.GLASS]: 24, [B.LOG]: 6 }, hot: 0, q: {}, contract: null, contractsDone: 0, bureauKills: 0, taken: {}, dun: {}, bossDead: false, time: 0.32, edits: {}, tuto: 0, dunSeen: {}, stats: { kills: 0, blocks: 0, placed: 0, glide: 0, dist: 0, crafted: 0, mined: 0 }, glider: true,
+    day: 2 * DAYS, home: false, furn: [], chest: [], spawn: null, homeT: -9, restedTo: 0 }; // v4 : jour de jeu (début de l'été), ta cabane
 }
 let S = null; // sauvegarde active
 function loadSave() {
@@ -70,6 +74,8 @@ function normSave(s) {
   for (const k in f.stats) if (s.stats[k] == null) s.stats[k] = 0;
   s.stats.crafted = s.stats.crafted || 0; s.stats.mined = s.stats.mined || 0; if (!s.tal || typeof s.tal !== 'object') s.tal = {};
   if (typeof s.tuto !== 'number') s.tuto = -1; // vieille partie : pas de premiers pas forcés (Pause → Revoir)
+  if (typeof s.day !== 'number') s.day = f.day; for (const k of ['furn', 'chest']) if (!Array.isArray(s[k])) s[k] = []; // v4 : saisons, cabane
+  s.home = !!s.home; if (typeof s.homeT !== 'number') s.homeT = -9; if (typeof s.restedTo !== 'number') s.restedTo = 0; if (!Array.isArray(s.spawn)) s.spawn = null;
   return s;
 }
 function writeSave() {
@@ -110,7 +116,7 @@ function pollPad() {
   input.gp = p; if (!p) return;
   const b = i => p.buttons[i] && p.buttons[i].pressed, prev = input.gpPrev, now = p.buttons.map(x => x.pressed);
   const edge = i => now[i] && !prev[i];
-  if (edge(0)) pressed.add('Space'); if (edge(1)) pressed.add('KeyE'); if (edge(2)) pressed.add('KeyR'); if (edge(3)) pressed.add('KeyQ');
+  input.gpA = edge(0); if (edge(0)) pressed.add('Space'); if (edge(1)) pressed.add('KeyE'); if (edge(2)) pressed.add('KeyR'); if (edge(3)) pressed.add('KeyQ');
   if (edge(5)) input.gpBrkP = true; if (edge(6)) input.rmbP = true; if (edge(9)) pressed.add('Escape'); if (edge(8)) pressed.add('KeyI');
   if (edge(14)) input.wheel -= 1; if (edge(15)) input.wheel += 1; if (edge(12)) pressed.add('KeyJ'); if (edge(13)) pressed.add('KeyM'); if (edge(10)) pressed.add('KeyC');
   input.gpAtk = b(7); input.gpRun = b(4); input.gpJump = b(0); input.gpBrk = b(5);
@@ -194,7 +200,7 @@ function playerUpdate(dt) {
   const s = Math.sin(G.camYaw), c = Math.cos(G.camYaw);
   // direction voulue dans le monde (avant = -z caméra)
   const wx = mx * c + mz * s, wz = -mx * s + mz * c, mv = Math.hypot(wx, wz);
-  const inWater = world.get(P.x, P.y + 0.5, P.z) === B.WATER, headWater = world.get(P.x, P.y + 1.4, P.z) === B.WATER;
+  const inWater = !G.frozen && world.get(P.x, P.y + 0.5, P.z) === B.WATER, under = world.get(P.x, P.y - 0.2, P.z), icy = G.frozen && (under === B.WATER || under === B.RINK);
   const canRun = run && P.stam > 0.05 && mv > 0.1 && !P.gliding;
   if (canRun) P.stam = Math.max(0, P.stam - dt * 0.18 * G.tf.runCost); else P.stam = Math.min(1, P.stam + dt * (P.ground ? 0.25 : 0.1));
   let sp = (canRun ? 8.4 : 5.4) * (1 + st.spd + (P.buff > 0 ? 0.25 : 0)); if (inWater) sp *= 0.55;
@@ -208,9 +214,13 @@ function playerUpdate(dt) {
     S.stats.glide += Math.hypot(P.vx, P.vz) * dt;
     if (P.ground || inWater || jumpP || pressed.has('KeyG')) { P.gliding = false; P.gl.visible = false; if (!P.ground) audio.fx('jump', 0.5); }
     audio.wind(Math.hypot(P.vx, P.vz) / 14);
+  } else if (P.sled) { // glissade en traîne sauvage : tout droit vers le bas de la butte, on se penche à peine
+    P.vx = 10.5; P.vz += (wz * 2.5 - P.vz) * Math.min(1, dt * 3); P.vy -= 26 * dt; P.yaw = -Math.PI / 2; P.sled.t += dt; audio.wind(0.5);
+    if (Math.random() < dt * 20) burst(P.x - 0.8, P.y + 0.1, P.z, 0xf4f8ff, 1, 2);
+    if (P.sled.t > 0.4 && (P.x > P.sled.end || P.sled.t > 5)) sledEnd();
   } else {
     audio.wind(sky.snow * 0.12 + sky.rain * 0.22);
-    const acc = P.ground ? 14 : inWater ? 5 : 3.2;
+    const acc = P.ground ? (icy ? 3.2 : 14) : inWater ? 5 : 3.2; // sur la glace : ça glisse
     P.vx += (wx * sp - P.vx) * Math.min(1, dt * acc); P.vz += (wz * sp - P.vz) * Math.min(1, dt * acc);
     if (inWater) { P.vy -= 9 * dt; P.vy *= Math.pow(0.2, dt); if (jumpH) P.vy = Math.min(P.vy + 30 * dt, 4.5); }
     else P.vy -= 26 * dt;
@@ -366,12 +376,14 @@ function die(why) {
   const P = G.P; P.hp = 0; G.state = 'dead'; unlock(); audio.fx('die');
   const lost = Math.floor(S.cash * 0.1); S.cash -= lost;
   $('deadtxt').textContent = (why ? 'Par : ' + why + '. ' : '') + (lost ? 'Tu as échappé ' + lost + ' piasses.' : '');
+  $('bRespawn').textContent = S.spawn && !(P.z < -480 || Math.abs(P.x - gen.VX) > 700) ? 'TE RÉVEILLER DANS TON LIT' : 'REVENIR À LA VIEILLE-VILLE';
   show('dead');
 }
 function respawn() {
   if (G.drive) exitCar();
   const P = G.P, near = P.z < -480 || Math.abs(P.x - gen.VX) > 700 ? gen.nord.stops.slice(1).reduce((a, b) => Math.hypot(b.ax - P.x, b.az - P.z) < Math.hypot(a.ax - P.x, a.az - P.z) ? b : a) : null;
   if (near) { P.x = near.ax; P.z = near.az; P.y = gen.heightAt(P.x, P.z) + 1.5; toast('Tu te réveilles à l’arrêt d’autocar : ' + near.label); }
+  else if (S.spawn) { P.x = S.spawn[0]; P.y = S.spawn[1] + 0.1; P.z = S.spawn[2]; toast('Tu te réveilles dans ton lit, à la cabane.'); }
   else { P.x = gen.VX + 2.5; P.z = gen.VZ + 10.5; P.y = gen.VH + 1; } P.vx = P.vy = P.vz = 0; P.hp = stats().hpMax; P.gliding = false; P.gl.visible = false; P.iT = 2;
   hide('dead'); G.state = 'play'; writeSave();
 }
@@ -439,10 +451,10 @@ function floatTxt(x, y, z, t, col) {
 }
 // ---------- particules ----------
 const partGeo = new THREE.BoxGeometry(0.16, 0.16, 0.16);
-function burst(x, y, z, color, n = 8, spd = 4) {
+function burst(x, y, z, color, n = 8, spd = 4, g = 14) {
   if (G.parts.length > 220) return;
   const m = new THREE.MeshLambertMaterial({ color });
-  for (let i = 0; i < n; i++) { const p = new THREE.Mesh(partGeo, m); p.position.set(x, y, z); scene.add(p); G.parts.push({ m: p, vx: (Math.random() - 0.5) * spd, vy: Math.random() * spd, vz: (Math.random() - 0.5) * spd, life: 0.6 + Math.random() * 0.4, mat: m }); }
+  for (let i = 0; i < n; i++) { const p = new THREE.Mesh(partGeo, m); p.position.set(x, y, z); scene.add(p); G.parts.push({ m: p, vx: (Math.random() - 0.5) * spd, vy: Math.random() * spd, vz: (Math.random() - 0.5) * spd, life: 0.6 + Math.random() * 0.4, mat: m, g }); }
 }
 // anneaux au sol (onde de choc, coup chargé, zone d'impact) : r0 → r1 pendant life ; r0 === r1 = avertissement clignotant
 const ringGeo = new THREE.RingGeometry(0.86, 1, 48).rotateX(-Math.PI / 2);
@@ -459,7 +471,7 @@ function ringsUpdate(dt) {
 const FLASH_MAT = new THREE.MeshBasicMaterial({ color: 0xffffff });
 function setFlash(g, on) { g.traverse(o => { if (!o.isMesh) return; if (on) { if (!o.userData.mat0) o.userData.mat0 = o.material; o.material = FLASH_MAT; } else if (o.userData.mat0) o.material = o.userData.mat0; }); }
 function partsUpdate(dt) {
-  for (let i = G.parts.length - 1; i >= 0; i--) { const p = G.parts[i]; p.life -= dt; p.vy -= 14 * dt; p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.scale.setScalar(Math.max(0.05, p.life)); if (p.life <= 0) { scene.remove(p.m); G.parts.splice(i, 1); } }
+  for (let i = G.parts.length - 1; i >= 0; i--) { const p = G.parts[i]; p.life -= dt; p.vy -= p.g * dt; p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.scale.setScalar(Math.max(0.05, p.life)); if (p.life <= 0) { scene.remove(p.m); G.parts.splice(i, 1); } }
 }
 // ---------- projectiles ----------
 const snowGeo = new THREE.BoxGeometry(0.26, 0.26, 0.26);
@@ -752,16 +764,17 @@ function npcsUpdate(dt) {
     if (Math.hypot(s.x - P.x, s.z - P.z) > 100 || !world.loadedAround(s.x, s.z, 1)) continue;
     const m = layout(s);
     m.npcs.forEach((n, k) => {
-      const key = s.i + ',' + s.j + ':' + k; if (G.npcs.has(key)) return;
+      const key = s.i + ',' + s.j + ':' + k; if (G.npcs.has(key) || (n.season != null && n.season !== G.season)) return;
       const model = human(Object.assign(npcLook(n.role, s.seed + k * 31), {})); scene.add(model.g); addBlob(model.g, 0.42);
       const nm = n.role === 'villageois' ? ['Réjean', 'Lise', 'Jocelyn', 'Francine', 'Ti-Paul', 'Manon', 'Gaétan', 'Sylvie', 'Normand', 'Huguette'][(s.seed + k) % 10] : n.role === 'aubergiste' ? (s.reg ? 'Aubergiste de ' + s.name : s.nord ? 'Aubergiste de Chicoutimi' : 'Aubergiste du village') : n.role === 'commercant' ? ({ etape: 'Comptoir de L’Étape', charlevoix: 'Boutique du terroir', perce: 'Poissonnerie de Percé', montreal: 'Dépanneur ouvert 24 h (sauf travaux)', montmagny: 'Épicerie de l’Oie blanche' }[n.shop] || (s.nord ? 'Dépanneur du Royaume' : 'Dépanneur')) : NPCS[n.role].name;
       const npc = { key, role: n.role, stop: n.stop, shop: n.shop, s, x: n.x, z: n.z, y: world.ground(n.x, n.z), vx: 0, vy: 0, vz: 0, hw: 0.3, h: 1.75, ground: false, home: { x: n.x, z: n.z }, model, name: nm, t: Math.random() * 9, yaw: Math.random() * 6, wander: Math.random() * 6, walkT: 0, chat: ROLE_CHAT[n.role] ? ROLE_CHAT[n.role][(s.seed + k) % ROLE_CHAT[n.role].length] : CHATTER[(s.seed + k * 7) % CHATTER.length] };
-      if (n.role === 'villageois') { npc.act = ['marche', 'marche', 'pelle', 'jase', 'hockey'][(s.seed + k * 13) % 5]; if (npc.act === 'pelle') setWeapon(model, 'pelle'); if (npc.act === 'hockey') setWeapon(model, 'baton'); }
+      if (n.role === 'villageois') { npc.act = ['marche', 'marche', 'pelle', 'jase', 'hockey'][(s.seed + k * 13) % 5]; if (npc.act === 'pelle') setWeapon(model, 'pelle'); if (npc.act === 'hockey') setWeapon(model, 'baton'); if (n.act) npc.act = n.act; if (n.rink != null) { npc.act = 'patine'; npc.ang = n.rink; npc.rinkC = { x: s.x, z: s.z }; setWeapon(model, 'baton'); } }
       npc.label = makeLabel('npc', `<div class="say"></div><div class="mk"></div><div class="nm">${nm}</div>`); npc.mkEl = npc.label.querySelector('.mk'); npc.sayEl = npc.label.querySelector('.say');
       G.npcs.set(key, npc);
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
-    m.items.forEach((it, k) => { const key = 'c' + s.i + ',' + s.j + ':' + k; if (S.taken[key] || G.pickups.some(p => p.key === key) || (it.y != null && !world.loadedAround(it.x, it.z, 0))) return; dropPickup(it.kind, it.x, world.ground(it.x, it.z, it.y) + 0.4, it.z, { key, still: true }); });
+    if (s.type === 'cabane' && G.season === 1 && Math.hypot(s.x - P.x, s.z - P.z) < 80 && Math.random() < dt * 6) burst(s.x + 1 + (Math.random() - 0.5) * 0.6, s.h + 11.2, s.z + 0.5, 0xf2f2f2, 1, 0.5, -1.5); // printemps : l'évaporateur bouille
+    m.items.forEach((it, k) => { const key = 'c' + s.i + ',' + s.j + ':' + k; if ((it.season != null && it.season !== G.season) || S.taken[key] || G.pickups.some(p => p.key === key) || (it.y != null && !world.loadedAround(it.x, it.z, 0))) return; dropPickup(it.kind, it.x, world.ground(it.x, it.z, it.y) + 0.4, it.z, { key, still: true }); });
     if (m.traps) m.traps.forEach((t, k) => { const key = 't' + s.i + ',' + s.j + ':' + k; if (!G.traps.has(key)) G.traps.set(key, trapMake(t, key)); });
   }
   let talk = null, td = 2.6;
@@ -771,7 +784,9 @@ function npcsUpdate(dt) {
     if (!world.loadedAround(n.x, n.z, 0)) { if (n.label.style.display !== 'none') n.label.style.display = 'none'; continue; }
     n.t += dt; let tvx = 0, tvz = 0;
     const fixed = n.role !== 'villageois' || (n.act && n.act !== 'marche');
-    if (d < 4) { const ty = Math.atan2(-dx, -dz); n.yaw += Math.atan2(Math.sin(ty - n.yaw), Math.cos(ty - n.yaw)) * Math.min(1, dt * 6); }
+    const skate = n.act === 'patine' && G.frozen;
+    if (skate) { n.ang += dt * 0.33; const tx = n.rinkC.x + 0.5 + Math.cos(n.ang) * 7.5, tz = n.rinkC.z + 0.5 + Math.sin(n.ang) * 3.4; tvx = Math.max(-3, Math.min(3, (tx - n.x) * 2)); tvz = Math.max(-3, Math.min(3, (tz - n.z) * 2)); n.yaw = Math.atan2(-tvx, -tvz); }
+    else if (d < 4) { const ty = Math.atan2(-dx, -dz); n.yaw += Math.atan2(Math.sin(ty - n.yaw), Math.cos(ty - n.yaw)) * Math.min(1, dt * 6); }
     else if (!fixed || Math.hypot(n.home.x - n.x, n.home.z - n.z) > 1.5) {
       n.wander += (Math.random() - 0.5) * dt * 1.5; const hx = n.home.x - n.x, hz = n.home.z - n.z, far = Math.hypot(hx, hz) > (fixed ? 1 : 7);
       const go = far || Math.sin(n.t * 0.4 + n.wander) > 0.2; if (go) { tvx = far ? hx / Math.hypot(hx, hz) * 1.6 : Math.sin(n.wander) * 1.3; tvz = far ? hz / Math.hypot(hx, hz) * 1.6 : Math.cos(n.wander) * 1.3; n.yaw = Math.atan2(-tvx, -tvz); }
@@ -783,7 +798,8 @@ function npcsUpdate(dt) {
     n.model.g.position.set(n.x, n.y, n.z); n.model.g.rotation.y = n.yaw; animHuman(n.model, n.walkT, Math.hypot(tvx, tvz) > 0.2 ? 0.6 : 0, 0, false, false);
     const A = n.model.P;
     if (n.act === 'pelle' && d >= 4) { const k = Math.sin(n.t * 2.6); A.armR.rotation.x = 0.7 + k * 0.5; A.armL.rotation.x = 0.9 + k * 0.4; A.torso.rotation.x = 0.25 + k * 0.15; if (k > 0.98 && Math.random() < 0.3 && d < 25) burst(n.x - Math.sin(n.yaw) * 1.2, n.y + 0.4, n.z - Math.cos(n.yaw) * 1.2, 0xf8fbff, 3, 2.5); }
-    else if (n.act === 'hockey' && d >= 4) { const k = Math.sin(n.t * 4); A.armR.rotation.x = 0.5 + k * 0.35; A.armL.rotation.x = 0.6 + k * 0.3; A.torso.rotation.y = k * 0.3; }
+    else if (skate) { A.torso.rotation.x = 0.3; A.armL.rotation.x = 0.4; A.armR.rotation.x = 0.6; }
+    else if ((n.act === 'hockey' || n.act === 'patine') && d >= 4) { const k = Math.sin(n.t * 4); A.armR.rotation.x = 0.5 + k * 0.35; A.armL.rotation.x = 0.6 + k * 0.3; A.torso.rotation.y = k * 0.3; }
     else if (n.act === 'jase' && d >= 4) { if (Math.sin(n.t * 0.9) > 0.3) { A.armL.rotation.x = 0.8 + Math.sin(n.t * 5) * 0.4; A.armL.rotation.z = -0.2; } }
     if (n.role === 'villageois' && d < 7 && d > 2.6 && !(G.t - (n.greetT ?? -99) < 90) && G.state === 'play') { n.greetT = G.t; n.waveT = 1.6; say(n, pick(sky.dayF < 0.3 ? AMBIENT.nuit : AMBIENT.salut)); }
     if (n.waveT > 0) { n.waveT -= dt; A.armR.rotation.x = 2.7; A.armR.rotation.z = 0.35 + Math.sin(n.t * 14) * 0.35; }
@@ -798,8 +814,9 @@ function npcsUpdate(dt) {
   G.sayT -= dt; if (G.sayT <= 0 && G.state === 'play') { G.sayT = 5 + Math.random() * 6; const near = [...G.npcs.values()].filter(n => Math.hypot(n.x - P.x, n.z - P.z) < 15 && n !== talk && !(G.t < n.sayUntil));
     if (near.length) { const n = near[(Math.random() * near.length) | 0]; const pool = sky.rain > 0.4 ? AMBIENT.pluie : sky.snow > 0.4 ? AMBIENT.neige : n.act && AMBIENT[n.act] ? AMBIENT[n.act] : n.role === 'villageois' ? CHATTER : ROLE_CHAT[n.role] || AMBIENT.salut; say(n, pick(pool)); } }
   const C = G.car; G.nearCar = !!(C && !G.drive && !P.gliding && Math.hypot(C.x - P.x, C.z - P.z) < 3.4 && Math.abs(C.y - P.y) < 2.5);
-  const pr = $('prompt'), ptxt = talk ? 'Parler à ' + talk.name : G.drive ? 'Sortir du bazou' : G.nearCar ? 'Conduire le bazou' : G.door ? (G.door.down ? 'Descendre : ' + DUN[G.door.s.kind].name : 'Remonter à la surface') : '';
-  if (ptxt && G.state === 'play') { pr.innerHTML = (isTouch ? '' : '<kbd>E</kbd> ') + ptxt; pr.classList.remove('hidden'); $('tTalk').classList.remove('hidden'); $('tTalk').textContent = talk ? 'PARLE' : G.drive ? 'SORS' : G.nearCar ? 'AUTO' : G.door.down ? 'ENTRE' : 'MONTE'; }
+  G.use = talk || G.drive || G.nearCar || G.door ? null : useNear();
+  const pr = $('prompt'), ptxt = talk ? 'Parler à ' + talk.name : G.drive ? 'Sortir du bazou' : G.nearCar ? 'Conduire le bazou' : G.door ? (G.door.down ? 'Descendre : ' + DUN[G.door.s.kind].name : 'Remonter à la surface') : G.use ? G.use.txt : '';
+  if (ptxt && G.state === 'play') { pr.innerHTML = (isTouch ? '' : '<kbd>E</kbd> ') + ptxt; pr.classList.remove('hidden'); $('tTalk').classList.remove('hidden'); $('tTalk').textContent = talk ? 'PARLE' : G.drive ? 'SORS' : G.nearCar ? 'AUTO' : G.door ? (G.door.down ? 'ENTRE' : 'MONTE') : G.use.btn; }
   else { pr.classList.add('hidden'); $('tTalk').classList.add('hidden'); }
 }
 const pick = a => a[(Math.random() * a.length) | 0];
@@ -816,12 +833,12 @@ function crittersUpdate(dt) {
       const nO = G.critters.filter(c => c.kind === 'oie' || c.kind === 'oie_blanche').length, mm = col.reg === 'montmagny';
       if (!wet && Math.abs(y - P.y) < 8) {
         if (mm && nO < (mobile ? 4 : 8) && (col.biome === BIOME.RIVE || Math.random() < 0.65)) critterSpawn('oie_blanche', x, z);
-        else if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && !mm && col.biome !== BIOME.RIVE && nE < (mobile ? 3 : 5)) critterSpawn('ecureuil', x, z);
+        else if (town && nC < 2) critterSpawn('chat', x, z); else if (!town && !mm && col.biome !== BIOME.RIVE && nE < Math.round((mobile ? 3 : 5) * [0.4, 1, 1.6, 1][G.season])) critterSpawn('ecureuil', x, z); // plus d'écureuils l'été, peu l'hiver
       } } }
   // volée d'oies en V, le jour
   G.flockT -= dt;
   const nearMM = gen.nord.region(P.x, P.z) === 'montmagny' || gen.nord.region(P.x, P.z) === 'mm' || gen.nord.region(P.x, P.z) === 'battures';
-  if (!G.flock && G.flockT <= 0 && sky.dayF > 0.35) { G.flockT = nearMM ? 12 + Math.random() * 18 : 70 + Math.random() * 60; const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + (nearMM ? 10 + Math.random() * 6 : 28 + Math.random() * 10), birds = [], nB = nearMM ? 11 : 9;
+  if (!G.flock && G.flockT <= 0 && sky.dayF > 0.35) { G.flockT = nearMM ? 12 + Math.random() * 18 : (70 + Math.random() * 60) * [3, 0.5, 1, 0.5][G.season]; // migrations au printemps et à l'automne const a = Math.random() * 6.28, dx = Math.cos(a), dz = Math.sin(a), y = P.y + (nearMM ? 10 + Math.random() * 6 : 28 + Math.random() * 10), birds = [], nB = nearMM ? 11 : 9;
     for (let i = 0; i < nB; i++) { const M = critterModel(nearMM ? 'oie_blanche' : 'oie'), row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; scene.add(M.g); birds.push({ M, ox: -dz * side * row * 2.2 - dx * row * 2.4, oz: dx * side * row * 2.2 - dz * row * 2.4, ph: Math.random() * 6 }); }
     G.flock = { x: P.x - dx * (nearMM ? 40 : 160), z: P.z - dz * (nearMM ? 40 : 160), y, dx, dz, birds, t: 0, honk: 0 }; }
   if (G.flock) { const F = G.flock; F.t += dt; F.x += F.dx * 10 * dt; F.z += F.dz * 10 * dt; F.honk -= dt;
@@ -841,7 +858,7 @@ function crittersUpdate(dt) {
     c.M.g.position.set(c.x, c.y + hop, c.z); c.M.g.rotation.y = c.yaw; if (c.M.P.tail) c.M.P.tail.rotation.x = c.kind === 'chat' ? Math.sin(c.t * 2) * 0.2 : -0.2 + Math.sin(c.t * 8) * 0.15; if ((c.kind === 'oie' || c.kind === 'oie_blanche') && c.M.P.wL) { const f = Math.sin(c.t * 6) * (sp > 0 ? 0.35 : 0.08); c.M.P.wL.rotation.z = f; c.M.P.wR.rotation.z = -f; } c.M.P.body.rotation.x = c.kind === 'ecureuil' && sp === 0 ? -0.5 : 0; }
 }
 function questsOf(role) { return Object.entries(QUESTS).filter(([id, q]) => q.giver === role); }
-function questAvailable(id) { const q = QUESTS[id]; if (S.q[id]) return false; return !(q.requires || []).some(r => !S.q[r] || S.q[r].st !== 'done'); }
+function questAvailable(id) { const q = QUESTS[id]; if (S.q[id] || (q.season != null && q.season !== G.season)) return false; return !(q.requires || []).some(r => !S.q[r] || S.q[r].st !== 'done'); }
 function npcMark(n) {
   for (const [id] of questsOf(n.role)) { const s = S.q[id]; if (s && s.st === 'ready') return 'ready'; }
   for (const [id] of questsOf(n.role)) if (questAvailable(id)) return 'avail';
@@ -936,7 +953,7 @@ function pickupsUpdate(dt) {
 function collect(p) {
   if (p.kind === 'piasse') { S.cash += p.val || 1; audio.fx('coin'); floatTxt(p.x, p.y + 0.6, p.z, '+' + (p.val || 1) + ' $', '#8dff6a'); }
   else if (p.kind === 'poutine') { addItem('poutine'); audio.fx('coin'); toast('Poutine ramassée!'); }
-  else if (p.kind === 'chaudiere' || p.kind === 'ble' || p.kind === 'pinceau' || p.kind === 'casier' || p.kind === 'plume' || p.kind === 'accordeon') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
+  else if (p.kind === 'chaudiere' || p.kind === 'ble' || p.kind === 'pinceau' || p.kind === 'casier' || p.kind === 'plume' || p.kind === 'accordeon' || p.kind === 'feuille') { S.taken[p.key] = 1; audio.fx('coin'); questEvent('collect', p.kind); }
   else if (p.kind === 'coffre' || p.kind === 'coffre_or') openChest(p);
   else if (p.kind === 'permis') { audio.fx('quest'); questEvent('collect', 'permis'); }
   else if (p.kind === 'gear') { addItem(p.id, 1, p.r); audio.fx('coin'); toast(ITEMS[p.id].name + ' (' + RARITY[p.r].n + ') ajouté au sac'); }
@@ -944,11 +961,12 @@ function collect(p) {
 // ---------- quêtes ----------
 function questEvent(kind, what) {
   for (const id in S.q) { const s = S.q[id], q = QUESTS[id]; if (s.st !== 'active') continue;
-    if ((kind === 'kill' && q.type === 'kill' && q.target === what) || (kind === 'collect' && q.type === 'collect' && q.item === what)) { s.n++; toast(q.title + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n); if (s.n >= q.n) { s.st = 'ready'; audio.fx('quest'); banner('OBJECTIF ATTEINT', 'Retourne voir ' + NPCS[q.giver].name); } } }
+    if ((kind === 'kill' && q.type === 'kill' && q.target === what) || (kind === 'collect' && q.type === 'collect' && q.item === what) || (kind === 'craft' && q.type === 'craft' && q.recipe === what) || (kind === 'act' && q.type === 'act' && q.act === what)) { s.n++; toast(q.title + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n); if (s.n >= q.n) { s.st = 'ready'; audio.fx('quest'); banner('OBJECTIF ATTEINT', 'Retourne voir ' + NPCS[q.giver].name); } } }
   const c = S.contract; if (c && c.st === 'active' && kind === 'kill' && c.target === what) { c.prog++; if (c.prog >= c.n) { c.st = 'ready'; audio.fx('quest'); banner('CONTRAT REMPLI', 'Retourne voir l’aubergiste'); } else toast('Contrat : ' + c.prog + ' / ' + c.n); }
   G.dirtyQ = true;
 }
 function gainXP(n) {
+  if (S.restedTo > dayNow()) n = Math.round(n * 1.2); // bien reposé (dormi dans ton lit) : +20 %
   S.xp += n; floatTxt(G.P.x, G.P.y + 2.4, G.P.z, '+' + n + ' XP', '#9ae0ff');
   while (S.xp >= xpNext(S.lvl)) { S.xp -= xpNext(S.lvl); S.lvl++; const st = stats(); G.P.hp = st.hpMax; audio.fx('level'); banner('NIVEAU ' + S.lvl + '!', 'PV max ' + st.hpMax + ' · dégâts +10 % · 1 point de talent (T)'); burst(G.P.x, G.P.y + 1, G.P.z, 0xffd23a, 20, 6); G.dirtyHot = true; }
 }
@@ -962,7 +980,7 @@ function reward(r) {
 function npcPos(role, near) { let best = null, bd = 150; for (const [, n] of G.npcs) if (n.role === role) { const d = near ? Math.hypot(n.x - near.x, n.z - near.z) : 0; if (d < bd) { bd = d; best = { x: n.x, z: n.z, y: n.y + 3.4 }; } /* au-dessus du nom et du « ! » */ } return best; }
 function giverPos(role, q) {
   const NP = gen.nord.places, c = { gaston: [0, 0], lapaperasse: [0, 0], pepere: [1, 0], ginette: [-1, 0] }[role];
-  const p = q && q.home ? gen.reg.places[q.home] : c ? gen.cell(...c) : { cuisiniere: NP.etape, saguenayen: NP.port }[role];
+  const p = q && q.home ? gen.reg.places[q.home] : c ? gen.cell(...c) : { cuisiniere: NP.etape, saguenayen: NP.port, animatrice: gen.extras[0], notaire: { x: gen.home.x - 10.5, z: gen.home.z + 2.5 } }[role];
   return p ? npcPos(role, p) || { x: p.x, z: p.z } : null;
 }
 function questTargetPos(id) {
@@ -978,7 +996,7 @@ function questTargetPos(id) {
   if (best) return best;
   if (q.home) { const p = gen.reg.places[q.at || q.home]; return p ? { x: p.x, z: p.z } : null; }
   if (q.where) { const c = gen.cell(...q.where); return { x: c.x, z: c.z }; }
-  const Z = { sirop: () => gen.cell(1, 0), poutine: () => gen.cell(-1, 0), permis: () => gen.cell(-1, 0), souffleuses: () => gen.cell(2, -1), pate: () => NP.travaux, comite: () => NP.travaux, goelands: () => NP.port }[id];
+  const Z = { terrain: () => gen.home, glissade: () => ({ x: gen.extras[0].butte.x0 + 0.5, z: gen.extras[0].z + 0.5, y: gen.home.h + 7 }), feuilles: () => gen.cell(1, 0), sirop: () => gen.cell(1, 0), poutine: () => gen.cell(-1, 0), permis: () => gen.cell(-1, 0), souffleuses: () => gen.cell(2, -1), pate: () => NP.travaux, comite: () => NP.travaux, goelands: () => NP.port }[id];
   const c = Z && Z(); return c ? { x: c.x, z: c.z } : null;
 }
 // ---------- premiers pas (tutoriel du premier lancement) ----------
@@ -1002,6 +1020,116 @@ function tutoUpdate() {
   writeSave();
 }
 function tutoSet(on) { S.tuto = on ? 0 : -1; G.tb = null; G.dirtyQ = true; }
+// ---------- saisons (v4) : jour de jeu → saison → uniformes du terrain, glace, météo, ambiance ----------
+const dayNow = () => (S ? S.day : 2 * DAYS) + sky.t;
+const SEASON_BAN = [['L’HIVER EST ARRIVÉ', 'Le fleuve est gelé, la patinoire est ouverte. Frimousse est de retour!'], ['LE PRINTEMPS', 'Le dégel, la pluie, pis le temps des sucres chez Pépère'], ['L’ÉTÉ', 'Les lucioles, le dek hockey, pis les mouches noires'], ['L’AUTOMNE', 'Les érables virent au rouge, les feuilles tombent partout']];
+const winterG = winterDecor(gen.extras[0]); winterG.position.y = gen.extras[0].h + 1; winterG.visible = false; scene.add(winterG);
+function seasonUpdate(dt, snap) {
+  const p = seasonParams(dayNow()), U = SEASON_U, k = snap ? 1 : Math.min(1, dt * 0.5); G.season = p.k;
+  for (const [u, v] of [['uSnow', p.snow], ['uIce', p.ice], ['uGreen', p.green], ['uFall', p.fall], ['uFresh', p.fresh]]) U[u].value += (v - U[u].value) * k;
+  if ((U.uIce.value > 0.5) !== !!G.frozen) setFrozen(!G.frozen);
+  winterG.visible = U.uSnow.value > 0.5;
+}
+// eau gelée : l'eau devient solide (on marche dessus) ; ceux qui nagent sont remontés sur la glace
+function setFrozen(on) {
+  G.frozen = on; SOLID[B.WATER] = on ? 1 : 0; if (!on || !world) return;
+  for (const e of [G.P, ...G.enemies, ...G.npcs.values()]) if (e && world.loadedAround(e.x, e.z, 0) && boxHit(world, e.x, e.y, e.z, e.hw, e.h)) { e.y = world.ground(e.x, e.z); e.vy = 0; }
+}
+function newDay() {
+  S.day++; const k = seasonOf(S.day); G.dirtyQ = true;
+  if (k !== seasonOf(S.day - 1)) { banner(...SEASON_BAN[k]); G.weatherT = 0; } else toast(SAISONS[k] + ', jour ' + dayInSeason(S.day) + ' sur ' + DAYS);
+}
+function setSeason(k) { S.day = k * DAYS + 1; seasonUpdate(0, true); G.dirtyQ = true; }
+const seasonTxt = () => SAISONS[G.season] + ', jour ' + dayInSeason(S.day) + '/' + DAYS;
+// ---------- ta cabane (v4) : terrain, meubles, coffre, lit, raccourci ----------
+const H = gen.home, PAT = gen.extras[0];
+let furnM = [];
+function trophies() { return [S.bossDead && 'supreme', S.q.souffleuses && S.q.souffleuses.st === 'done' && 'deneigete', S.comiteDead && 'comite', ...Object.keys(S.dun).filter(k => S.dun[k]).map(k => { const d = gen.reg.structs.find(s => s.key === k); return d ? d.kind : 'mine'; })].filter(Boolean); }
+function furnSync() {
+  for (const m of furnM) scene.remove(m); furnM = [];
+  for (const f of S.furn) { const m = furnModel(f.id, f.id === 'cadre' ? trophies() : []); m.position.set(f.x, f.y, f.z); m.rotation.y = f.r * Math.PI / 2; scene.add(m); furnM.push(m); }
+}
+function furnPlace(id) {
+  const P = G.P, it = S.inv.find(i => i.id === id); if (!it) return false;
+  if (!S.home || !inHome(H, P.x, P.z)) { audio.fx('deny'); toast('Les meubles s’installent sur ton terrain (quête « Ton bout de terrain »).'); return false; }
+  let x = Math.round((P.x - Math.sin(P.yaw) * 1.3) * 2) / 2, z = Math.round((P.z - Math.cos(P.yaw) * 1.3) * 2) / 2;
+  if (!inHome(H, x, z) || world.solid(x, P.y + 0.3, z)) { x = Math.round(P.x * 2) / 2; z = Math.round(P.z * 2) / 2; }
+  const r = ((Math.round(P.yaw / (Math.PI / 2)) % 4) + 4) % 4;
+  S.furn.push({ id, x, y: world.ground(x, z, P.y + 1.2), z, r }); if (it.n > 1) it.n--; else S.inv.splice(S.inv.indexOf(it), 1);
+  furnSync(); audio.fx('place'); toast(ITEMS[id].name + ' installé' + (id === 'chaise' ? 'e' : '') + ' · ' + K('E', 'B', 'le bouton') + ' pour l’utiliser'); writeSave(); return true;
+}
+function furnNear() { const P = G.P; let b = -1, bd = 1.8; S.furn.forEach((f, i) => { const d = Math.hypot(f.x - P.x, f.z - P.z); if (d < bd && Math.abs(f.y - P.y) < 1.5) { bd = d; b = i; } }); return b; }
+// action possible tout près : un meuble, ou le haut de la butte l'hiver
+function useNear() {
+  if (!S.home && !S.furn.length && Math.abs(G.P.x - PAT.x) > 40) return null;
+  const i = furnNear(); if (i >= 0) { const id = S.furn[i].id, a = FURN_ACT[id]; return { txt: a[0], btn: a[1], fn: () => furnOpen(i) }; }
+  const P = G.P, b = PAT.butte;
+  if (!P.sled && P.x >= b.x0 - 1.5 && P.x <= b.x0 + 1.6 && P.z >= b.z0 - 0.5 && P.z <= b.z1 + 1.5 && P.y > PAT.h + b.top - 0.2) {
+    if (SEASON_U.uSnow.value < 0.5) return { txt: 'La butte (il faudrait de la neige pour glisser)', btn: 'BUTTE', fn: () => toast('Pas de neige, pas de glissade. Reviens l’hiver!') };
+    return { txt: 'Glisser en traîne sauvage', btn: 'GLISSE', fn: sledStart };
+  }
+  return null;
+}
+function sledStart() { const P = G.P; P.sled = { t: 0, end: PAT.butte.x1 + 4, m: sledModel() }; P.model.g.add(P.sled.m); P.z = Math.max(PAT.butte.z0 + 0.4, Math.min(PAT.butte.z1 + 0.6, P.z)); audio.fx('jump'); }
+function sledEnd() { const P = G.P; P.model.g.remove(P.sled.m); P.sled = null; S.stats.glissades = (S.stats.glissades || 0) + 1; floatTxt(P.x, P.y + 2.2, P.z, 'WOUHOU!', '#9ae0ff'); questEvent('act', 'glissade'); }
+function dlg(title, html, btns) {
+  G.state = 'dialog'; unlock(); G.dlgNpc = null; show('dialog'); $('dname').textContent = title; $('dtext').innerHTML = html;
+  const bb = $('dbtns'); bb.innerHTML = ''; for (const [label, fn, big] of btns) { const e = document.createElement('button'); e.className = 'btn' + (big ? ' big' : ''); e.textContent = label; e.onclick = () => { audio.fx('ui'); fn(); }; bb.appendChild(e); }
+  setTimeout(() => { const f = bb.querySelector('.btn'); if (f && !isTouch) f.focus(); }, 30);
+}
+function furnOpen(i) {
+  const f = S.furn[i], D = ITEMS[f.id], P = G.P, close = () => closeDialog();
+  const more = [['TOURNER', () => { f.r = (f.r + 1) % 4; furnSync(); }], ['RANGER DANS LE SAC', () => { S.furn.splice(i, 1); addItem(f.id); if (f.id === 'lit' && S.spawn && Math.hypot(S.spawn[0] - f.x, S.spawn[2] - f.z) < 0.1) S.spawn = null; furnSync(); closeDialog(); toast(D.name + ' rangé dans le sac'); }], ['FERMER', close]];
+  if (f.id === 'coffre_m') return openCoffre(i);
+  if (f.id === 'lit') return dlg(D.name, 'Une courtepointe de ta grand-tante, un oreiller qui sent le cèdre.<br>' + (S.spawn && Math.hypot(S.spawn[0] - f.x, S.spawn[2] - f.z) < 0.1 ? '<span class="green">C’est ici que tu te réveilles.</span>' : 'Dors une fois ici pour en faire ton point de réveil.'), [['DORMIR JUSQU’AU MATIN', () => sleep(f), true], ...more]);
+  if (f.id === 'poele') return dlg(D.name, 'Le poêle ronronne. Chez toi, tu reprends des forces deux fois plus vite.', [['SE RÉCHAUFFER', () => { P.hp = stats().hpMax; P.buff = 30; audio.fx('eat'); toast('Bien au chaud : PV au max, et de la vitesse pour 30 s'); closeDialog(); }, true], ...more]);
+  if (f.id === 'chaise') return dlg(D.name, 'Une berçante qui craque juste comme il faut.', [['SE BERCER', () => { P.stam = 1; toast('Tu te berces… L’énergie revient.'); closeDialog(); }, true], ...more]);
+  if (f.id === 'cadre') { const t = trophies(); return dlg(D.name, t.length ? 'Tes trophées : ' + t.length + ' boss vaincu' + (t.length > 1 ? 's' : '') + '. Le mur commence à être beau.' : 'Encore vide. Bats un boss (le Cône Suprême, une souffleuse géante, un donjon…) pour ton premier trophée.', more); }
+  dlg(D.name, D.desc, more);
+}
+// coffre : clique un objet du sac pour le ranger, un objet du coffre pour le reprendre (manette : croix + A)
+function openCoffre(i) {
+  const cell = (it, side, k) => `<button class="cell" data-s="${side}" data-k="${k}" title="${ITEMS[it.id].name}"${it.r ? ` style="box-shadow: inset 0 0 0 3px ${RARITY[it.r].c}"` : ''}><img src="${itemIcon(it.id)}">${(it.n || 1) > 1 ? `<i>${it.n}</i>` : ''}</button>`;
+  const sac = S.inv.map((it, k) => ITEMS[it.id].slot === 'quete' ? '' : cell(it, 'sac', k)).join('');
+  dlg('Coffre de cèdre', `<div class="chest"><div><b>Ton sac</b><div class="grid">${sac || '<small>(vide)</small>'}</div></div><div><b>Le coffre (${S.chest.length} / ${CHEST_MAX})</b><div class="grid">${S.chest.map((it, k) => cell(it, 'cof', k)).join('') || '<small>(vide)</small>'}</div></div></div><small>Clique un objet pour le changer de côté.</small>`,
+    [['TOUT REPRENDRE', () => { while (S.chest.length) moveStack(S.chest, S.inv, 0); openCoffre(i); }], ...(i != null ? [['TOURNER', () => { S.furn[i].r = (S.furn[i].r + 1) % 4; furnSync(); }], ['RANGER LE COFFRE', () => { if (S.chest.length) { toast('Vide le coffre avant de le ranger.'); return; } S.furn.splice(i, 1); addItem('coffre_m'); furnSync(); closeDialog(); }]] : []), ['FERMER', () => { closeDialog(); writeSave(); }]]);
+  $('dtext').querySelectorAll('.cell').forEach(c => c.onclick = () => { const k = +c.dataset.k; if (c.dataset.s === 'sac') { if (!moveStack(S.inv, S.chest, k, CHEST_MAX)) { audio.fx('deny'); toast('Le coffre est plein.'); return; } } else moveStack(S.chest, S.inv, k); audio.fx('ui'); openCoffre(i); });
+}
+function sleep(f) {
+  const P = G.P; if (G.enemies.some(e => !e.dead && Math.hypot(e.x - P.x, e.z - P.z) < 24)) { audio.fx('deny'); toast('Pas moyen de dormir avec des ennemis dans la cour!'); return; }
+  closeDialog(); const fd = $('fade'); fd.style.opacity = 1;
+  setTimeout(() => {
+    if (sky.t >= 0.27) newDay(); sky.t = 0.27; seasonUpdate(0, true);
+    P.hp = stats().hpMax; P.stam = 1; S.spawn = [f.x, f.y, f.z]; S.restedTo = dayNow() + 0.45; S.stats.sleeps = (S.stats.sleeps || 0) + 1; writeSave();
+    fd.style.opacity = 0; audio.fx('level', 0.5); banner('BIEN DORMI!', seasonTxt() + ' · réveil ici · +20 % d’XP jusqu’au soir');
+  }, 700);
+}
+// chez toi : la quête du terrain se termine à l'arrivée ; tu reprends des forces (deux fois plus vite avec le poêle)
+function homeUpdate(dt) {
+  const P = G.P, at = inHome(H, P.x, P.z) && Math.abs(P.y - H.h - 1) < 4;
+  if (at && S.q.terrain && S.q.terrain.st === 'active') { S.q.terrain = { st: 'done', n: 1 }; S.home = true; S.inv = S.inv.filter(i => i.id !== 'acte'); reward(QUESTS.terrain.reward); banner('TON BOUT DE TERRAIN', 'Le lit et le coffre sont dans ton sac : ' + K('I', 'Select', 'SAC') + ' → INSTALLER'); G.dirtyQ = true; writeSave(); }
+  if (at && S.home && !G.atHome) toast('Chez vous : tu reprends des forces' + (S.furn.some(f => f.id === 'poele') ? ' (le poêle chauffe)' : ''));
+  G.atHome = at && S.home;
+  if (G.atHome && P.hp > 0) P.hp = Math.min(stats().hpMax, P.hp + dt * (S.furn.some(f => f.id === 'poele') ? 6 : 3));
+}
+// raccourci « retour à la cabane » (Pause, carte, touche H) : une fois par demi-journée, pas en combat ni sous terre
+function goHome() {
+  const P = G.P; if (!S.home) { toast('Tu n’as pas encore de terrain (quête « Ton bout de terrain »).'); return false; }
+  if (G.dun) { audio.fx('deny'); toast('Remonte à la surface d’abord.'); return false; }
+  if (G.enemies.some(e => !e.dead && e.state === 'chase' && Math.hypot(e.x - P.x, e.z - P.z) < 22)) { audio.fx('deny'); toast('Pas en plein combat!'); return false; }
+  const wait = S.homeT + 0.5 - dayNow(); if (wait > 0) { audio.fx('deny'); toast('Le raccourci revient dans ' + Math.ceil(wait * DAY_LEN / 60) + ' min.'); return false; }
+  if (['pause', 'map', 'dialog'].includes(G.state)) { hide('pause'); closePanels(); G.state = 'play'; }
+  if (G.drive) exitCar();
+  S.homeT = dayNow(); P.x = H.cx + 0.5; P.z = H.cz + 0.5; P.y = H.h + 1.1; P.vx = P.vy = P.vz = 0; P.iT = 2; P.gliding = false; P.gl.visible = false;
+  G.homeArrive = true; G.state = 'loading'; G.loadT = 0; hide('hud'); show('loading'); audio.fx('ui'); return true;
+}
+// test et captures : terrain acquis, cabane meublée, coffre garni
+function homeSetup() {
+  S.q.terrain = { st: 'done', n: 1 }; S.home = true; const y = H.h + 1;
+  S.furn = [{ id: 'lit', x: H.ix1 + 0.4, y, z: H.iz1 + 0.05, r: 2 }, { id: 'coffre_m', x: H.ix0 + 0.6, y, z: H.iz0 + 0.4, r: 0 }, { id: 'poele', x: H.ix1 - 0.3, y, z: H.iz0 + 0.45, r: 0 }, { id: 'tapis', x: H.ix0 + 2.4, y, z: H.iz0 + 2.4, r: 0 },
+    { id: 'table', x: H.ix0 + 2.4, y, z: H.iz0 + 2.4, r: 0 }, { id: 'chaise', x: H.ix0 + 1.4, y, z: H.iz0 + 2.4, r: 3 }, { id: 'chaise', x: H.ix0 + 3.4, y, z: H.iz0 + 2.4, r: 1 }, { id: 'cadre', x: H.ix0 + 2.4, y, z: H.iz0 + 0.15, r: 0 }];
+  S.chest = [{ id: 'sirop', n: 3 }, { id: 'fer', n: 5 }, { id: 'charbon', n: 4 }, { id: 'tire', n: 2 }]; furnSync(); G.dirtyQ = true;
+}
 // ---------- dialogues ----------
 function openDialog(n) {
   G.state = 'dialog'; unlock(); G.dlgNpc = n; audio.fx('ui'); show('dialog'); renderDialog(n);
@@ -1019,7 +1147,7 @@ function renderDialog(n, extra) {
   if (extra) txt = extra;
   else if (talkQ) { const q = QUESTS[talkQ[0]]; txt = q.done + reward(q.reward); add('MERCI!', () => renderDialog(n)); }
   else if (ready) { const [id, q] = ready; S.q[id].st = 'done'; txt = q.done + reward(q.reward); if (id === 'permis') S.inv = S.inv.filter(i => i.id !== 'permis'); if (id === 'nouvelles') S.inv = S.inv.filter(i => i.id !== 'gazette'); G.dirtyQ = true; add('MERCI!', () => renderDialog(n)); }
-  else if (avail) { const [id, q] = avail; txt = (q.chap ? '<span class="chap">Récit · chapitre ' + q.chap + '</span><br>' : '') + '<b class="gold">' + q.title + '</b><br>' + q.intro + '<br><span class="rw">Récompense : ' + rewardTxt(q.reward) + '</span>'; add('ACCEPTER', () => { S.q[id] = { st: 'active', n: 0 }; if (q.give) addItem(q.give); audio.fx('accept'); toast((q.chap ? 'Chapitre ' + q.chap + ' : ' : 'Nouvelle quête : ') + q.title); G.dirtyQ = true; writeSave(); closeDialog(); }, true); add('PLUS TARD', close); }
+  else if (avail) { const [id, q] = avail; txt = (q.chap ? '<span class="chap">Récit · chapitre ' + q.chap + '</span><br>' : '') + '<b class="gold">' + q.title + '</b><br>' + q.intro + '<br><span class="rw">Récompense : ' + rewardTxt(q.reward) + '</span>'; add('ACCEPTER', () => { S.q[id] = { st: 'active', n: 0 }; if (q.give) addItem(q.give); if (q.gift) { for (const k in q.gift.items || {}) addItem(k, q.gift.items[k]); for (const b in q.gift.blocks || {}) S.blocks[b] = (S.blocks[b] || 0) + q.gift.blocks[b]; G.dirtyHot = true; } audio.fx('accept'); toast((q.chap ? 'Chapitre ' + q.chap + ' : ' : 'Nouvelle quête : ') + q.title); G.dirtyQ = true; writeSave(); closeDialog(); }, true); add('PLUS TARD', close); }
   else if (active) { const [id, q] = active; txt = q.wait + '<br><span class="gold">Progrès : ' + Math.min(S.q[id].n, q.n) + ' / ' + q.n + '</span>'; }
   else if (n.role === 'aubergiste') {
     const key = n.s.i + ',' + n.s.j, c = S.contract;
@@ -1079,10 +1207,10 @@ function hudUpdate(dt) {
   const tp = talentPts(S); $('lvl').innerHTML = 'NIV. ' + S.lvl + '  ·  ' + S.xp + ' / ' + xpNext(S.lvl) + ' XP' + (tp ? ' <span class="gold">· ★ ' + tp + ' talent' + (tp > 1 ? 's' : '') + (isTouch ? '' : ' (T)') + '</span>' : '');
   $('cash').querySelector('b').textContent = S.cash;
   const col = gen.column(Math.floor(P.x), Math.floor(P.z)), rk = gen.nord.region(P.x, P.z);
-  const place = G.dun ? DUN[G.dun.kind].name : rk ? REGIONS[rk][0] : col.st && col.w > 0.4 ? col.st.name || { ville: 'Vieille-Ville', village: 'Village', cabane: 'Cabane à sucre', chantier: 'Chantier', grand: 'Grand Chantier' }[col.st.type] : BIOME_NAME[col.biome];
+  const place = G.dun ? DUN[G.dun.kind].name : rk ? REGIONS[rk][0] : col.st && col.w > 0.4 ? col.st.name || { ville: 'Vieille-Ville', village: 'Village', cabane: 'Cabane à sucre', chantier: 'Chantier', grand: 'Grand Chantier', patinoire: 'Patinoire du village', terrain: S.home ? 'Chez vous' : 'Terrain de la grand-tante' }[col.st.type] : BIOME_NAME[col.biome];
   if (rk !== G.regKey) { if (rk && !G.dun && (!G.regSeen[rk] || G.t - G.regSeen[rk] > 60)) { banner(REGIONS[rk][0].toUpperCase(), REGIONS[rk][1]); G.lastBanner = rk; } G.regKey = rk; }
   if (rk) G.regSeen[rk] = G.t;
-  $('where').textContent = place; $('clock').textContent = sky.clock() + (sky.snow > 0.4 ? ' · neige' : sky.rain > 0.4 ? ' · pluie' : '');
+  $('where').textContent = place; $('clock').textContent = sky.clock() + ' · ' + seasonTxt() + (sky.snow > 0.4 ? ' · neige' : sky.rain > 0.4 ? ' · pluie' : '');
   if (G.dirtyHot) { G.dirtyHot = false; renderHot(); }
   if (G.dirtyQ || !G.trackT || G.t - G.trackT > 0.5) { G.dirtyQ = false; G.trackT = G.t; renderTracker(); }
 }
@@ -1103,6 +1231,7 @@ function objectives() {
   for (const id of ids) { const q = QUESTS[id]; out.push({ cls: S.q[id].st === 'ready' ? 'ready' : '', t: (q.chap ? 'Ch. ' + q.chap + ' · ' : '') + q.title, d: objTxt(id), pos: questTargetPos(id) }); }
   const mains = Object.entries(QUESTS).filter(([, q]) => q.chap).sort((a, b) => a[1].chap - b[1].chap);
   if (!ids.some(id => QUESTS[id].chap)) { const nx = mains.find(([id]) => questAvailable(id)); if (nx) out.push({ t: 'Ch. ' + nx[1].chap + ' · ' + nx[1].title, d: 'Va voir ' + nm(nx[1].giver), pos: giverPos(nx[1].giver, nx[1]) }); }
+  if (questAvailable('terrain')) out.push({ t: 'Quête : ' + QUESTS.terrain.title, d: 'Va voir ' + nm('notaire') + ', à l’est du village', pos: giverPos('notaire') });
   const c = S.contract; if (c) out.push({ cls: c.st === 'ready' ? 'ready' : '', t: 'Contrat du village', d: c.st === 'ready' ? 'Retourne voir l’aubergiste' : 'Bats : ' + ENEMIES[c.target].name + ' ' + c.prog + ' / ' + c.n });
   if (!out.some(o => !o.skip)) { // plus rien en cours : une suggestion concrète
     const side = Object.entries(QUESTS).find(([id, q]) => !q.chap && questAvailable(id)), dun = gen.reg.structs.find(s => s.type === 'donjon' && !S.dun[s.key]);
@@ -1147,13 +1276,14 @@ function drawMarkers(ctx, cx, cz, scale, W, round) {
     if (round) { ctx.save(); ctx.beginPath(); ctx.arc(W / 2, W / 2, W / 2 - 2, 0, 6.283); ctx.clip(); }
     for (const [lw, c] of [[scale > 0.9 ? 5 : 4, '#0c1420'], [scale > 0.9 ? 2.5 : 2, '#e8e2c8']]) { ctx.lineWidth = lw; ctx.strokeStyle = c; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
     if (round) ctx.restore(); }
-  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff', donjon: '#c04aff', mm: '#e8e8f0', batt: '#f2f6fb', ile: '#9ae0ff', baie: '#5ab8ff', belvc: '#9ae0ff', perce: '#5ab8ff', rocher: '#c8a888', phare: '#ff4a3a', mtl: '#ff7a1a', quai: '#9ae0ff' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
+  for (const s of gen.allStructs(cx - R, cz - R, cx + R, cz + R)) put(s.x, s.z, { ville: '#5ab8ff', village: '#ffffff', cabane: '#c8361e', chantier: '#ff7a1a', grand: '#ff3a1a', travaux: '#ff7a1a', etape: '#ffd23a', poste: '#c89a5a', camp: '#c89a5a', belvedere: '#9ae0ff', chicoutimi: '#5ab8ff', port: '#5ab8ff', musee: '#9ae0ff', donjon: '#c04aff', mm: '#e8e8f0', batt: '#f2f6fb', ile: '#9ae0ff', baie: '#5ab8ff', belvc: '#9ae0ff', perce: '#5ab8ff', rocher: '#c8a888', phare: '#ff4a3a', mtl: '#ff7a1a', quai: '#9ae0ff', patinoire: '#cfe8f5', terrain: '#c8a888' }[s.type] || '#ffffff', s.type === 'ville' || s.type === 'chicoutimi' ? 10 : 7);
   // noms des lieux
   ctx.textAlign = 'center'; ctx.lineJoin = 'round';
   for (const L of gen.nord.labels) { const px = (L.x - cx) * scale + W / 2, pz = (L.z - cz) * scale + W / 2, t = round && L.sh ? L.sh : L.n;
     if (round ? Math.hypot(px - W / 2, pz - W / 2) > W / 2 - 12 : px < -40 || pz < 0 || px > W + 40 || pz > W) continue;
     if (scale < 0.3 && !L.big && !L.m) continue;
     ctx.font = (round ? 13 : L.big ? 20 : 16) + 'px "Jersey 10", monospace'; ctx.lineWidth = 4; ctx.strokeStyle = '#0c1420'; ctx.strokeText(t, px, pz - 8); ctx.fillStyle = L.big ? '#ffd23a' : '#ffffff'; ctx.fillText(t, px, pz - 8); }
+  if (S.home) { put(H.cx, H.cz, '#8dff6a', 10, 'd'); const hx = (H.cx - cx) * scale + W / 2, hz = (H.cz - cz) * scale + W / 2; if (!round || Math.hypot(hx - W / 2, hz - W / 2) < W / 2 - 12) { ctx.font = (round ? 13 : 16) + 'px "Jersey 10", monospace'; ctx.lineWidth = 4; ctx.strokeStyle = '#0c1420'; ctx.strokeText('Chez vous', hx, hz - 9); ctx.fillStyle = '#8dff6a'; ctx.fillText('Chez vous', hx, hz - 9); } }
   for (const e of G.enemies) if (!e.dead && e.state !== 'hidden') put(e.x, e.z, '#ff4a4a', 4);
   for (const [, n] of G.npcs) { const mk = npcMark(n); if (mk) put(n.x, n.z, mk === 'ready' ? '#8dff6a' : '#ffd23a', 6); }
   for (const id in S.q) if (S.q[id].st !== 'done') { const p = questTargetPos(id); if (p) put(p.x, p.z, S.q[id].st === 'ready' ? '#8dff6a' : '#ffd23a', 10, 'd'); }
@@ -1197,8 +1327,9 @@ function drawBigMap() {
     if (!c) { const col = gen.column(x, z); const h = col.h; c = h <= SEA || (col.wl && h < col.wl) ? [40, 80, 140] : [[200, 190, 140], [100, 150, 70], [50, 90, 60], [170, 70, 40], [210, 215, 225], [150, 150, 150]][col.biome].map(v => v * (0.55 + (h - SEA) * 0.006)); }
     for (let b = 0; b < stp; b++) for (let a = 0; a < stp; a++) { const k = (i + a + (j + b) * W) * 4; d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = 255; } }
   ctx.putImageData(img, 0, 0); drawMarkers(ctx, P.x, P.z, sc, W, false);
-  $('maplegend').innerHTML = '<span style="color:#5ab8ff">■</span> Ville &nbsp; ■ Village &nbsp; <span style="color:#c8361e">■</span> Cabane &nbsp; <span style="color:#ff7a1a">■</span> Chantier &nbsp; <span class="gold">■</span> Relais &nbsp; <span style="color:#e8e2c8">━</span> Route 175 &nbsp; <span class="gold">◆</span> Quête<br><button class="btn sm" id="mzBtn">' + ['ZOOM : PROCHE', 'ZOOM : RÉGION', 'ZOOM : TOUT LE NORD'][G.mapZ] + (isTouch ? '' : ' (Z)') + '</button>';
+  $('maplegend').innerHTML = '<span style="color:#5ab8ff">■</span> Ville &nbsp; ■ Village &nbsp; <span style="color:#c8361e">■</span> Cabane &nbsp; <span style="color:#ff7a1a">■</span> Chantier &nbsp; <span class="gold">■</span> Relais &nbsp; <span style="color:#e8e2c8">━</span> Route 175 &nbsp; <span class="gold">◆</span> Quête' + (S.home ? ' &nbsp; <span class="green">◆</span> Chez vous' : '') + '<br><button class="btn sm" id="mzBtn">' + ['ZOOM : PROCHE', 'ZOOM : RÉGION', 'ZOOM : TOUT LE NORD'][G.mapZ] + (isTouch ? '' : ' (Z)') + '</button>';
   $('mzBtn').onclick = e => { e.stopPropagation(); G.mapZ = (G.mapZ + 1) % 3; drawBigMap(); };
+  if (S.home) { const b = document.createElement('button'); b.className = 'btn sm'; b.id = 'mHome'; b.textContent = 'RETOUR À LA CABANE' + (isTouch ? '' : ' (H)'); b.onclick = e => { e.stopPropagation(); goHome(); }; $('maplegend').appendChild(b); }
 }
 // sac
 let invSel = null;
@@ -1208,18 +1339,19 @@ function renderInv() {
   h += `<div class="statl">Niveau ${S.lvl} · PV ${Math.ceil(G.P.hp)} / ${st.hpMax}<br>Dégâts ${Math.round(st.dmg)} · Défense ${st.def}<br>Piasses : <span class="green">${S.cash}</span><br>Cerf-volant fléché : ${S.glider ? 'oui (Espace en l’air)' : 'non'}<br>Ennemis vaincus : ${S.stats.kills} · Blocs cassés : ${S.stats.blocks} · posés : ${S.stats.placed}</div></div>`;
   h += '<div><div class="grid">' + S.inv.map((it, i) => `<div class="cell${invSel === i ? ' sel' : ''}" data-i="${i}"${it.r ? ` style="box-shadow: inset 0 0 0 3px ${RARITY[it.r].c}"` : ''}><img src="${itemIcon(it.id)}">${it.n > 1 ? `<i>${it.n}</i>` : ''}</div>`).join('') + '</div>';
   const sel = S.inv[invSel];
-  h += '<div id="idesc">' + (sel ? `<span style="color:${RARITY[sel.r || 0].c}">${ITEMS[sel.id].name}</span>${sel.r ? ' (' + RARITY[sel.r].n + ')' : ''} — ${ITEMS[sel.id].desc}${ITEMS[sel.id].dmg ? ' · Dégâts ' + Math.round(ITEMS[sel.id].dmg * RARITY[sel.r || 0].m) : ''}${ITEMS[sel.id].def ? ' · Défense ' + Math.round(ITEMS[sel.id].def * RARITY[sel.r || 0].m) : ''}<br>` + (ITEMS[sel.id].slot === 'conso' ? '<button class="btn sm" id="iUse">MANGER</button>' : ITEMS[sel.id].slot === 'mat' || ITEMS[sel.id].slot === 'outil' ? '<button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' + (ITEMS[sel.id].slot === 'outil' ? ' <small>Outil : servi tout seul quand tu mines.</small>' : '') : ITEMS[sel.id].slot !== 'quete' ? '<button class="btn sm" id="iEq">ÉQUIPER</button> <button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' : '') : 'Choisis un objet.') + '</div>';
+  h += '<div id="idesc">' + (sel ? `<span style="color:${RARITY[sel.r || 0].c}">${ITEMS[sel.id].name}</span>${sel.r ? ' (' + RARITY[sel.r].n + ')' : ''} — ${ITEMS[sel.id].desc}${ITEMS[sel.id].dmg ? ' · Dégâts ' + Math.round(ITEMS[sel.id].dmg * RARITY[sel.r || 0].m) : ''}${ITEMS[sel.id].def ? ' · Défense ' + Math.round(ITEMS[sel.id].def * RARITY[sel.r || 0].m) : ''}<br>` + (ITEMS[sel.id].slot === 'conso' ? '<button class="btn sm" id="iUse">MANGER</button>' : ITEMS[sel.id].slot === 'meuble' ? (S.home && inHome(H, G.P.x, G.P.z) ? '<button class="btn sm" id="iPlace">INSTALLER ICI</button>' : '<small>S’installe sur ton terrain' + (S.home ? ' (Pause → RETOUR À LA CABANE)' : ' (quête « Ton bout de terrain »)') + '.</small>') : ITEMS[sel.id].slot === 'mat' || ITEMS[sel.id].slot === 'outil' ? '<button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' + (ITEMS[sel.id].slot === 'outil' ? ' <small>Outil : servi tout seul quand tu mines.</small>' : '') : ITEMS[sel.id].slot !== 'quete' ? '<button class="btn sm" id="iEq">ÉQUIPER</button> <button class="btn sm" id="iSell">VENDRE (' + sellPrice(sel) + ' $)</button>' : '') : 'Choisis un objet.') + '</div>';
   h += '<div class="statl">Blocs : ' + (PLACEABLE.filter(b => S.blocks[b] > 0).map(b => `<img src="${blockIcon(b)}" style="width:1.4em;vertical-align:middle"> ${S.blocks[b]}`).join(' &nbsp; ') || 'aucun — casse des blocs avec F') + '</div></div>';
   h += '<div class="row2"><button class="btn sm" id="iTal">TALENTS' + (talentPts(S) ? ' (★ ' + talentPts(S) + ')' : '') + '</button><button class="btn sm" id="iCraft">ATELIER</button></div>';
   $('invbody').innerHTML = h;
   $('iTal').onclick = () => { closePanels(); openPanel('talents'); }; $('iCraft').onclick = () => { closePanels(); openPanel('craft'); };
   $('invbody').querySelectorAll('.cell').forEach(c => c.onclick = () => { invSel = +c.dataset.i; audio.fx('ui'); renderInv(); });
   const u = $('iUse'); if (u) u.onclick = () => { useItem(sel); invSel = null; renderInv(); };
+  const pl = $('iPlace'); if (pl) pl.onclick = () => { if (furnPlace(sel.id)) { invSel = null; closePanels(); } };
   const q = $('iEq'); if (q) q.onclick = () => { equip(sel); invSel = null; renderInv(); };
   const s = $('iSell'); if (s) s.onclick = () => { S.cash += sellPrice(sel); if (sel.n > 1) sel.n--; else { S.inv.splice(invSel, 1); invSel = null; } audio.fx('coin'); renderInv(); };
 }
 function sellPrice(it) { return Math.round((ITEMS[it.id].price || 40) * 0.3 * RARITY[it.r || 0].m); }
-function objTxt(id) { const q = QUESTS[id], s = S.q[id]; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.obj || (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name)) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
+function objTxt(id) { const q = QUESTS[id], s = S.q[id]; if (q.type === 'visit') return q.obj; if (s.st === 'ready') return 'Retourne voir ' + NPCS[q.giver].name.split(',')[0]; if (q.type === 'talk') return 'Parle à ' + NPCS[q.to].name.split(',')[0]; return (q.obj || (q.type === 'kill' ? ENEMIES[q.target].name : ITEMS[q.item].name)) + ' : ' + Math.min(s.n, q.n) + ' / ' + q.n; }
 // journal : récit principal par chapitres (fait / en cours / à venir), quêtes secondaires, contrats
 function renderQuests() {
   const main = Object.entries(QUESTS).filter(([, q]) => q.chap).sort((a, b) => a[1].chap - b[1].chap), side = Object.entries(QUESTS).filter(([, q]) => !q.chap);
@@ -1231,7 +1363,8 @@ function renderQuests() {
     const what = st === 'done' ? 'Terminée.' : st === 'avail' ? 'À prendre auprès de ' + giver + '.' : st === 'ready' ? 'Objectif atteint : retourne voir ' + giver + '.' : q.wait + ' — ' + objTxt(id);
     return `<div class="qitem ${st}"><span class="ic">${ICON[st]}</span><b>${q.chap ? 'Chapitre ' + q.chap + ' · ' : ''}${q.title}</b> — ${giver}<br>${what}${prog}${st !== 'done' ? '<br><small class="rw">Récompense : ' + rewardTxt(q.reward) + '</small>' : ''}</div>`; };
   const doneN = main.filter(([id]) => stOf(id) === 'done').length;
-  let h = `<h2>Le Grand Plan des cônes <small>${doneN} / ${main.length} chapitres</small></h2><div class="qbar big"><div style="width:${doneN / main.length * 100}%"></div></div>` + main.map(([id, q]) => row(id, q)).join('');
+  const nk = (G.season + 1) % 4, left = DAYS - dayInSeason(S.day) + 1, sq = Object.entries(QUESTS).filter(([, q]) => q.season === G.season);
+  let h = `<p class="saison">Saison : <b class="gold">${SAISONS[G.season]}</b>, jour ${dayInSeason(S.day)} sur ${DAYS} · ${SAISONS[nk]} dans ${left} jour${left > 1 ? 's' : ''}${sq.length ? '<br>Activité de saison : ' + sq.map(([id, q]) => q.title + ' (' + NPCS[q.giver].name.split(',')[0] + (S.q[id] ? ', ' + (S.q[id].st === 'done' ? 'faite' : 'en cours') : '') + ')').join(' · ') : ''}${S.home ? '<br>Ta cabane : ' + S.furn.length + ' meuble' + (S.furn.length > 1 ? 's' : '') + ', coffre ' + S.chest.length + ' / ' + CHEST_MAX : ''}</p>` + `<h2>Le Grand Plan des cônes <small>${doneN} / ${main.length} chapitres</small></h2><div class="qbar big"><div style="width:${doneN / main.length * 100}%"></div></div>` + main.map(([id, q]) => row(id, q)).join('');
   const sideSeen = side.filter(([id]) => stOf(id) !== 'locked');
   h += '<h2>Quêtes secondaires</h2>' + (sideSeen.map(([id, q]) => row(id, q)).join('') || '<p>Aucune pour l’instant.</p>');
   if (S.contract) h += `<h2>Contrat du village</h2><div class="qitem ${S.contract.st}"><b>Contrat du village</b><br>${ENEMIES[S.contract.target].name} : ${S.contract.prog} / ${S.contract.n}</div>`;
@@ -1287,7 +1420,7 @@ function craft(id) {
 }
 function openPanel(id) { if (G.state !== 'play') return; G.state = id; unlock(); show(id); audio.fx('ui'); if (id === 'craft') renderCraft(); if (id === 'talents') renderTalents(); if (id === 'inv') renderInv(); if (id === 'quests') { renderQuests(); G.tutoJ = true; tutoUpdate(); } if (id === 'map') drawBigMap(); }
 function closePanels() { for (const id of ['inv', 'quests', 'map', 'dialog', 'craft', 'talents']) hide(id); if (['inv', 'quests', 'map', 'dialog', 'craft', 'talents'].includes(G.state)) G.state = 'play'; G.dirtyHot = true; }
-function openPause() { if (G.state !== 'play') return; G.state = 'pause'; unlock(); show('pause'); $('bTuto').textContent = S.tuto >= 0 ? 'PASSER LES PREMIERS PAS' : 'REVOIR LES PREMIERS PAS'; }
+function openPause() { if (G.state !== 'play') return; G.state = 'pause'; unlock(); show('pause'); $('bHome').classList.toggle('hidden', !S.home); $('bTuto').textContent = S.tuto >= 0 ? 'PASSER LES PREMIERS PAS' : 'REVOIR LES PREMIERS PAS'; }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { audio.fx('ui'); const sc = b.closest('.screen'); sc.classList.add('hidden'); if (sc.id === 'help' || sc.id === 'opts') { if (G.prevScreen) show(G.prevScreen); } else closePanels(); });
 // options
 function bindOpts() {
@@ -1351,7 +1484,7 @@ function startGame(fresh) {
   if (fresh && old && Object.keys(old.edits || {}).length) makeWorld({}); else if (!fresh && old && G.worldEdits !== 'save') makeWorld(S.edits);
   G.worldEdits = 'save';
   clearEntities(); if (G.P) scene.remove(G.P.model.g);
-  G.P = makePlayer(); G.tb = null; G.wpPos = null; sky.t = S.time; hide('title'); show('loading'); G.state = 'loading'; G.loadT = 0;
+  G.P = makePlayer(); G.tb = null; G.wpPos = null; sky.t = S.time; G.frozen = false; SOLID[B.WATER] = 0; seasonUpdate(0, true); furnSync(); hide('title'); show('loading'); G.state = 'loading'; G.loadT = 0;
   if (fresh) writeSave();
 }
 function waterUpdate() {
@@ -1365,7 +1498,8 @@ function enterPlay() {
   const P = G.P; const gy = world.ground(P.x, P.z, P.y + 2); if (P.y < gy - 0.5 || boxHit(world, P.x, P.y, P.z, P.hw, P.h)) P.y = gy;
   if (S.migrated) { delete S.migrated; setTimeout(() => toast('Le monde est maintenant en voxels de 50 cm : tes anciennes constructions ont été remises à zéro.'), 2500); }
   placeCar();
-  if (G.travelTo) { const k = G.travelTo; G.travelTo = null; G.regKey = gen.nord.region(P.x, P.z); if (G.regKey) G.regSeen[G.regKey] = G.t; banner((REGIONS[k] ? REGIONS[k][0] : 'Vieille-Ville').toUpperCase(), 'Terminus! Merci d’avoir voyagé avec Orignal Express'); }
+  if (G.homeArrive) { G.homeArrive = false; banner('CHEZ VOUS', 'Ton bout de terrain, à l’est du village'); }
+  else if (G.travelTo) { const k = G.travelTo; G.travelTo = null; G.regKey = gen.nord.region(P.x, P.z); if (G.regKey) G.regSeen[G.regKey] = G.t; banner((REGIONS[k] ? REGIONS[k][0] : 'Vieille-Ville').toUpperCase(), 'Terminus! Merci d’avoir voyagé avec Orignal Express'); }
   else if (!S.q.cones && !S.introDone) { S.introDone = true; banner('VOXELLE-QUÉBEC', 'Va parler à Gaston, le crieur public, sur la place'); }
   else banner('BON RETOUR!', 'Niveau ' + S.lvl + ' · ' + S.cash + ' piasses');
   audio.mode = 'day';
@@ -1374,7 +1508,7 @@ let touchSet = false; function setupTouchOnce() { if (!touchSet) { touchSet = tr
 function handleKeys() {
   const st = G.state;
   if (st === 'play') {
-    if (pressed.has('KeyE')) { if (G.drive) exitCar(); else if (G.talkTo) openDialog(G.talkTo); else if (G.nearCar) enterCar(); else if (G.door) dunDoor(G.door); }
+    if (pressed.has('KeyE')) { if (G.drive) exitCar(); else if (G.talkTo) openDialog(G.talkTo); else if (G.nearCar) enterCar(); else if (G.door) dunDoor(G.door); else if (G.use) G.use.fn(); }
     if (pressed.has('KeyI') || pressed.has('Tab')) openPanel('inv');
     else if (pressed.has('KeyJ')) openPanel('quests');
     else if (pressed.has('KeyM')) openPanel('map');
@@ -1382,6 +1516,7 @@ function handleKeys() {
     else if (pressed.has('KeyT')) openPanel('talents');
     else if (pressed.has('Escape') || pressed.has('KeyP')) openPause();
     if (pressed.has('KeyR')) eat();
+    if (pressed.has('KeyH')) goHome();
     if (pressed.has('KeyQ')) swapWeapon();
     for (let i = 1; i <= 9; i++) if (pressed.has('Digit' + i)) { S.hot = i - 1; G.dirtyHot = true; }
     if (input.wheel) { const n = Math.max(1, hotList().length); S.hot = ((S.hot + input.wheel) % n + n) % n; input.wheel = 0; G.dirtyHot = true; }
@@ -1389,9 +1524,16 @@ function handleKeys() {
     if (st === 'map' && (pressed.has('KeyZ') || pressed.has('Equal') || pressed.has('Minus'))) { G.mapZ = (G.mapZ + (pressed.has('Minus') ? 2 : 1)) % 3; drawBigMap(); }
     const k = { inv: ['KeyI', 'Tab'], quests: ['KeyJ'], map: ['KeyM'], craft: ['KeyK'], talents: ['KeyT'] }[st];
     if (pressed.has('Escape') || k.some(x => pressed.has(x))) closePanels();
-  } else if (st === 'dialog') { if (pressed.has('Escape')) closeDialog(); }
-  else if (st === 'pause') { if (pressed.has('Escape') || pressed.has('KeyP')) resume(); }
+  } else if (st === 'dialog') { if (pressed.has('Escape')) closeDialog(); else padNav($('dialog')); }
+  else if (st === 'pause') { if (pressed.has('Escape') || pressed.has('KeyP')) resume(); else padNav($('pause')); }
   input.wheel = 0;
+}
+// manette dans les menus (pause, dialogues, coffre) : croix haut/bas pour choisir, A pour valider
+function padNav(root) {
+  if (!input.gp) return; const bs = [...root.querySelectorAll('button')].filter(b => b.offsetParent && !b.disabled); if (!bs.length) return;
+  let i = bs.indexOf(document.activeElement); const up = pressed.has('KeyJ'), dn = pressed.has('KeyM');
+  if (up || dn) { i = i < 0 ? 0 : (i + (dn ? 1 : -1) + bs.length) % bs.length; bs[i].focus(); }
+  else if (input.gpA) (bs[i] || bs[0]).click();
 }
 function resume() { hide('pause'); G.state = 'play'; if (!isTouch) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } }
 let last = performance.now(), perfT = 0, perfAcc = 0, perfN = 0;
@@ -1418,8 +1560,9 @@ function frame(now) {
       const gd = G.hitstop > 0 ? dt * 0.08 : dt; G.hitstop = Math.max(0, G.hitstop - dt); // arrêt sur image à l'impact
       if (G.drive) driveUpdate(gd); else playerUpdate(gd); carUpdate(gd); enemiesUpdate(gd); npcsUpdate(dt); dunUpdate(gd); pickupsUpdate(gd); projUpdate(gd); spawner(dt);
       crittersUpdate(dt);
-      sky.t = (sky.t + dt / DAY_LEN) % 1;
-      G.weatherT -= dt; if (G.weatherT <= 0) { const r = Math.random(); sky.snowT = r < 0.28 ? 1 : 0; sky.rainT = r >= 0.28 && r < 0.5 ? 1 : 0; G.weatherT = 90 + Math.random() * 150; }
+      { const nt = sky.t + dt / DAY_LEN; if (nt >= 1) newDay(); sky.t = nt % 1; }
+      G.weatherT -= dt; if (G.weatherT <= 0) { const w = weatherPick(G.season, Math.random()); sky.snowT = w === 'neige' ? 1 : 0; sky.rainT = w === 'pluie' ? 1 : 0; G.weatherT = 90 + Math.random() * 150; } // météo pondérée par la saison
+      homeUpdate(dt);
       if (sky.thunder > 0) { sky.thunder -= dt; if (sky.thunder <= 0) audio.fx('thunder'); }
       G.saveT += dt; if (G.saveT > 20) { G.saveT = 0; writeSave(); }
       // qualité automatique
@@ -1437,7 +1580,9 @@ function frame(now) {
     camUpdate(dt); partsUpdate(dt); ringsUpdate(dt); G.shake *= Math.pow(0.004, dt);
     const col = gen.column(Math.floor(P.x), Math.floor(P.z));
     sky.update(dt, camera.position, G.t, world.view * CS, col.biome === BIOME.COLLINES ? 0.85 : 0);
-    amb.update(dt, P, G.t, 1 - sky.dayF, col.biome === BIOME.BOREALE || col.biome === BIOME.ERABLIERE || col.biome === BIOME.CAMPAGNE, col.biome === BIOME.ERABLIERE, Math.max(sky.rain, sky.snow));
+    seasonUpdate(dt);
+    { const fo = col.biome === BIOME.BOREALE || col.biome === BIOME.ERABLIERE || col.biome === BIOME.CAMPAGNE, er = col.biome === BIOME.ERABLIERE, k = G.season;
+      amb.update(dt, P, G.t, 1 - sky.dayF, fo, LEAVES[k] * (er ? 1 : k === 3 ? (fo ? 0.8 : 0.5) : 0), Math.max(sky.rain, sky.snow), FLIES[k]); }
     if (st === 'play') { tutoUpdate(); hudUpdate(dt); miniUpdate(dt); flushLabels(); }
     wpUpdate();
   }
@@ -1493,11 +1638,12 @@ $('bTuto').onclick = () => { tutoSet(!(S.tuto >= 0)); resume(); if (S.tuto >= 0)
 $('bPHelp').onclick = () => { G.prevScreen = 'pause'; hide('pause'); show('help'); };
 $('bQuit').onclick = () => { writeSave(); hide('pause'); hide('hud'); hide('touch'); touchSet = false; clearEntities(); scene.remove(G.P.model.g); G.state = 'title'; show('title'); $('bCont').classList.remove('hidden'); };
 $('bRespawn').onclick = () => respawn();
+$('bHome').onclick = () => goHome();
 // démarrage
 bindOpts(); applyQuality();
 const saved = loadSave(); if (!saved) $('bCont').classList.add('hidden');
 makeWorld(saved ? saved.edits : {}); G.worldEdits = saved ? 'save' : 'none';
 requestAnimationFrame(frame);
 // point d'entrée pour les tests automatiques
-const API = { tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
+const API = { setSeason, seasonParams, homeSetup, furnPlace, furnOpen, furnSync, openCoffre, sleep, goHome, useNear, inHome, closePanels, newDay, get season() { return G.season; }, get frozen() { return !!G.frozen; }, SEASON_U, H, PAT, tutoSet, TUTO, objectives, giverPos, mimg, topColor, miniRun: () => { miniT = 0; miniUpdate(0); }, get wpPos() { return G.wpPos; }, FS, get resizeN() { return resizeN; }, onResize, dropGearAt: (x, y, z, id, r) => dropPickup('gear', x, y, z, { id, r, still: true }), gainXP, learn, refreshLook, talentPts: () => talentPts(S), rollRarity, dropGear, equip, craft, nearBench, RECIPES, mineTime: b => mineTime(S, ITEMS, b, G.mineBonus || 0), toolFor: b => toolFor(S, ITEMS, b), addItem, ITEMS, renderCraft, normSave, amb, renderQuests, openPanel, say, critterSpawn, damageEnemy, ring, perso, openPerso, travel, enterCar, exitCar, REGIONS, get car() { return G.car; }, drawBigMap, G, get S() { return S; }, get world() { return world; }, sky, input, gen, keys, pressed, camera, stats, xpNext, hotList, questTargetPos, layout, writeSave, startGame, openDialog, closeDialog, QUESTS, ENEMIES, B, eat, spawnEnemy, toast, renderer, applyQuality, OPT, NPCS, SHOPS, dunPlan, dunDoor, DUN, audio, soundScape, rayBox, sameFloor, get dun() { return G.dun; }, get traps() { return G.traps; }, get pickups() { return G.pickups; } };
 window.__game = API;

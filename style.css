@@ -45,6 +45,9 @@ html, body { margin: 0; height: 100%; height: 100dvh; overflow: hidden; backgrou
 #bossbox { position: absolute; left: 50%; top: 2vh; transform: translateX(-50%); width: min(50vw, 520px); text-align: center; }
 #bossname { color: var(--gold); font-size: calc(var(--u) * 1.1); }
 #bossbox .fill { background: linear-gradient(#ffb04a, #ff6a1a); }
+#fade { position: fixed; inset: 0; pointer-events: none; background: #05080e; opacity: 0; transition: opacity .6s; z-index: 30; }
+.chest { display: flex; gap: 14px; } .chest > div { flex: 1; min-width: 0; } .chest .grid { margin: 4px 0 8px; max-height: 34vh; overflow-y: auto; } .chest b { font-weight: normal; color: var(--gold); }
+.saison { margin: 0 0 6px; font-size: .95em; }
 #hurt { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(255,0,0,.8); opacity: 0; transition: opacity .25s; }
 #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 #labels .lb { position: absolute; left: 0; top: 0; transform-origin: 0 0; white-space: nowrap; text-align: center; font-size: calc(var(--u) * .85); will-change: transform; }
@@ -131,7 +134,10 @@ body.touch #weapon { display: none; }
 /* tactile : le suivi passe à gauche, sous les barres (la droite est aux boutons) */
 body.touch #tracker { position: static; margin-top: 8px; font-size: calc(var(--u) * .8); width: auto; text-align: left; }
 body.touch #tracker .q { border-right: 0; border-left: 4px solid var(--gold); } body.touch #tracker .q.ready { border-color: var(--green); } body.touch #tracker .q.tuto { border-color: #9ae0ff; }
-body.touch #prompt { bottom: auto; top: 30%; }
+/* tactile : la barre de blocs est en haut, la bannière passe dessous (elle la recouvrait), les messages sous la bannière */
+body.touch #banner { top: calc(10.4vh + var(--u) * 2.3 + 12px); font-size: calc(var(--u) * 1.8); }
+body.touch #toast { top: calc(10.4vh + var(--u) * 5.6 + 16px); font-size: calc(var(--u) * .95); }
+body.touch #prompt { bottom: calc(var(--u) * 1.2); }
 /* tactile : les stats s'arrêtent avant la rangée de boutons du haut (SAC … plein écran), même avec une encoche */
 body.touch #stats { width: min(36vw, 360px, calc(50% - 190px)); } body.touch #stats .row { flex-wrap: wrap; column-gap: .5em; }
 @media (max-height: 500px) { :root { --u: clamp(15px, 4vh, 22px); } }

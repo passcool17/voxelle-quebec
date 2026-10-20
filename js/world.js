@@ -38,6 +38,7 @@ export class World {
       g.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3, true));
       g.setAttribute('color', new THREE.BufferAttribute(d.col, 3, true));
       g.setAttribute('tex', new THREE.BufferAttribute(d.tex, 1, true));
+      g.setAttribute('kd', new THREE.BufferAttribute(d.kd, 1, true));
       g.setIndex(new THREE.BufferAttribute(d.idx, 1));
       g.computeBoundingSphere();
       const mesh = new THREE.Mesh(g, mat); mesh.scale.setScalar(VS); mesh.position.set(q.cx * CSM, 0, q.cz * CSM); mesh.matrixAutoUpdate = false; mesh.updateMatrix();

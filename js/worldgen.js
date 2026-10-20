@@ -62,8 +62,16 @@ export function createGen(seed) {
     if (type !== 'ville') h = Math.max(SEA + 2, Math.min(SEA + 40, h));
     return { type, i, j, x, z, h, R, R2: R + (type === 'ville' ? 36 : 22), seed: (r() * 1e9) | 0, square: type === 'ville' };
   }
+  // v4, près du village de Ginette : la patinoire (glace l'hiver, dek hockey l'été) avec la butte, et ton bout de terrain
+  const extras = []; let home = null;
+  { const v = cell(-1, 0); if (v) { const pat = { type: 'patinoire', i: 'pat', j: 0, x: v.x - 2, z: v.z + 30, h: v.h, R: 14, R2: 26, seed: v.seed + 11, safe: true }, ter = { type: 'terrain', i: 'ter', j: 0, x: v.x + 33, z: v.z + 1, h: v.h, R: 10, R2: 22, seed: v.seed + 13, safe: true };
+    extras.push(pat, ter);
+    // terrain : clôture x0..x1 × z0..z1 (mètres), camp en bois rond (intérieur ix0..ix1 × iz0..iz1), centre de la pièce cx, cz
+    home = { x: ter.x, z: ter.z, h: v.h, x0: ter.x - 8, x1: ter.x + 8, z0: ter.z - 7, z1: ter.z + 7, ix0: ter.x - 2, ix1: ter.x + 3, iz0: ter.z - 3, iz1: ter.z + 1, cx: ter.x + 1, cz: ter.z - 1, door: { x: ter.x - 4, z: ter.z - 1 } };
+    pat.butte = { x0: pat.x + 13, x1: pat.x + 27, z0: pat.z - 2, z1: pat.z + 2, top: 4 }; } }
   function structsNear(x, z) {
     const ci = Math.round((x - VX) / CELL), cj = Math.round((z - VZ) / CELL), out = [];
+    for (const s of extras) if (Math.abs(x - s.x) < s.R2 + 20 && Math.abs(z - s.z) < s.R2 + 20) out.push(s);
     for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const s = cell(ci + a, cj + b); if (s) out.push(s); }
     if (z < -400) for (const s of nord.structs) { const r = Math.max(s.R2, s.BR || 0) + 20; if (Math.abs(x - s.x) < r && Math.abs(z - s.z) < r) out.push(s); }
     for (const s of reg.structs) { const r = Math.max(s.R2, s.BR || 0) + 20; if (Math.abs(x - s.x) < r && Math.abs(z - s.z) < r) out.push(s); }
@@ -97,6 +105,7 @@ export function createGen(seed) {
     for (let i = Math.floor((x0 - VX) / CELL) - 1; i <= Math.ceil((x1 - VX) / CELL) + 1; i++) for (let j = Math.floor((z0 - VZ) / CELL) - 1; j <= Math.ceil((z1 - VZ) / CELL) + 1; j++) { const s = cell(i, j); if (s && s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s); }
     for (const s of nord.structs) if (s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s);
     for (const s of reg.structs) if (s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s);
+    for (const s of extras) if (s.x >= x0 && s.x <= x1 && s.z >= z0 && s.z <= z1) out.push(s);
     return out;
   }
 
@@ -190,7 +199,7 @@ export function createGen(seed) {
     return data;
   }
   const HELP = { house, church, lampPost, nord };
-  return { genChunk, column, heightAt, rawH, riverZ, riverW, structsNear, cell, allStructs, VX, VZ, VH, VR, layout, nord, reg };
+  return { genChunk, column, heightAt, rawH, riverZ, riverW, structsNear, cell, allStructs, VX, VZ, VH, VR, layout, nord, reg, extras, home };
 }
 
 // ---------- arbres (en voxels fins) ----------
@@ -368,6 +377,14 @@ export function layout(s) {
   } else if (s.type === 'cabane') {
     m.npcs.push({ role: s.i === 1 && s.j === 0 ? 'pepere' : 'acericulteur', x: s.x + 1.5, z: s.z + 5 }, { role: 'villageois', x: s.x - 2.5, z: s.z + 7 });
     for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283 + 0.3; m.items.push({ kind: 'chaudiere', x: s.x + Math.cos(a) * 13 + 0.5, z: s.z + Math.sin(a) * 13 + 0.5 + 1.2 }); }
+    // printemps : le temps des sucres, la cabane déborde de monde ; automne : feuilles rouges sous les érables
+    for (let k = 0; k < 4; k++) m.npcs.push({ role: 'villageois', x: s.x - 4 + k * 2.6, z: s.z + 9 + (k & 1) * 1.5, season: 1, act: 'jase' });
+    if (s.i === 1 && s.j === 0) for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283 + 0.7; m.items.push({ kind: 'feuille', x: s.x + Math.cos(a) * 10 + 0.5, z: s.z + Math.sin(a) * 10 + 1.5, season: 3 }); }
+  } else if (s.type === 'patinoire') {
+    m.npcs.push({ role: 'animatrice', x: s.x - 12.5, z: s.z + 3.5 });
+    for (let k = 0; k < 5; k++) m.npcs.push({ role: 'villageois', x: s.x - 6 + k * 3, z: s.z + ((k & 1) ? 2 : -2), rink: k * 1.25 });
+  } else if (s.type === 'terrain') {
+    m.npcs.push({ role: 'notaire', x: s.x - 10.5, z: s.z + 2.5 });
   } else if (s.type === 'chantier' || s.type === 'grand') {
     const n = s.type === 'grand' ? 7 : 6;
     for (let k = 0; k < n; k++) { const a = k / n * 6.283; m.spawns.push({ type: 'cone', x: s.x + Math.cos(a) * 7, z: s.z + Math.sin(a) * 7 }); }
@@ -423,6 +440,39 @@ const BUILD = {
     P.set(gx - (big ? 12 : 8), h + gh + 1, gz, B.LAMP);
   },
   grand(P, s) { BUILD.chantier(P, s); },
+  // patinoire du village : surface (glace l'hiver, dek hockey le reste de l'année, voir nuanceur), bandes, lignes, buts ; butte à glisser
+  patinoire(P, s) {
+    const h = s.h, x0 = s.x - 10, x1 = s.x + 10, z0 = s.z - 6, z1 = s.z + 6;
+    P.fill(x0 - 2, h, z0 - 2, x1 + 2, h, z1 + 2, B.GRAVEL); P.fill(x0, h, z0, x1, h, z1, B.RINK);
+    P.fill(s.x, h, z0, s.x, h, z1, B.REDROOF); P.fill(s.x - 4, h, z0, s.x - 4, h, z1, B.BLUE); P.fill(s.x + 4, h, z0, s.x + 4, h, z1, B.BLUE);
+    // bandes blanches (un voxel fin), ouvertes aux deux bouts pour entrer
+    const y = 2 * h + 2; P.ffill(2 * x0, y, 2 * z0, 2 * x1 + 1, y, 2 * z0, B.WHITE); P.ffill(2 * x0, y, 2 * z1 + 1, 2 * x1 + 1, y, 2 * z1 + 1, B.WHITE);
+    for (const x of [2 * x0, 2 * x1 + 1]) { P.ffill(x, y, 2 * z0, x, y, 2 * s.z - 3, B.WHITE); P.ffill(x, y, 2 * s.z + 4, x, y, 2 * z1 + 1, B.WHITE); }
+    P.ffill(2 * x0, y + 1, 2 * z0, 2 * x1 + 1, y + 1, 2 * z0, B.TRIM); P.ffill(2 * x0, y + 1, 2 * z1 + 1, 2 * x1 + 1, y + 1, 2 * z1 + 1, B.TRIM);
+    // buts (cadre rouge) aux deux bouts
+    for (const gx of [2 * x0 + 3, 2 * x1 - 2]) { P.ffill(gx, y, 2 * s.z - 1, gx, y + 1, 2 * s.z - 1, B.REDROOF); P.ffill(gx, y, 2 * s.z + 2, gx, y + 1, 2 * s.z + 2, B.REDROOF); P.ffill(gx, y + 2, 2 * s.z - 1, gx, y + 2, 2 * s.z + 2, B.REDROOF); }
+    lampPost(P, x0 - 2, z0 - 2, h); lampPost(P, x1 + 2, z1 + 2, h); lampPost(P, x0 - 2, z1 + 2, h); lampPost(P, x1 + 2, z0 - 2, h);
+    P.fill(x0 + 3, h + 1, z1 + 2, x0 + 7, h + 1, z1 + 2, B.PLANK); // banc des joueurs
+    // butte à glisser : en pente vers l'est, du gazon (enneigé l'hiver par le nuanceur), escalier au nord
+    const b = s.butte;
+    for (let x = b.x0; x <= b.x1; x++) { const t = (x - b.x0) / (b.x1 - b.x0), hh = Math.round(b.top * (1 - t) * (1 - t * 0.35)); if (hh < 1) continue; P.fill(x, h + 1, b.z0, x, h + hh - 1, b.z1, B.DIRT); P.fill(x, h + hh, b.z0, x, h + hh, b.z1, B.GRASS); }
+    P.fill(b.x0 - 1, h + 1, b.z0, b.x0 - 1, h + b.top - 1, b.z1, B.DIRT); P.fill(b.x0 - 1, h + b.top, b.z0, b.x0 - 1, h + b.top, b.z1, B.GRASS);
+    for (let k = 1; k <= b.top; k++) P.fill(b.x0 - 1 + k - 1, h + 1, b.z0 - 1, b.x0 - 1 + k - 1, h + k, b.z0 - 1, B.PLANK);
+  },
+  // ton bout de terrain : clôture, camp en bois rond (porte à l'ouest), sentier, cordée de bois
+  terrain(P, s) {
+    const h = s.h, x0 = s.x - 8, x1 = s.x + 8, z0 = s.z - 7, z1 = s.z + 7;
+    P.fill(x0, h, z0, x1, h, z1, B.GRASS);
+    const fy = 2 * h + 2;
+    for (let x = x0; x <= x1; x += 2) for (const z of [z0, z1]) P.ffill(2 * x, fy, 2 * z, 2 * x, fy + 2, 2 * z, B.LOG);
+    for (let z = z0; z <= z1; z += 2) for (const x of [x0, x1]) P.ffill(2 * x, fy, 2 * z, 2 * x, fy + 2, 2 * z, B.LOG);
+    P.ffill(2 * x0, fy + 1, 2 * z0, 2 * x1, fy + 1, 2 * z0, B.PLANK); P.ffill(2 * x0, fy + 1, 2 * z1, 2 * x1, fy + 1, 2 * z1, B.PLANK);
+    P.ffill(2 * x1, fy + 1, 2 * z0, 2 * x1, fy + 1, 2 * z1, B.PLANK); P.ffill(2 * x0, fy + 1, 2 * z0, 2 * x0, fy + 1, 2 * s.z - 3, B.PLANK); P.ffill(2 * x0, fy + 1, 2 * s.z + 2, 2 * x0, fy + 1, 2 * z1, B.PLANK);
+    P.fill(x0, h + 1, s.z - 1, x0, h + 2, s.z, B.AIR); // barrière ouverte (ouest, vers le village)
+    for (let x = x0; x <= s.x - 4; x++) P.fill(x, h, s.z - 1, x, h, s.z - 1, B.PATH);
+    house(P, s.x - 3, s.z - 4, 8, 7, h, B.LOG, B.SHINGLE, 'w', 4, true);
+    P.fill(s.x + 6, h + 1, s.z + 4, s.x + 7, h + 1, s.z + 5, B.LOG); P.fill(s.x + 6, h + 2, s.z + 4, s.x + 6, h + 2, s.z + 5, B.LOG); // cordée de bois
+  },
   ville(P, s) {
     const h = s.h, R = 34, x0 = s.x - R, x1 = s.x + R, z0 = s.z - R, z1 = s.z + R;
     // pavés + rues

@@ -360,6 +360,7 @@ export function pickupModel(kind) {
   else if (kind === 'plume') { box(g, 0.08, 0.5, 0.12, 0xf2f6fb, 0, 0, 0, true); box(g, 0.04, 0.12, 0.04, 0x2a2a2a, 0, -0.28, 0); }
   else if (kind === 'accordeon') { box(g, 0.55, 0.36, 0.28, 0xc8282e, 0, 0, 0); box(g, 0.2, 0.32, 0.32, 0x1a1a1a, -0.32, 0, 0); box(g, 0.2, 0.32, 0.32, 0x1a1a1a, 0.32, 0, 0); box(g, 0.5, 0.28, 0.22, 0xe8d8c0, 0, 0, 0, true); }
   else if (kind === 'pinceau') { box(g, 0.06, 0.06, 0.5, 0xb98b52, 0, 0, 0); box(g, 0.08, 0.08, 0.08, 0xc9ced6, 0, 0, -0.28); box(g, 0.08, 0.08, 0.12, 0x2e7fd8, 0, 0, -0.38, true); }
+  else if (kind === 'feuille') { box(g, 0.44, 0.04, 0.36, 0xc8361e, 0, 0, 0, true); box(g, 0.2, 0.045, 0.5, 0xd8481e, 0, 0, 0, true); box(g, 0.04, 0.05, 0.22, 0x6b4a2b, 0, 0, 0.3); }
   else if (kind === 'casier') { box(g, 0.6, 0.4, 0.44, 0x8b6a3e, 0, 0, 0); box(g, 0.5, 0.3, 0.46, 0x2a3a3a, 0, 0, 0, true); box(g, 0.62, 0.06, 0.46, 0xc8282e, 0, 0.21, 0); }
   else { box(g, 0.4, 0.4, 0.4, 0x9a6adf, 0, 0, 0, true); box(g, 0.46, 0.08, 0.46, 0xf2c12e, 0, 0.1, 0); }
   return bake(g);
