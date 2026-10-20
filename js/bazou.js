@@ -44,7 +44,7 @@ export function createBazou(C) {
       R.ai.push({ ...r, m, lbl, s: z0 - sp.z, v: 0, lane: sp.x - N().roadX(sp.z), lane0: sp.x - N().roadX(sp.z), y: ground(sp.x, sp.z), pitch: 0, fin: null, wob: Math.random() * 6 }); });
     BAZOU.cps.forEach((z, i) => R.gates.push(gate(z, i === BAZOU.cps.length - 1)));
     R.L = z0 - BAZOU.cps[BAZOU.cps.length - 1]; for (const a of R.ai) aiStep(a, 0, 0); // rivaux posés sur la grille
-    G.race = { freeze: true, vmax: run => (run ? 29 : 24) * (1 - Math.min(0.35, R.dmg * 0.004)), hit: v => hurt(Math.min(25, v * 0.9)) };
+    G.race = { freeze: true, vmax: run => (run ? 29 : 24) * (1 - Math.min(0.25, R.dmg * 0.003)), hit: v => hurt(Math.min(25, v * 0.9)) };
     el.classList.remove('hidden'); $('bzRes').classList.add('hidden'); document.body.classList.add('bazou'); document.body.classList.toggle('bzTouch', !!C.isTouch);
     C.toast(C.isTouch ? 'GAZ pour avancer, ◀ ▶ pour tourner, FREIN pour ralentir.' : 'W : gaz · S : frein · A/D : tourner · Maj : turbo. Passe les 5 portes!');
     audio.fx('horn'); G.raceLog = []; show();
@@ -60,8 +60,10 @@ export function createBazou(C) {
     const L = R.L, gap = a.s - pS;
     let vt = a.vmax * (gap > 45 ? 0.9 : gap < -45 ? 1.08 : 1) * (a.fin ? 0.4 : 1); // élastique : ni trop loin devant, ni trop loin derrière
     const z = R.z0 - a.s, curv = Math.abs(N().roadX(z - 12) - 2 * N().roadX(z) + N().roadX(z + 12)); vt *= 1 - Math.min(0.25, curv * 0.03); // ralentit dans les courbes
+    const car = G.car, z1 = R.z0 - a.s, lat = Math.abs(car.x - (N().roadX(z1) + a.lane)), gapP = (R.z0 - car.z) - a.s, ahead = lat < 1.9 && gapP > 0 && gapP < 9;
+    if (ahead && lat < 1.6 && gapP < 6) vt = Math.min(vt, Math.max(0, car.v) * 0.95); // pas de coup de pare-chocs : il attend que la voie se libère
     a.v += Math.max(-12, Math.min(7.5, (vt - a.v) * 2)) * dt; a.s += a.v * dt;
-    const car = G.car, nz = R.z0 - a.s, ahead = Math.abs(car.x - (N().roadX(nz) + a.lane)) < 1.9 && (a.s < (R.z0 - car.z)) && (R.z0 - car.z) - a.s < 8;
+    const nz = R.z0 - a.s;
     a.lane += ((ahead ? -Math.sign(a.lane0 || 1) * 1.7 : a.lane0) - a.lane) * Math.min(1, dt * 1.5); // dépasse par l'autre voie
     if (a.s >= R.L && a.fin == null) { a.fin = R.t; R.order.push(a.name); audio.fx('honk', 0.4); }
     const x = N().roadX(nz) + a.lane + Math.sin(R.t * 1.3 + a.wob) * 0.25, gy = ground(x, nz), yaw = roadDir(nz);
@@ -71,8 +73,8 @@ export function createBazou(C) {
     for (const w of a.m.P.wheels) w.rotation.x -= a.v * dt / 0.41; a.m.P.body.position.y = Math.sin(R.t * 23 + a.wob) * 0.015 * Math.min(1, a.v / 5);
     if (a.v > 8 && Math.random() < dt * 6) C.burst(x + Math.sin(yaw) * 2.2, a.y + 0.5, nz + Math.cos(yaw) * 2.2, 0x6a6a6a, 1, 1, -1.5); // boucane du pot d'échappement
     // accrochage avec toi
-    const d = Math.hypot(car.x - x, car.z - nz);
-    if (d < 2.5 && R.t - (a.bumpT || -9) > 0.6) { a.bumpT = R.t; const rel = Math.abs(car.v - a.v); car.v *= 0.82; a.v *= 0.9; car.x += (car.x - x) / (d || 1) * 0.6; car.z += (car.z - nz) / (d || 1) * 0.3; hurt(4 + rel * 0.8); audio.fx('bonk', 0.7); R.bumps = (R.bumps || 0) + 1; }
+    const d = Math.hypot(car.x - x, car.z - nz), dl = Math.abs((car.x - x) * Math.cos(yaw) - (car.z - nz) * Math.sin(yaw)), dlong = Math.abs((car.x - x) * Math.sin(yaw) + (car.z - nz) * Math.cos(yaw)); // écart de côté / en long (gabarit du bazou)
+    if (dl < 1.75 && dlong < 3.9 && R.t - (a.bumpT || -9) > 1.0) { a.bumpT = R.t; const rel = Math.abs(car.v - a.v); car.v *= 0.85; a.v *= 0.9; car.x += Math.sign(car.x - x || 1) * Math.cos(yaw) * 0.5; hurt(2 + rel * 0.5); audio.fx('bonk', 0.7); R.bumps = (R.bumps || 0) + 1; }
     C.placeLabel(a.lbl, x, a.y + 2.6, nz, 60);
   }
   // ---------- boucle (état play) ----------
