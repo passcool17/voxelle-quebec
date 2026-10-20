@@ -44,7 +44,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   ok(pails.filter(q => q.guard).length >= 3, 'sirop : chaudières gardées : ' + pails.filter(q => q.guard).length);
   // vue d'ensemble : caméra haute au-dessus de la cabane, chaudières grossies ×4 pour la capture seulement
   await tp(C.x, C.z + 4, 800); await calm();
-  await ev(() => { const G = __game.G; G.pickups.forEach(q => { if (q.kind === 'chaudiere') q.m.scale.setScalar(4); }); G.camPitch = 1.25; G.camDist = 46; G.overShot = true; });
+  await ev(() => { const G = __game.G; G.pickups.forEach(q => { if (q.kind === 'chaudiere') q.m.scale.setScalar(4); }); G.camPitch = 1.25; G.camDist = 34; G.overShot = true; });
   await W(1500); await shot('chaudieres-eparpillees');
   await ev(() => { const G = __game.G; G.pickups.forEach(q => q.m.scale.setScalar(1)); G.camPitch = 0.32; G.camDist = 5.8; });
   // chaudière gardée : des ratons apparaissent à l'approche
@@ -53,7 +53,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   await ev(([x, z]) => { const P = __game.G.P; P.x = x + 9; P.z = z; P.y = __game.world.ground(x + 9, z) + 0.1; P.iT = 99; P.hp = 400; }, [gp.x, gp.z]); await W(1500);
   const guards = await ev(k => __game.G.enemies.filter(e => !e.dead && e.type === 'raton' && e.guardOf === k).length, gp.key);
   ok(guards >= 1 && guards <= 2 && guards === gp.guard, 'sirop : ' + guards + ' raton(s) gardent la chaudière');
-  await ev(([x, z]) => { const G = __game.G; G.camYaw = Math.atan2(G.P.x - x, G.P.z - z); G.camPitch = 0.35; G.camDist = 6; }, [gp.x, gp.z]); await W(900); await shot('chaudiere-gardee');
+  await ev(([x, z]) => { const G = __game.G; G.camYaw = Math.atan2(G.P.x - x, G.P.z - z) + Math.PI; G.camPitch = 0.35; G.camDist = 6; }, [gp.x, gp.z]); await W(900); await shot('chaudiere-gardee');
   await calm();
   // première chaudière : la minuterie part
   pails = await pick('chaudiere', 'b1,0');
@@ -74,7 +74,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   ok(/GELÉ/.test(ban), 'sirop : bannière « ' + ban.slice(0, 40) + ' »');
   ok(await ev(k => k.every(x => !__game.S.taken[x]), pails.slice(0, 3).map(q => q.key)), 'sirop : chaudières remises dans l’érablière (S.taken effacé)');
   await shot('gel-echec');
-  await tp(C.x, C.z, 1500); pails = await pick('chaudiere', 'b1,0');
+  await allLoaded(); pails = await pick('chaudiere', 'b1,0');
   ok(pails.length === 12, 'sirop : les 12 chaudières sont revenues (' + pails.length + ')');
   // réussite : 10 en moins de 4 minutes (de jeu)
   for (const it of pails) { if (await ev(() => __game.S.q.sirop.st) !== 'active') break; await grab(it); }
@@ -105,8 +105,11 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   await W(400); const cr = await ev(() => document.getElementById('craftbody').textContent);
   ok(/Faire bouillir/.test(cr) && /Tire de Pépère/.test(cr), 'tire : recettes de la quête à l’atelier');
   await ev(() => { const b = document.getElementById('cGo'); if (b) b.click(); }); // 2e canne, par le bouton
-  await W(250); await shot('bouillir');
+  await W(200); await shot('bouillir-atelier');
   await ev(() => __game.closePanels && __game.closePanels());
+  // le panache de l'évaporateur, vu de dehors
+  await ev(([cx, cz]) => { const G = __game.G, P = G.P; P.x = cx + 1; P.z = cz + 14; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI; G.camPitch = 0.12; G.camDist = 7; G.boilT = 6; }, [C.x, C.z]);
+  await W(1800); await shot('bouillir');
   ok(await ev(() => __game.S.inv.filter(i => i.id === 'sirop_coulee').reduce((a, i) => a + (i.n || 1), 0) === 2), 'tire : 2 cannes de sirop de la coulée');
   ok(!(await ev(() => __game.craft('tire_pepere'))), 'tire : pas de tire sans neige');
   got = 0; for (const it of neiges.slice(0, 4)) got += await grab(it) ? 1 : 0;
@@ -126,7 +129,7 @@ const PORT = +(process.env.PORT || 8936), PFX = process.argv[2] || 'apres-v5c', 
   // gros plan : une terne et la rouge la plus proche
   const t0 = ternes[0]; const r0 = rouges.slice().sort((a, b2) => Math.hypot(a.x - t0.x, a.z - t0.z) - Math.hypot(b2.x - t0.x, b2.z - t0.z))[0];
   ok(!(await grab(t0)) && (await ev(() => __game.S.q.feuilles.n)) === 0, 'feuilles : une terne ne compte pas (reste au sol)');
-  await ev(([t, r]) => { const G = __game.G; for (const q of G.pickups) if (q.key === r.key) { q.x = t.x + 1.2; q.z = t.z; } const P = G.P; P.x = t.x + 0.6; P.z = t.z + 3.2; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = 0; G.camPitch = 0.5; G.camDist = 3.2; }, [t0, r0]);
+  await ev(([t, r]) => { const G = __game.G; for (const q of G.pickups) if (q.key === r.key) { q.x = t.x + 1.2; q.z = t.z; } const P = G.P; P.x = t.x + 0.6; P.z = t.z + 3.2; P.y = __game.world.ground(P.x, P.z) + 0.1; G.camYaw = Math.PI; G.camPitch = 0.5; G.camDist = 3.2; }, [t0, r0]);
   await W(1200); await shot('feuilles-rouges-ternes');
   let n = 0; for (const it of rouges) { if (await ev(() => __game.S.q.feuilles.st) !== 'active') break; n += await grab(await ev(k => { const q = __game.G.pickups.find(q => q.key === k); return q ? { x: q.x, z: q.z, key: k } : null; }, it.key) || it) ? 1 : 0; }
   ok((await ev(() => __game.S.q.feuilles.st)) === 'ready', 'feuilles : 10 rouges → objectif atteint (' + n + ' ramassées)');

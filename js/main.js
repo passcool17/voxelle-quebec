@@ -791,7 +791,8 @@ function npcsUpdate(dt) {
       G.npcs.set(key, npc);
     });
     // objets de quête au sol (chaudières des cabanes, cannes de blé d'Inde des travaux)
-    if (s.type === 'cabane' && G.season === 1 && Math.hypot(s.x - P.x, s.z - P.z) < 80 && Math.random() < dt * 6) burst(s.x + 1 + (Math.random() - 0.5) * 0.6, s.h + 11.2, s.z + 0.5, 0xf2f2f2, 1, 0.5, -1.5); // printemps : l'évaporateur bouille
+    const boil = s.i === 1 && s.j === 0 && G.boilT > 0; if (boil) G.boilT -= dt; // v5c : ton eau d'érable bouille : panache épais quelques secondes
+    if (s.type === 'cabane' && (G.season === 1 || boil) && Math.hypot(s.x - P.x, s.z - P.z) < 80 && Math.random() < dt * (boil ? 45 : 6)) burst(s.x + 1 + (Math.random() - 0.5) * 0.6, s.h + 11.2, s.z + 0.5, 0xf2f2f2, 1, 0.5, -1.5); // printemps : l'évaporateur bouille
     m.items.forEach((it, k) => { const key = it.id ? it.id + (it.yearly ? '@' + Math.floor((S.day - 1) / (4 * DAYS)) : '') : 'c' + s.i + ',' + s.j + ':' + k; if ((it.season != null && it.season !== G.season) || S.taken[key] || G.pickups.some(p => p.key === key) || ((it.y != null || it.nudge) && !world.loadedAround(it.x, it.z, 0))) return;
       let x = it.x, z = it.z; if (it.nudge) { const c = (G.nudge || (G.nudge = {}))[it.id || key] || (G.nudge[it.id || key] = freeSpot(it.x, it.z)); x = c.x; z = c.z; }
       dropPickup(it.kind, x, world.ground(x, z, it.y) + 0.4, z, { key, still: true, guard: it.guard || 0, tone: it.tone }); });
@@ -1504,7 +1505,7 @@ function craft(id) {
   const r = RECIPES.find(q => q.id === id); if (!r || missing(S, r, nearBench(), nearCab()).length) { audio.fx('deny'); return false; }
   consume(S, r);
   if (r.out.b) S.blocks[r.out.b] = (S.blocks[r.out.b] || 0) + (r.out.n || 1) * (r.bench && G.tf.foreman ? 2 : 1); else addItem(r.out.i, r.out.n || 1, 0);
-  if (r.id === 'bouillir') { for (let k = 0; k < 14; k++) burst(G.P.x + (Math.random() - 0.5) * 2, G.P.y + 1.5, G.P.z + (Math.random() - 0.5) * 2, 0xf2f2f2, 2, 1.2, -1.5); banner('ÇA BOUILLE!', 'L’évaporateur fume : une canne de sirop de la coulée'); }
+  if (r.id === 'bouillir') { G.boilT = 6; for (let k = 0; k < 14; k++) burst(G.P.x + (Math.random() - 0.5) * 2, G.P.y + 1.5, G.P.z + (Math.random() - 0.5) * 2, 0xf2f2f2, 2, 1.2, -1.5); banner('ÇA BOUILLE!', 'L’évaporateur fume : une canne de sirop de la coulée'); }
   G.dirtyQ = true;
   S.stats.crafted++; audio.fx('craft'); toast('Fabriqué : ' + r.name + ((r.out.n || 1) > 1 ? ' ×' + r.out.n : '')); G.dirtyHot = true; questEvent('craft', id);
   return true;
